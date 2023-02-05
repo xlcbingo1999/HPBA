@@ -1,6 +1,5 @@
 from cmath import nan
 from collections import Counter
-from regex import D
 import torch
 import torchvision.transforms as transforms
 import torch.nn as nn
