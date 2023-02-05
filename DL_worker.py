@@ -5,7 +5,7 @@ import argparse
 from opacus_scheduler_job import do_calculate_func
 from utils.data_loader import get_review_dataset_multi_split
 from utils.global_functions import FAILED_RESULT_KEY
-from utils.global_variable import WORKER_LOCAL_IP, WORKER_LOCAL_PORT, SCHE_IP, SCHE_PORT
+from utils.global_variable import WORKER_LOCAL_IP, WORKER_LOCAL_PORT, SCHE_IP, SCHE_PORT, MAX_EPSILON
 
 def get_df_config():
     parser = argparse.ArgumentParser(
@@ -120,7 +120,6 @@ class Worker_server(object):
             MAX_GRAD_NORM = origin_info['MAX_GRAD_NORM']
             BATCH_SIZE = origin_info['BATCH_SIZE']
             MAX_PHYSICAL_BATCH_SIZE = origin_info['MAX_PHYSICAL_BATCH_SIZE']
-            MAX_EPSILON = origin_info['MAX_EPSILON']
             EPOCHS = origin_info['EPOCHS']
 
             is_select = origin_info['is_select']

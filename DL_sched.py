@@ -104,7 +104,7 @@ class Scheduler_server(object):
                 self.sche_update_job_status(job_id, JOB_STATUS_KEY.DONE_SCHED)
                 to_reflash_job_ids.append(job_id)
         self.sche_reflash_job_status(to_reflash_job_ids, JOB_STATUS_KEY.NO_SCHE, JOB_STATUS_KEY.DONE_SCHED)
-        # self.report_sched_status("after sched_dispatch all jobs")
+        self.report_sched_status("after sched_dispatch all jobs")
         self.placement_dispatch()
 
     def placement_dispatch(self):
