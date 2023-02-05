@@ -66,6 +66,7 @@ class Worker_server(object):
         self.valid_dataset = valid_dataset
         self.output_size = output_size
         self.vocab_size = vocab_size
+        print("worker load dataset success!")
 
         self.update_worker_status_callback(True)
         

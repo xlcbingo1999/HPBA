@@ -73,10 +73,9 @@ class Scheduler_server(object):
         print("====================")
 
     def worker_status_callback(self, worker_ip, new_status):
-        print("=========  Scheduler: Worker Status Update ===========")
         # 应该是一个单点通信, 单个worker直接和调度器通信即可
         self.workerip_2_status[worker_ip] = new_status
-        print("====================")
+        print("Scheduler: Worker [{}] Status Update to {}".format(worker_ip, new_status))
 
     def sche_update_job_status(self, job_id, new_status):
         self.jobid_2_status[job_id] = new_status
