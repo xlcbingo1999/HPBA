@@ -37,10 +37,10 @@ class Scheduler_server(object):
         client.connect(tcp_ip_port)
         return client
 
-    def initial_all_workers_dataset(self, fetch_dataset_origin_info):
+    def initial_all_workers_dataset(self, fetch_dataset_origin_info, keep_origin_dataset):
         for worker_ip, worker_port in self.workerip_2_ports.items():
             client = self.get_worker_zerorpc_client(worker_ip, worker_port)
-            client.initial_dataset(fetch_dataset_origin_info)
+            client.initial_dataset(fetch_dataset_origin_info, keep_origin_dataset)
 
     def add_jobs(self, jobs_detail):
         for id, origin_info in jobs_detail:
@@ -97,8 +97,10 @@ class Scheduler_server(object):
         # 未调度先调度
         to_reflash_job_ids = []
         for job_id in self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE]:
-            all_workers_list = self.workerip_2_ports.keys()
+            all_workers_list = list(self.workerip_2_ports.keys())
+            print("[bug] update all_workers_list: {}".format(all_workers_list))
             target_worker_ip = all_workers_list[job_id % len(all_workers_list)]
+            print("[bug] update all_workers_list: {}".format(all_workers_list))
             if self.workerip_2_status[target_worker_ip]:
                 self.jobid_2_schedtarget[job_id] = target_worker_ip
                 self.sche_update_job_status(job_id, JOB_STATUS_KEY.DONE_SCHED)
@@ -111,6 +113,7 @@ class Scheduler_server(object):
         # 放置任务
         args = []
         to_reflash_job_ids = []
+        
         for job_id in self.status_2_jobid[JOB_STATUS_KEY.DONE_SCHED]:
             origin_info = self.jobid_2_origininfo[job_id]
             worker_ip = self.jobid_2_schedtarget[job_id]
@@ -119,7 +122,7 @@ class Scheduler_server(object):
             self.sche_update_job_status(job_id, JOB_STATUS_KEY.RUNNING)
             to_reflash_job_ids.append(job_id)
         self.sche_reflash_job_status(to_reflash_job_ids, JOB_STATUS_KEY.DONE_SCHED, JOB_STATUS_KEY.RUNNING)
-        
+        print("check args: {}".format(args))
         if len(args) > 0:
             self.report_sched_status("after placement_dispatch all jobs")
             args = tuple(args)

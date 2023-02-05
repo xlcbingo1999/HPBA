@@ -48,7 +48,10 @@ class Worker_server(object):
 
     # 底层的数据直接共享, sub_train_datasets和valid_dataset应该由调度器来决定内容, 考虑从外部注入!
     # 本操作应该是一个同步操作, 只有所有的worker都load到了数据, 才可以认为worker可用. 故需要增加worker状态的标记
-    def initial_dataset(self, fetch_dataset_origin_info):
+    def initial_dataset(self, fetch_dataset_origin_info, keep_origin_dataset):
+        if keep_origin_dataset and self.worker_ready:
+            print("worker load dataset success! [Warning: keep_origin_dataset]")
+            return
         self.update_worker_status_callback(False)
         DATASET_NAME = fetch_dataset_origin_info['DATASET_NAME']
         LABEL_TYPE = fetch_dataset_origin_info['LABEL_TYPE']

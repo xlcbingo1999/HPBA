@@ -26,7 +26,7 @@ def dispatch_jobs(client, sched_ip, sched_port, global_job_id):
 def sched_dispatch(client):
     client.sched_dispatch()
 
-def sched_initial_all_workers_dataset(client):
+def sched_initial_all_workers_dataset(client, keep_origin_dataset):
     fetch_dataset_origin_info = {
         "DATASET_NAME": "MIX3_sentiment",
         "LABEL_TYPE": "sentiment",
@@ -35,7 +35,7 @@ def sched_initial_all_workers_dataset(client):
         "SPLIT_NUM": 4,
         "same_capacity": True
     }
-    client.initial_all_workers_dataset(fetch_dataset_origin_info)
+    client.initial_all_workers_dataset(fetch_dataset_origin_info, keep_origin_dataset)
 
 if __name__ == '__main__':
     global_job_id = 0
@@ -48,18 +48,17 @@ if __name__ == '__main__':
     origin_time = time.time()
     temp_time = time.time()
 
-    # sched_initial_all_workers_dataset(client) # 测试成功
+    sched_initial_all_workers_dataset(client, ) # 测试成功
     
-    while True:
-        if time.time() - origin_time >= 4:
-            print("over")
-            break
-        if time.time() - temp_time >= 2:
-            print("sched_dispatch")
-            # sched_dispatch(client)
-            dispatch_jobs(client, sched_ip, sched_port, global_job_id)
-            global_job_id = global_job_id + 1
-            temp_time = time.time()
+    # while True:
+    #     if time.time() - origin_time >= 4:
+    #         print("over")
+    #         break
+    #     if time.time() - temp_time >= 2:
+    print("sched_dispatch")
+    dispatch_jobs(client, sched_ip, sched_port, global_job_id)
+    sched_dispatch(client)
+    global_job_id = global_job_id + 1
 
     
     
