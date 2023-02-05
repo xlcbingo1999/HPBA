@@ -5,15 +5,15 @@ import argparse
 from opacus_scheduler_job import do_calculate_func
 from utils.data_loader import get_review_dataset_multi_split
 from utils.global_functions import FAILED_RESULT_KEY
-
+from utils.global_variable import WORKER_LOCAL_IP, WORKER_LOCAL_PORT, SCHE_IP, SCHE_PORT
 
 def get_df_config():
     parser = argparse.ArgumentParser(
                 description='Sweep through lambda values')
-    parser.add_argument('--local_ip', type=str, default="172.18.162.3")
-    parser.add_argument('--local_port', type=int, default=16203)
-    parser.add_argument('--sched_ip', type=str, default="172.18.162.3")
-    parser.add_argument('--sche_port', type=int, default=16200)
+    parser.add_argument('--local_ip', type=str, default=WORKER_LOCAL_IP)
+    parser.add_argument('--local_port', type=int, default=WORKER_LOCAL_PORT)
+    parser.add_argument('--sched_ip', type=str, default=SCHE_IP)
+    parser.add_argument('--sche_port', type=int, default=SCHE_PORT)
 
     args = parser.parse_args()
     return args

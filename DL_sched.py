@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 
 from utils.global_functions import FAILED_RESULT_KEY, JOB_STATUS_KEY
+from utils.global_variable import SCHE_IP, SCHE_PORT, ALL_WORKER_IPS_2_PORTS
 
 def DL_server_do_jobs(args):
     job_id, origin_info, worker_ip, worker_port = args
@@ -137,9 +138,9 @@ def scheduler_listener_func(scheduler_server_item):
     print("print sth...")
 
 if __name__ == "__main__":
-    sched_ip = "172.18.162.3"
-    sched_port = "16200"
-    worker_ports = {"172.18.162.3": "16203", "172.18.162.6": "16206"}
+    sched_ip = SCHE_IP
+    sched_port = SCHE_PORT
+    worker_ports = ALL_WORKER_IPS_2_PORTS
 
     scheduler_server_item = Scheduler_server(sched_ip, sched_port, worker_ports)
     scheduler_listener_func(scheduler_server_item)
