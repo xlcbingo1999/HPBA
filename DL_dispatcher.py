@@ -18,7 +18,12 @@ def dispatch_jobs(client, sched_ip, sched_port, global_job_id):
             'MAX_PHYSICAL_BATCH_SIZE': 128/4,
             'EPOCHS': 4,
             'sched_ip': sched_ip,
-            'sched_port': sched_port
+            'sched_port': sched_port,
+            'is_select': True,
+            'selected_datablock_ids': 0,
+            'not_selected_datablock_ids': [1, 2, 3],
+            'label_distributions': ,
+            'train_configs': ,
         }]
     ]
     client.add_jobs(jobs_detail)
@@ -48,7 +53,8 @@ if __name__ == '__main__':
     origin_time = time.time()
     temp_time = time.time()
 
-    sched_initial_all_workers_dataset(client, ) # 测试成功
+    keep_origin_dataset = False
+    sched_initial_all_workers_dataset(client, keep_origin_dataset) # 测试成功
     
     # while True:
     #     if time.time() - origin_time >= 4:

@@ -104,7 +104,7 @@ class Worker_server(object):
         client = self.get_scheduler_zerorpc_client()
         client.worker_status_callback(self.local_ip, self.worker_ready)
 
-    def begin_job(self, job_id, origin_info):
+    def begin_job(self, job_id, worker_gpu_id, origin_info):
         print("job_id: {} call caculate.add => info: {}".format(job_id, origin_info))
         if not self.worker_ready:
             self.failed_job_callback(job_id, FAILED_RESULT_KEY.WORKER_NO_READY)
@@ -112,8 +112,10 @@ class Worker_server(object):
         self.jobid_2_origininfo[job_id] = origin_info
         target_func = origin_info['target_func']
         if target_func == "opacus_split_review":
+            device = worker_gpu_id # 需要调度
+            
+
             model_name = origin_info['model_name']
-            device = origin_info['device'] # 需要调度
             early_stopping = origin_info['early_stopping']
             
             LR = origin_info['LR']
