@@ -3,28 +3,100 @@ import time
 from utils.global_variable import SCHE_IP, SCHE_PORT, MAX_EPSILON
 
 def dispatch_jobs(sched_ip, sched_port, global_job_id):
-    jobs_detail = [
-        [global_job_id, {
-            'target_func': 'opacus_split_review',
-            'model_name': 'FF-split',
-            'early_stopping': None,
-            'device': 0,
-            'LR': 1e-3,
-            'EPSILON': MAX_EPSILON,
-            'EPOCH_SET_EPSILON': False,
-            'DELTA': 1e-5,
-            'MAX_GRAD_NORM': 1.2,
-            'BATCH_SIZE': 128,
-            'MAX_PHYSICAL_BATCH_SIZE': 128/4,
-            'EPOCHS': 4,
-            'train_configs': {
-                'hidden_size': [150, 110],
-                'embedding_size': 100,
-            },
-        }]
-    ]
+    jobs_list = [{
+        'target_func': 'opacus_split_review',
+        'model_name': 'FF-split',
+        'early_stopping': None,
+        'device': 0,
+        'LR': 1e-3,
+        'EPSILON': MAX_EPSILON,
+        'EPOCH_SET_EPSILON': False,
+        'DELTA': 1e-5,
+        'MAX_GRAD_NORM': 1.2,
+        'BATCH_SIZE': 128,
+        'MAX_PHYSICAL_BATCH_SIZE': 128/4,
+        'EPOCHS': 4,
+        'train_configs': {
+            'hidden_size': [150, 110],
+            'embedding_size': 100,
+        },
+    }, {
+        'target_func': 'opacus_split_review',
+        'model_name': 'LSTM-split',
+        'early_stopping': None,
+        'device': 0,
+        'LR': 1e-3,
+        'EPSILON': MAX_EPSILON,
+        'EPOCH_SET_EPSILON': False,
+        'DELTA': 1e-5,
+        'MAX_GRAD_NORM': 1.2,
+        'BATCH_SIZE': 128,
+        'MAX_PHYSICAL_BATCH_SIZE': 128/4,
+        'EPOCHS': 4,
+        'train_configs': {
+            'n_layer': 2,
+            'hidden_size': 40,
+            'embedding_size': 100,
+        },
+    }, {
+        'target_func': 'opacus_split_review',
+        'model_name': 'LSTM-split',
+        'early_stopping': None,
+        'device': 0,
+        'LR': 1e-3,
+        'EPSILON': MAX_EPSILON,
+        'EPOCH_SET_EPSILON': False,
+        'DELTA': 1e-5,
+        'MAX_GRAD_NORM': 1.2,
+        'BATCH_SIZE': 128,
+        'MAX_PHYSICAL_BATCH_SIZE': 128/4,
+        'EPOCHS': 4,
+        'train_configs': {
+            'n_layer': 2,
+            'hidden_size': 40,
+            'embedding_size': 100,
+        },
+    }, {
+        'target_func': 'opacus_split_review',
+        'model_name': 'FF-split',
+        'early_stopping': None,
+        'device': 0,
+        'LR': 1e-3,
+        'EPSILON': MAX_EPSILON,
+        'EPOCH_SET_EPSILON': False,
+        'DELTA': 1e-5,
+        'MAX_GRAD_NORM': 1.2,
+        'BATCH_SIZE': 128,
+        'MAX_PHYSICAL_BATCH_SIZE': 128/4,
+        'EPOCHS': 4,
+        'train_configs': {
+            'hidden_size': [150, 110],
+            'embedding_size': 100,
+        },
+    }, {
+        'target_func': 'opacus_split_review',
+        'model_name': 'FF-split',
+        'early_stopping': None,
+        'device': 0,
+        'LR': 1e-3,
+        'EPSILON': MAX_EPSILON,
+        'EPOCH_SET_EPSILON': False,
+        'DELTA': 1e-5,
+        'MAX_GRAD_NORM': 1.2,
+        'BATCH_SIZE': 128,
+        'MAX_PHYSICAL_BATCH_SIZE': 128/4,
+        'EPOCHS': 4,
+        'train_configs': {
+            'hidden_size': [150, 110],
+            'embedding_size': 100,
+        },
+    }]
+    jobs_id_list = [x for x in range(global_job_id, global_job_id+len(jobs_list))]
+    next_job_id = jobs_id_list[-1] + 1 if len(jobs_id_list) > 0 else global_job_id
     client = get_zerorpc_client(sched_ip, sched_port)
+    jobs_detail = list(map(lambda x: [x[0], x[1]], zip(jobs_id_list, jobs_list)))
     client.add_jobs(jobs_detail)
+    return next_job_id
 
 def sched_dispatch(sched_ip, sched_port):
     client = get_zerorpc_client(sched_ip, sched_port)
@@ -74,7 +146,7 @@ if __name__ == '__main__':
     #     if time.time() - temp_time >= 2:
     # print("sched_dispatch")
     sched_clear_all_jobs(sched_ip, sched_port)
-    dispatch_jobs(sched_ip, sched_port, global_job_id)
+    global_job_id = dispatch_jobs(sched_ip, sched_port, global_job_id)
     sched_dispatch(sched_ip, sched_port)
     # global_job_id = global_job_id + 1
 

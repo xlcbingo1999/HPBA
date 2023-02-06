@@ -89,6 +89,7 @@ class Worker_server(object):
         tcp_ip_port = "tcp://{}:{}".format(self.sched_ip, self.sche_port)
         client = self.get_scheduler_zerorpc_client()
         client.worker_finished_job_callback(job_id, origin_info, result)
+        self.jobid_2_thread[job_id].join() # 尝试join进程, 避免出事
         del self.jobid_2_origininfo[job_id]
         del self.jobid_2_thread[job_id]
 
