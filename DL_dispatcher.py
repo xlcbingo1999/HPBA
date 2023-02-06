@@ -2,7 +2,7 @@ import zerorpc
 import time
 from utils.global_variable import SCHE_IP, SCHE_PORT, MAX_EPSILON
 
-def dispatch_jobs(client, sched_ip, sched_port, global_job_id):
+def dispatch_jobs(sched_ip, sched_port, global_job_id):
     jobs_detail = [
         [global_job_id, {
             'target_func': 'opacus_split_review',
@@ -19,12 +19,14 @@ def dispatch_jobs(client, sched_ip, sched_port, global_job_id):
             'EPOCHS': 4,
         }]
     ]
+    client = get_zerorpc_client(sched_ip, sched_port)
     client.add_jobs(jobs_detail)
 
-def sched_dispatch(client):
+def sched_dispatch(sched_ip, sched_port):
+    client = get_zerorpc_client(sched_ip, sched_port)
     client.sched_dispatch()
 
-def sched_initial_all_workers_dataset(client, keep_origin_dataset):
+def sched_initial_all_workers_dataset(sched_ip, sched_port, keep_origin_dataset):
     fetch_dataset_origin_info = {
         "DATASET_NAME": "MIX3_sentiment",
         "LABEL_TYPE": "sentiment",
@@ -33,21 +35,33 @@ def sched_initial_all_workers_dataset(client, keep_origin_dataset):
         "SPLIT_NUM": 4,
         "same_capacity": True
     }
+    client = get_zerorpc_client(sched_ip, sched_port, timeout=60)
     client.initial_sched_and_all_workers_dataset(fetch_dataset_origin_info, keep_origin_dataset)
+
+def get_zerorpc_client(ip, port, timeout=30):
+    tcp_ip_port = "tcp://{}:{}".format(ip, port)
+    client = zerorpc.Client(timeout=timeout)
+    client.connect(tcp_ip_port)
+    return client
+
+def sched_clear_all_jobs(ip, port):
+    client = get_zerorpc_client(ip, port)
+    client.clear_all_jobs()
+
 
 if __name__ == '__main__':
     global_job_id = 0
     sched_ip = SCHE_IP
     sched_port = SCHE_PORT
     
-    client = zerorpc.Client()
-    client.connect("tcp://{}:{}".format(sched_ip, sched_port))
+    # client = zerorpc.Client()
+    # client.connect("tcp://{}:{}".format(sched_ip, sched_port))
 
     origin_time = time.time()
     temp_time = time.time()
 
-    keep_origin_dataset = False
-    sched_initial_all_workers_dataset(client, keep_origin_dataset) # 测试成功
+    # keep_origin_dataset = False
+    # sched_initial_all_workers_dataset(sched_ip, sched_port, keep_origin_dataset)
     
     # while True:
     #     if time.time() - origin_time >= 4:
@@ -55,8 +69,9 @@ if __name__ == '__main__':
     #         break
     #     if time.time() - temp_time >= 2:
     # print("sched_dispatch")
-    # dispatch_jobs(client, sched_ip, sched_port, global_job_id)
-    # sched_dispatch(client)
+    sched_clear_all_jobs(sched_ip, sched_port)
+    dispatch_jobs(sched_ip, sched_port, global_job_id)
+    sched_dispatch(sched_ip, sched_port)
     # global_job_id = global_job_id + 1
 
     

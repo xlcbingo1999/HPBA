@@ -45,6 +45,10 @@ class Worker_server(object):
         gpu_device_count = torch.cuda.device_count()
         self.worker_gpus_ready = {index:True for index in range(gpu_device_count)} # 直接允许即可
 
+    def clear_all_jobs(self):
+        self.jobid_2_origininfo = {}
+        self.jobid_2_thread = {}
+
     # 底层的数据直接共享, sub_train_datasets和valid_dataset应该由调度器来决定内容, 考虑从外部注入!
     # 本操作应该是一个同步操作, 只有所有的worker都load到了数据, 才可以认为worker可用. 故需要增加worker状态的标记
     def initial_dataset(self, fetch_dataset_origin_info, keep_origin_dataset):

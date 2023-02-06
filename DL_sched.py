@@ -7,8 +7,14 @@ from utils.get_profiler_significance import get_profiler_significance_result
 from utils.global_functions import FAILED_RESULT_KEY, JOB_STATUS_KEY, JOB_STATUS_UPDATE_PATH
 from utils.global_variable import SCHE_IP, SCHE_PORT, INIT_WORKERIDENTIFIERS, INIT_WORKERIP_2_PORTS
 
-def DL_server_do_jobs(args):
-    job_id, origin_info, worker_ip, worker_port, worker_gpu_id, worker_dataset_config = args
+def DL_server_do_jobs(job_id, origin_info, worker_ip, worker_port, worker_gpu_id, worker_dataset_config):
+    # job_id, origin_info, worker_ip, worker_port, worker_gpu_id, worker_dataset_config = args
+    print("[DL_server_do_jobs] job_id: ", job_id)
+    print("[DL_server_do_jobs] origin_info: ", origin_info)
+    print("[DL_server_do_jobs] worker_ip: ", worker_ip)
+    print("[DL_server_do_jobs] worker_port: ", worker_port)
+    print("[DL_server_do_jobs] worker_gpu_id: ", worker_gpu_id)
+    print("[DL_server_do_jobs] worker_dataset_config: ", worker_dataset_config)
     client = zerorpc.Client()
     client.connect("tcp://{}:{}".format(worker_ip, worker_port))
     
@@ -23,9 +29,9 @@ class Scheduler_server(object):
     def __init__(self, sched_ip, sched_port, init_workeridentifiers, init_workerip_2_ports):
         self.sched_ip = sched_ip
         self.sched_port = sched_port
-        self.workeridentifier_2_gpustatus = {key:False for key in init_workeridentifiers}
-
-        self.workerip_2_datasetstatus = {key:False for key in init_workerip_2_ports}
+        self.workeridentifier_2_gpustatus = {key:True for key in init_workeridentifiers}
+        # self.workerip_2_datasetstatus = {key:False for key in init_workerip_2_ports}
+        self.workerip_2_datasetstatus = {key:True for key in init_workerip_2_ports}
         self.workerip_2_ports = init_workerip_2_ports
         
         self.train_all_dataset = None
@@ -33,7 +39,6 @@ class Scheduler_server(object):
         self.valid_dataset = None
         self.output_size = None
         self.vocab_size = None
-
 
         self.jobid_2_status = {} # 0: no sche; 1: sched target decide; 2: runnning; 3: success finished; 4: failed;
         self.status_2_jobid = {JOB_STATUS_KEY.NO_SCHE: [], 
@@ -48,6 +53,26 @@ class Scheduler_server(object):
         self.jobid_2_gputarget = {}
         self.jobid_2_datasettargetconfig = {}
         self.jobid_2_trainconfig = {}
+
+    def clear_all_jobs(self):
+        self.jobid_2_status = {} # 0: no sche; 1: sched target decide; 2: runnning; 3: success finished; 4: failed;
+        self.status_2_jobid = {JOB_STATUS_KEY.NO_SCHE: [], 
+                                JOB_STATUS_KEY.DONE_GPU_SCHED: [], 
+                                JOB_STATUS_KEY.DONE_DATASET_SCHED: [], 
+                                JOB_STATUS_KEY.DONE_ALL_SCHED: [],
+                                JOB_STATUS_KEY.RUNNING: [], 
+                                JOB_STATUS_KEY.FINISHED: [],
+                                JOB_STATUS_KEY.FAILED: []}
+        self.jobid_2_results = {}
+        self.jobid_2_origininfo = {}
+        self.jobid_2_gputarget = {}
+        self.jobid_2_datasettargetconfig = {}
+        self.jobid_2_trainconfig = {}
+        for worker_ip in self.workerip_2_ports:
+            worker_port = self.workerip_2_ports[worker_ip]
+            client = self.get_worker_zerorpc_client(worker_ip, worker_port)
+            client.clear_all_jobs()
+        print("success clear all jobs")
 
     def get_worker_zerorpc_client(self, worker_ip, worker_port):
         tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)
@@ -82,11 +107,13 @@ class Scheduler_server(object):
         self.initial_dataset(fetch_dataset_origin_info)
         # 初始化worker的数据集
         # args = []
+        
         for worker_ip in self.workerip_2_datasetstatus:
             worker_port = self.workerip_2_ports[worker_ip]
             client = self.get_worker_zerorpc_client(worker_ip, worker_port)
             # args.append([client, fetch_dataset_origin_info, keep_origin_dataset])
             client.initial_dataset(fetch_dataset_origin_info, keep_origin_dataset)
+        
         # args = tuple(args)
         # print(args)
         # with ThreadPoolExecutor(max_workers=len(args)) as pool:
@@ -99,13 +126,13 @@ class Scheduler_server(object):
                 continue
             else:
                 print("success add new job {}".format(id))
-                self.jobid_2_status[id] = 0
+                self.jobid_2_status[id] = JOB_STATUS_KEY.NO_SCHE
                 self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE].append(id)
                 self.jobid_2_results[id] = None
                 self.jobid_2_origininfo[id] = origin_info
                 self.jobid_2_gputarget[id] = None
-                self.jobid_2_datasettargetconfig[id] = None
-                self.jobid_2_trainconfig[id] = None
+                self.jobid_2_datasettargetconfig[id] = {}
+                self.jobid_2_trainconfig[id] = {}
         # self.report_sched_status("after add all jobs")
 
     def worker_finished_job_callback(self, job_id, origin_info, result):
@@ -151,16 +178,30 @@ class Scheduler_server(object):
 
     def get_target_job_status_update_path_and_status(self, job_id, operator):
         origin_status = self.jobid_2_status[job_id]
+        update_path = None
+        new_status = None
         if operator == 'gpu':
             if origin_status == JOB_STATUS_KEY.NO_SCHE:
-                return JOB_STATUS_UPDATE_PATH.NOSCHED_2_GPUSCHED, JOB_STATUS_KEY.DONE_GPU_SCHED
+                # print("in: gpu 1")
+                update_path = JOB_STATUS_UPDATE_PATH.NOSCHED_2_GPUSCHED
+                new_status = JOB_STATUS_KEY.DONE_GPU_SCHED
             elif origin_status == JOB_STATUS_KEY.DONE_DATASET_SCHED:
-                return JOB_STATUS_UPDATE_PATH.DATASETSCHED_2_ALLSCHED, JOB_STATUS_KEY.DONE_ALL_SCHED
+                # print("in: gpu 2")
+                update_path = JOB_STATUS_UPDATE_PATH.DATASETSCHED_2_ALLSCHED 
+                new_status = JOB_STATUS_KEY.DONE_ALL_SCHED
         elif operator == 'dataset':
             if origin_status == JOB_STATUS_KEY.NO_SCHE:
-                return JOB_STATUS_UPDATE_PATH.NOSCHED_2_DATASETSCHED, JOB_STATUS_KEY.DONE_DATASET_SCHED
+                # print("in: dataset 1")
+                update_path = JOB_STATUS_UPDATE_PATH.NOSCHED_2_DATASETSCHED
+                new_status = JOB_STATUS_KEY.DONE_DATASET_SCHED
             elif origin_status == JOB_STATUS_KEY.DONE_GPU_SCHED:
-                return JOB_STATUS_UPDATE_PATH.GPUSCHED_2_ALLSCHED, JOB_STATUS_KEY.DONE_ALL_SCHED
+                # print("in: dataset 2")
+                update_path = JOB_STATUS_UPDATE_PATH.GPUSCHED_2_ALLSCHED
+                new_status = JOB_STATUS_KEY.DONE_ALL_SCHED
+        # print("origin_status: ", origin_status)
+        # print("update_path: ", update_path)
+        # print("new_status: ", new_status)
+        return update_path, new_status
 
     def get_job_status_update_origin_target(self, status_update_path):
         if status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_GPUSCHED:
@@ -213,6 +254,8 @@ class Scheduler_server(object):
                 self.sche_update_job_status(job_id, target_status)
             self.sche_reflash_job_status(to_reflash_job_ids[status_path], origin_status, target_status)
         
+        self.report_sched_status("after sched dataset to job")
+
         to_reflash_job_ids = {
             JOB_STATUS_UPDATE_PATH.NOSCHED_2_GPUSCHED: [],
             JOB_STATUS_UPDATE_PATH.DATASETSCHED_2_ALLSCHED: []
@@ -235,12 +278,20 @@ class Scheduler_server(object):
                 self.sche_update_job_status(job_id, target_status)
             self.sche_reflash_job_status(to_reflash_job_ids[status_path], origin_status, target_status)
         
-        self.report_sched_status("after sched_dispatch all jobs")
+        self.report_sched_status("after sched gpu to job")
         self.placement_dispatch()
 
     def placement_dispatch(self):
         # 放置任务
         args = []
+        # args = {
+        #     'job_id': [],
+        #     'origin_info': [],
+        #     'worker_ip': [],
+        #     'worker_port': [],
+        #     'worker_gpu_id': [],
+        #     'worker_dataset_config': []
+        # }
         to_reflash_job_ids = []
         
         for job_id in self.status_2_jobid[JOB_STATUS_KEY.DONE_ALL_SCHED]:
@@ -250,17 +301,23 @@ class Scheduler_server(object):
             worker_ip, worker_gpu_id = self.get_worker_identifier_detail(worker_identifier)
             worker_port = self.workerip_2_ports[worker_ip]
             args.append([job_id, origin_info, worker_ip, worker_port, worker_gpu_id, worker_dataset_config])
+            # args['job_id'].append(job_id)
+            # args['origin_info'].append(origin_info)
+            # args['worker_ip'].append(worker_ip)
+            # args['worker_port'].append(worker_port)
+            # args['worker_gpu_id'].append(worker_gpu_id)
+            # args['worker_dataset_config'].append(worker_dataset_config)
             self.sche_update_job_status(job_id, JOB_STATUS_KEY.RUNNING)
             to_reflash_job_ids.append(job_id)
         self.sche_reflash_job_status(to_reflash_job_ids, JOB_STATUS_KEY.DONE_ALL_SCHED, JOB_STATUS_KEY.RUNNING)
-        print("check args: {}".format(args))
+        print("check args: {} (len: {})".format(args, len(args)))
         if len(args) > 0:
             self.report_sched_status("after placement_dispatch all jobs")
-            args = tuple(args)
-            print("args: {} (len: {})".format(args, len(args)))
-            
+            # 转置
+            final_args = [[row[i] for row in args] for i in range(len(args[0]))]
+            print("final_args: {}".format(final_args))
             with ThreadPoolExecutor(max_workers=len(args)) as pool:
-                pool.map(DL_server_do_jobs, args)
+                pool.map(DL_server_do_jobs, *final_args)
 
 def scheduler_listener_func(scheduler_server_item):
     s = zerorpc.Server(scheduler_server_item)
