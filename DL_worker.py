@@ -117,7 +117,7 @@ class Worker_server(object):
             client.worker_gpu_status_callback(worker_gpu_identifier, new_status_map[gpu_id])
 
     def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info):
-        print("job_id: {} call caculate.add => info: {}".format(job_id, origin_info))
+        print("[bugxlc] job_id: {} call caculate => info: {}".format(job_id, origin_info))
         if not self.worker_dataset_ready:
             self.failed_job_callback(job_id, FAILED_RESULT_KEY.WORKER_NO_READY)
             return

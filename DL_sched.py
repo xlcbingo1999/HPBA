@@ -4,8 +4,10 @@ import threading
 
 from utils.data_loader import fetch_new_dataset
 from utils.get_profiler_significance import get_profiler_significance_result
-from utils.global_functions import FAILED_RESULT_KEY, JOB_STATUS_KEY, JOB_STATUS_UPDATE_PATH
+from utils.global_functions import FAILED_RESULT_KEY, JOB_STATUS_KEY, JOB_STATUS_UPDATE_PATH, add_2_map, normal_counter
 from utils.global_variable import SCHE_IP, SCHE_PORT, INIT_WORKERIDENTIFIERS, INIT_WORKERIP_2_PORTS
+from functools import reduce
+
 
 def DL_server_do_jobs(job_id, origin_info, worker_ip, worker_port, worker_gpu_id, worker_dataset_config):
     # job_id, origin_info, worker_ip, worker_port, worker_gpu_id, worker_dataset_config = args
@@ -241,9 +243,13 @@ class Scheduler_server(object):
             selected_datablock_ids, not_selected_datablock_ids, final_scores, origin_sub_label_distributions = self.get_scheduling_datablock_result()
             self.jobid_2_datasettargetconfig[job_id]['selected_datablock_ids'] = selected_datablock_ids
             self.jobid_2_datasettargetconfig[job_id]['not_selected_datablock_ids'] = not_selected_datablock_ids
-            self.jobid_2_datasettargetconfig[job_id]['final_scores'] = final_scores
-            self.jobid_2_datasettargetconfig[job_id]['origin_sub_label_distributions'] = origin_sub_label_distributions
+            selected_label_distribution = normal_counter(reduce(add_2_map, [origin_sub_label_distributions[id] for id in selected_datablock_ids]))
+            self.jobid_2_datasettargetconfig[job_id]['label_distributions'] = selected_label_distribution
             self.jobid_2_datasettargetconfig[job_id]['is_select'] = True
+            self.jobid_2_datasettargetconfig[job_id]['train_configs'] = {
+                'hidden_size': 2,
+                'embedding_size': 128,
+            }
 
             status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, 'dataset')
             to_reflash_job_ids[status_update_path].append(job_id)
@@ -284,14 +290,6 @@ class Scheduler_server(object):
     def placement_dispatch(self):
         # 放置任务
         args = []
-        # args = {
-        #     'job_id': [],
-        #     'origin_info': [],
-        #     'worker_ip': [],
-        #     'worker_port': [],
-        #     'worker_gpu_id': [],
-        #     'worker_dataset_config': []
-        # }
         to_reflash_job_ids = []
         
         for job_id in self.status_2_jobid[JOB_STATUS_KEY.DONE_ALL_SCHED]:
@@ -301,12 +299,6 @@ class Scheduler_server(object):
             worker_ip, worker_gpu_id = self.get_worker_identifier_detail(worker_identifier)
             worker_port = self.workerip_2_ports[worker_ip]
             args.append([job_id, origin_info, worker_ip, worker_port, worker_gpu_id, worker_dataset_config])
-            # args['job_id'].append(job_id)
-            # args['origin_info'].append(origin_info)
-            # args['worker_ip'].append(worker_ip)
-            # args['worker_port'].append(worker_port)
-            # args['worker_gpu_id'].append(worker_gpu_id)
-            # args['worker_dataset_config'].append(worker_dataset_config)
             self.sche_update_job_status(job_id, JOB_STATUS_KEY.RUNNING)
             to_reflash_job_ids.append(job_id)
         self.sche_reflash_job_status(to_reflash_job_ids, JOB_STATUS_KEY.DONE_ALL_SCHED, JOB_STATUS_KEY.RUNNING)

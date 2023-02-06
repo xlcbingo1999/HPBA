@@ -60,8 +60,8 @@ if __name__ == '__main__':
     origin_time = time.time()
     temp_time = time.time()
 
-    # keep_origin_dataset = False
-    # sched_initial_all_workers_dataset(sched_ip, sched_port, keep_origin_dataset)
+    keep_origin_dataset = False
+    sched_initial_all_workers_dataset(sched_ip, sched_port, keep_origin_dataset)
     
     # while True:
     #     if time.time() - origin_time >= 4:
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     #         break
     #     if time.time() - temp_time >= 2:
     # print("sched_dispatch")
-    sched_clear_all_jobs(sched_ip, sched_port)
+    # sched_clear_all_jobs(sched_ip, sched_port)
     dispatch_jobs(sched_ip, sched_port, global_job_id)
     sched_dispatch(sched_ip, sched_port)
     # global_job_id = global_job_id + 1
