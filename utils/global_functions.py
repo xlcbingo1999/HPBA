@@ -5,6 +5,7 @@ def normal_counter(origin_counter):
     sum_value = sum(origin_counter.values(), 0)
     new_counter = {}
     for key in origin_counter:
+        key = str(key)
         new_counter[key] = origin_counter[key] / sum_value
     return new_counter
 

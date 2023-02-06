@@ -132,10 +132,10 @@ class Worker_server(object):
             selected_datablock_ids = worker_dataset_config['selected_datablock_ids']
             not_selected_datablock_ids = worker_dataset_config['not_selected_datablock_ids']
             label_distributions = worker_dataset_config['label_distributions']
-            train_configs = worker_dataset_config['train_configs']
 
             model_name = origin_info['model_name']
             early_stopping = origin_info['early_stopping']
+            train_configs = origin_info['train_configs']
             
             LR = origin_info['LR']
             EPSILON = origin_info['EPSILON']

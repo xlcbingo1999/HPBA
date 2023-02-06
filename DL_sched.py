@@ -247,8 +247,8 @@ class Scheduler_server(object):
             self.jobid_2_datasettargetconfig[job_id]['label_distributions'] = selected_label_distribution
             self.jobid_2_datasettargetconfig[job_id]['is_select'] = True
             self.jobid_2_datasettargetconfig[job_id]['train_configs'] = {
-                'hidden_size': 2,
-                'embedding_size': 128,
+                'hidden_size': [150, 110],
+                'embedding_size': 100,
             }
 
             status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, 'dataset')
