@@ -3,9 +3,11 @@ import time
 import threading
 import argparse
 from opacus_scheduler_job import do_calculate_func
-from utils.data_loader import get_review_dataset_multi_split
+from utils.data_loader import fetch_new_dataset
 from utils.global_functions import FAILED_RESULT_KEY
 from utils.global_variable import WORKER_LOCAL_IP, WORKER_LOCAL_PORT, SCHE_IP, SCHE_PORT, MAX_EPSILON
+
+import torch
 
 def get_df_config():
     parser = argparse.ArgumentParser(
@@ -21,11 +23,6 @@ def get_df_config():
 def long_time_add(job_id, x, y, callback):    
     time.sleep(5)
     callback(job_id, x + y)
-
-def fetch_new_dataset(category, label_type, VALID_SIZE, SEQUENCE_LENGTH, SPLIT_NUM, same_capacity):
-    train_all_dataset, sub_train_datasets, \
-    valid_dataset, output_size, vocab_size = get_review_dataset_multi_split(category, label_type, VALID_SIZE, SEQUENCE_LENGTH, SPLIT_NUM, same_capacity)
-    return train_all_dataset, sub_train_datasets, valid_dataset, output_size, vocab_size
 
 class Worker_server(object):
     def __init__(self, local_ip, local_port, sched_ip, sche_port):
@@ -44,15 +41,17 @@ class Worker_server(object):
         self.vocab_size = None
         self.summary_writer = None # TODO(xlc): 之后需要将summary_writer写入
 
-        self.worker_ready = False
+        self.worker_dataset_ready = False
+        gpu_device_count = torch.cuda.device_count()
+        self.worker_gpus_ready = {index:True for index in range(gpu_device_count)} # 直接允许即可
 
     # 底层的数据直接共享, sub_train_datasets和valid_dataset应该由调度器来决定内容, 考虑从外部注入!
     # 本操作应该是一个同步操作, 只有所有的worker都load到了数据, 才可以认为worker可用. 故需要增加worker状态的标记
     def initial_dataset(self, fetch_dataset_origin_info, keep_origin_dataset):
-        if keep_origin_dataset and self.worker_ready:
+        if keep_origin_dataset and self.worker_dataset_ready:
             print("worker load dataset success! [Warning: keep_origin_dataset]")
             return
-        self.update_worker_status_callback(False)
+        self.update_worker_dataset_status_callback(False)
         DATASET_NAME = fetch_dataset_origin_info['DATASET_NAME']
         LABEL_TYPE = fetch_dataset_origin_info['LABEL_TYPE']
         VALID_SIZE = fetch_dataset_origin_info['VALID_SIZE']
@@ -71,7 +70,7 @@ class Worker_server(object):
         self.vocab_size = vocab_size
         print("worker load dataset success!")
 
-        self.update_worker_status_callback(True)
+        self.update_worker_dataset_status_callback(True)        
         
 
     def get_scheduler_zerorpc_client(self):
@@ -98,22 +97,40 @@ class Worker_server(object):
         if job_id in self.jobid_2_thread:
             del self.jobid_2_thread[job_id]
         
-    def update_worker_status_callback(self, new_status):
-        self.worker_ready = new_status
+    def update_worker_dataset_status_callback(self, new_status):
         # 需要告知调度器, worker的dataset进行了更改, 同时更改worker的状态
+        self.worker_dataset_ready = new_status
         client = self.get_scheduler_zerorpc_client()
-        client.worker_status_callback(self.local_ip, self.worker_ready)
+        all_worker_gpus_identifier = ["{}-{}".format(self.local_ip, gpu_id) for gpu_id in self.worker_gpus_ready]
+        for worker_gpu_identifier in all_worker_gpus_identifier:
+            client.worker_status_callback(worker_gpu_identifier, self.worker_dataset_ready, 'dataset')
 
-    def begin_job(self, job_id, worker_gpu_id, origin_info):
+    def update_worker_gpus_status_callback(self, new_status_map):
+        # 需要告知调度器, worker的gpu进行了更改, 同时更改worker的状态, 目前还是只考虑一起改变的情况吧
+        for gpu_id in new_status_map:
+            self.worker_gpus_ready[gpu_id] = new_status_map[gpu_id]
+        client = self.get_scheduler_zerorpc_client()
+        need_update_gpus_identifier = [("{}-{}".format(self.local_ip, gpu_id), gpu_id) for gpu_id in new_status_map]
+        for worker_gpu_identifier, gpu_id in need_update_gpus_identifier:
+            client.worker_status_callback(worker_gpu_identifier, new_status_map[gpu_id], 'gpu')
+
+    def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info):
         print("job_id: {} call caculate.add => info: {}".format(job_id, origin_info))
-        if not self.worker_ready:
+        if not self.worker_dataset_ready:
             self.failed_job_callback(job_id, FAILED_RESULT_KEY.WORKER_NO_READY)
             return
         self.jobid_2_origininfo[job_id] = origin_info
         target_func = origin_info['target_func']
         if target_func == "opacus_split_review":
-            device = worker_gpu_id # 需要调度
+            # GPU调度
+            device = worker_gpu_id
             
+            # DATASET调度
+            is_select = worker_dataset_config['is_select']
+            selected_datablock_ids = worker_dataset_config['selected_datablock_ids']
+            not_selected_datablock_ids = worker_dataset_config['not_selected_datablock_ids']
+            label_distributions = worker_dataset_config['label_distributions']
+            train_configs = worker_dataset_config['train_configs']
 
             model_name = origin_info['model_name']
             early_stopping = origin_info['early_stopping']
@@ -126,13 +143,6 @@ class Worker_server(object):
             BATCH_SIZE = origin_info['BATCH_SIZE']
             MAX_PHYSICAL_BATCH_SIZE = origin_info['MAX_PHYSICAL_BATCH_SIZE']
             EPOCHS = origin_info['EPOCHS']
-
-            is_select = origin_info['is_select']
-            selected_datablock_ids = origin_info['selected_datablock_ids']
-            not_selected_datablock_ids = origin_info['not_selected_datablock_ids']
-            
-            label_distributions = origin_info['label_distributions']
-            train_configs = origin_info['train_configs']
 
             sub_train_datasets = self.sub_train_datasets # origin_info['sub_train_datasets']
             valid_dataset = self.valid_dataset # origin_info['valid_dataset']

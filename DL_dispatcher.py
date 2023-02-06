@@ -17,13 +17,6 @@ def dispatch_jobs(client, sched_ip, sched_port, global_job_id):
             'BATCH_SIZE': 128,
             'MAX_PHYSICAL_BATCH_SIZE': 128/4,
             'EPOCHS': 4,
-            'sched_ip': sched_ip,
-            'sched_port': sched_port,
-            'is_select': True,
-            'selected_datablock_ids': 0,
-            'not_selected_datablock_ids': [1, 2, 3],
-            'label_distributions': ,
-            'train_configs': ,
         }]
     ]
     client.add_jobs(jobs_detail)

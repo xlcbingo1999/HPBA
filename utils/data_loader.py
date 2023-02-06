@@ -740,3 +740,8 @@ def get_ImageNet_dataset(VALID_SIZE, BATCH_SIZE):
 
     print("Finished Load Data!")
     return train_loader, valid_loader
+
+def fetch_new_dataset(category, label_type, VALID_SIZE, SEQUENCE_LENGTH, SPLIT_NUM, same_capacity):
+    train_all_dataset, sub_train_datasets, \
+    valid_dataset, output_size, vocab_size = get_review_dataset_multi_split(category, label_type, VALID_SIZE, SEQUENCE_LENGTH, SPLIT_NUM, same_capacity)
+    return train_all_dataset, sub_train_datasets, valid_dataset, output_size, vocab_size
