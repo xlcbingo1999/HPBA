@@ -33,7 +33,7 @@ def sched_initial_all_workers_dataset(client, keep_origin_dataset):
         "SPLIT_NUM": 4,
         "same_capacity": True
     }
-    client.initial_all_workers_dataset(fetch_dataset_origin_info, keep_origin_dataset)
+    client.initial_sched_and_all_workers_dataset(fetch_dataset_origin_info, keep_origin_dataset)
 
 if __name__ == '__main__':
     global_job_id = 0
@@ -54,10 +54,10 @@ if __name__ == '__main__':
     #         print("over")
     #         break
     #     if time.time() - temp_time >= 2:
-    print("sched_dispatch")
-    dispatch_jobs(client, sched_ip, sched_port, global_job_id)
-    sched_dispatch(client)
-    global_job_id = global_job_id + 1
+    # print("sched_dispatch")
+    # dispatch_jobs(client, sched_ip, sched_port, global_job_id)
+    # sched_dispatch(client)
+    # global_job_id = global_job_id + 1
 
     
     

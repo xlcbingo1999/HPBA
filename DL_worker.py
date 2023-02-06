@@ -101,9 +101,7 @@ class Worker_server(object):
         # 需要告知调度器, worker的dataset进行了更改, 同时更改worker的状态
         self.worker_dataset_ready = new_status
         client = self.get_scheduler_zerorpc_client()
-        all_worker_gpus_identifier = ["{}-{}".format(self.local_ip, gpu_id) for gpu_id in self.worker_gpus_ready]
-        for worker_gpu_identifier in all_worker_gpus_identifier:
-            client.worker_status_callback(worker_gpu_identifier, self.worker_dataset_ready, 'dataset')
+        client.worker_dataset_status_callback(self.local_ip, self.worker_dataset_ready)
 
     def update_worker_gpus_status_callback(self, new_status_map):
         # 需要告知调度器, worker的gpu进行了更改, 同时更改worker的状态, 目前还是只考虑一起改变的情况吧
@@ -112,7 +110,7 @@ class Worker_server(object):
         client = self.get_scheduler_zerorpc_client()
         need_update_gpus_identifier = [("{}-{}".format(self.local_ip, gpu_id), gpu_id) for gpu_id in new_status_map]
         for worker_gpu_identifier, gpu_id in need_update_gpus_identifier:
-            client.worker_status_callback(worker_gpu_identifier, new_status_map[gpu_id], 'gpu')
+            client.worker_gpu_status_callback(worker_gpu_identifier, new_status_map[gpu_id])
 
     def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info):
         print("job_id: {} call caculate.add => info: {}".format(job_id, origin_info))
