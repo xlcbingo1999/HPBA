@@ -14,10 +14,10 @@ def DL_server_do_jobs(args):
     
     client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info)
 
-def init_worker_dataset(client, fetch_dataset_origin_info, keep_origin_dataset):
+# def init_worker_dataset(client, fetch_dataset_origin_info, keep_origin_dataset):
     # print("fetch_dataset_origin_info: {}".format(fetch_dataset_origin_info))
     # print("keep_origin_dataset: ", keep_origin_dataset)
-    client.initial_dataset(fetch_dataset_origin_info, keep_origin_dataset)
+    # client.initial_dataset(fetch_dataset_origin_info, keep_origin_dataset)
 
 class Scheduler_server(object):
     def __init__(self, sched_ip, sched_port, init_workeridentifiers, init_workerip_2_ports):
@@ -86,7 +86,7 @@ class Scheduler_server(object):
             worker_port = self.workerip_2_ports[worker_ip]
             client = self.get_worker_zerorpc_client(worker_ip, worker_port)
             # args.append([client, fetch_dataset_origin_info, keep_origin_dataset])
-            init_worker_dataset(client, fetch_dataset_origin_info, keep_origin_dataset)
+            client.initial_dataset(fetch_dataset_origin_info, keep_origin_dataset)
         # args = tuple(args)
         # print(args)
         # with ThreadPoolExecutor(max_workers=len(args)) as pool:
