@@ -1,4 +1,3 @@
-from cmath import nan
 from collections import Counter
 import torch
 import torchvision.transforms as transforms
@@ -23,8 +22,8 @@ from collections import Counter
 import pandas as pd
 import time
 
-from sklearn.model_selection import train_test_split
-from sklearn import preprocessing 
+# from sklearn.model_selection import train_test_split
+# from sklearn import preprocessing 
 import nltk
 import re
 from utils.global_variable import GLOBAL_PATH, DATASET_PATH
@@ -154,7 +153,7 @@ def dispatch_indexes_to_train_valid(all_dataset, label_num, num_valid):
     return train_idxs, flatten_valid_idxs
 
     
-
+'''
 def get_dataset_multi_split_criteo(name, VALID_SIZE):
     dataset_root_map = {
         'Beauty': DATASET_PATH + '/criteo_dataset/dac/',
@@ -200,6 +199,7 @@ def get_dataset_multi_split_criteo(name, VALID_SIZE):
     print("y_val: ", y_val)
     
     return x_train, x_val, y_train, y_val   
+'''
 
 def pad_input(sentences, seq_len):
     features = np.zeros((len(sentences), seq_len), dtype=int)
@@ -231,6 +231,7 @@ def extract_data(content_review): #Returns: (sentence,label)
     days = list(content_review['day'])
     return sentences, sentiment, overall, years, months, days
 
+'''
 def get_review_dataset_combine_split(categorys, label_type, GROUP_NUM, VALID_SIZE, SEQUENCE_LENGTH, BATCH_SIZE, SPLIT_NUM, ALPHA, same_capacity):
     MIX_EUQA_PREFIX = DATASET_PATH + '/Amazon_Review/reviews_MIX3_{}_5_'.format(label_type)
     TOKENIZE_PATH = DATASET_PATH + '/Amazon_Review/tokenize/reviews_MIX3_{}_5_{}_'.format(label_type, VALID_SIZE)
@@ -348,6 +349,7 @@ def get_review_dataset_combine_split(categorys, label_type, GROUP_NUM, VALID_SIZ
         pickle.dump(valid_days, file)
     with open(TOKENIZE_PATH + 'words.data', 'wb') as file:
         pickle.dump(words, file)
+'''
 
 def get_review_dataset_multi_split(category, label_type, VALID_SIZE, SEQUENCE_LENGTH, SPLIT_NUM, same_capacity):
     load_types = [

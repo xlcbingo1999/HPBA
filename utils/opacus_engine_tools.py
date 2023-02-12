@@ -2,7 +2,7 @@ from opacus import PrivacyEngine
 
 
 def get_privacy_dataloader(privacy_engine, model, optimizer, train_loader, EPOCHS, EPSILON, DELTA, MAX_GRAD_NORM):
-    if EPSILON < 100000.0:
+    if EPSILON > 0:
         model, optimizer, train_loader = privacy_engine.make_private_with_epsilon(
             module=model,
             optimizer=optimizer,

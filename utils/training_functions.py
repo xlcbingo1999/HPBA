@@ -5,12 +5,13 @@ from tqdm import tqdm
 from utils.model_loader import get_resnet18, get_cnn, get_PBS_LSTM, get_PBS_FF
 from utils.opacus_engine_tools import get_privacy_dataloader
 from opacus import PrivacyEngine
+from torch.utils.tensorboard import SummaryWriter
 
 def accuracy(preds, labels):
     return (preds == labels).mean()
 
 def classification_valid(model_type, model, valid_loader, criterion, epoch,
-                            device, early_stop,
+                            device,
                             valid_logger_step=20,
                             other_configs=None):
     valid_losses = []
@@ -42,11 +43,13 @@ def classification_valid(model_type, model, valid_loader, criterion, epoch,
                     f"Loss: {np.mean(valid_losses):.6f} "
                     f"Acc@1: {np.mean(valid_acc) * 100:.6f}"
                 )
+    '''
     if early_stop is not None:
         early_stop(np.mean(valid_losses), model)
         early_stop_result =  early_stop.early_stop
     else:
         early_stop_result = False
+    '''
     return np.mean(valid_acc), np.mean(valid_losses), early_stop_result
 
 def classification_train(model_type, model, train_loader, optimizer, criterion, epoch, 
@@ -142,11 +145,11 @@ def classification_train(model_type, model, train_loader, optimizer, criterion, 
 
     return np.mean(train_acc), np.mean(train_losses), epsilon
 
-def privacy_model_train_valid(model_name, is_select, target_label, target_train_loader, valid_loader,
-                    device, label_num, early_stopping, summary_writer,
-                    LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, MAX_PHYSICAL_BATCH_SIZE, MAX_EPSILON, EPOCHS,
+def privacy_model_train_valid(model_name, target_label, target_train_loader, valid_loader,
+                    device, label_num, summary_writer_path,
+                    LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
                     other_configs=None):
-    privacy_engine = PrivacyEngine() if EPSILON < MAX_EPSILON else None
+    privacy_engine = PrivacyEngine() if EPSILON > 0 else None
     if model_name == 'resnet-18-split':
         model, criterion, optimizer = get_resnet18(device, LR, num_classes=label_num)
     elif model_name == 'cnn-split':
@@ -156,15 +159,14 @@ def privacy_model_train_valid(model_name, is_select, target_label, target_train_
         hidden_size = other_configs['hidden_size']
         vocab_size = other_configs['vocab_size']
         embedding_size = other_configs['embedding_size']
-        current_datablock_idx = other_configs['current_datablock_idx']
         label_distributions = other_configs['label_distributions']
-        model, criterion, optimizer = get_PBS_LSTM(device, LR, vocab_size, label_distributions, embedding_size, hidden_size, n_layer)
+        opacus_flag = (privacy_engine is not None)
+        model, criterion, optimizer = get_PBS_LSTM(device, LR, vocab_size, label_distributions, embedding_size, hidden_size, n_layer, opacus_flag)
     elif model_name == 'FF-split':
         hidden_size = other_configs['hidden_size']
         assert len(hidden_size) == 2
         vocab_size = other_configs['vocab_size']
         embedding_size = other_configs['embedding_size']
-        current_datablock_idx = other_configs['current_datablock_idx']
         label_distributions = other_configs['label_distributions']
         model, criterion, optimizer = get_PBS_FF(device, LR, vocab_size, label_distributions, embedding_size, hidden_size[0], hidden_size[1])
     else:
@@ -172,6 +174,10 @@ def privacy_model_train_valid(model_name, is_select, target_label, target_train_
     if not EPOCH_SET_EPSILON:
         model, optimizer, target_train_loader = get_privacy_dataloader(privacy_engine, model, optimizer, target_train_loader, EPOCHS, EPSILON, DELTA, MAX_GRAD_NORM)
     # for epoch in tqdm(range(EPOCHS), desc="Epoch", unit="epoch"):
+    if summary_writer_path != "":
+        summary_writer = SummaryWriter(summary_writer_path)
+    else:
+        summary_writer = None
     for epoch in range(EPOCHS):
         print("epoch: {}".format(epoch))
         model.train()
@@ -182,10 +188,10 @@ def privacy_model_train_valid(model_name, is_select, target_label, target_train_
                                                                         device, privacy_engine,
                                                                         MAX_PHYSICAL_BATCH_SIZE, DELTA, other_configs=other_configs)
         valid_acc, valid_loss, is_early_stop = classification_valid(model_name, model, valid_loader, criterion, epoch+1,
-                                                                        device, early_stopping, other_configs=other_configs)
+                                                                        device, other_configs=other_configs)
 
         # all_epsilon_consume += epsilon_consume
-        if is_select and summary_writer is not None:
+        if summary_writer is not None:
             summary_writer.add_scalar('train_acc', train_acc, epoch)
             summary_writer.add_scalar('train_loss', train_loss, epoch)
             summary_writer.add_scalar('valid_acc', valid_acc, epoch)
@@ -205,6 +211,7 @@ def privacy_model_train_valid(model_name, is_select, target_label, target_train_
     print('{}_valid_loss: {}'.format(target_label, valid_loss))
     print('{}_all_epsilon_consume: {}'.format(target_label, epsilon_consume))
     print('=========================================================================')
+    # del model, criterion, optimizer
     return train_acc, train_loss, valid_acc, valid_loss, epsilon_consume
 
     

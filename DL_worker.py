@@ -2,27 +2,73 @@ import zerorpc
 import time
 import threading
 import argparse
-from opacus_scheduler_job import do_calculate_func
 from utils.data_loader import fetch_new_dataset
 from utils.global_functions import FAILED_RESULT_KEY
-from utils.global_variable import WORKER_LOCAL_IP, WORKER_LOCAL_PORT, SCHE_IP, SCHE_PORT, MAX_EPSILON
-
+from utils.global_variable import WORKER_LOCAL_IP, WORKER_LOCAL_PORT, SCHE_IP, SCHE_PORT, SUB_TRAIN_DATASET_CONFIG_PATH, TEST_DATASET_CONFIG_PATH
 import torch
+import json
+import os
 
 def get_df_config():
     parser = argparse.ArgumentParser(
-                description='Sweep through lambda values')
-    parser.add_argument('--local_ip', type=str, default=WORKER_LOCAL_IP)
-    parser.add_argument('--local_port', type=int, default=WORKER_LOCAL_PORT)
-    parser.add_argument('--sched_ip', type=str, default=SCHE_IP)
-    parser.add_argument('--sche_port', type=int, default=SCHE_PORT)
+                description="Sweep through lambda values")
+    parser.add_argument("--local_ip", type=str, default=WORKER_LOCAL_IP)
+    parser.add_argument("--local_port", type=int, default=WORKER_LOCAL_PORT)
+    parser.add_argument("--sched_ip", type=str, default=SCHE_IP)
+    parser.add_argument("--sche_port", type=int, default=SCHE_PORT)
 
     args = parser.parse_args()
     return args
 
-def long_time_add(job_id, x, y, callback):    
-    time.sleep(5)
-    callback(job_id, x + y)
+def do_system_calculate_func(worker_ip, worker_port, job_id, model_name, train_dataset_raw_paths, test_dataset_raw_path,
+                            dataset_name, label_type, selected_datablock_identifiers, not_selected_datablock_identifiers,
+                            device, early_stopping, summary_writer_path,
+                            LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, 
+                            BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
+                            label_distributions, train_configs):
+    execute_cmds = []
+    execute_cmds.append("conda run -n py39torch113")
+    execute_cmds.append("python DL_do_calculate.py")
+    execute_cmds.append("--worker_ip {}".format(worker_ip))
+    execute_cmds.append("--worker_port {}".format(worker_port))
+    execute_cmds.append("--job_id {}".format(job_id))
+    execute_cmds.append("--model_name {}".format(model_name))
+    train_dataset_raw_paths_str = ":".join(train_dataset_raw_paths)
+    execute_cmds.append("--train_dataset_raw_paths {}".format(train_dataset_raw_paths_str))
+    execute_cmds.append("--test_dataset_raw_path {}".format(test_dataset_raw_path))
+    execute_cmds.append("--dataset_name {}".format(dataset_name))
+    execute_cmds.append("--label_type {}".format(label_type))
+    selected_datablock_identifiers_str = ":".join(selected_datablock_identifiers)
+    execute_cmds.append("--selected_datablock_identifiers {}".format(selected_datablock_identifiers_str))
+    not_selected_datablock_identifiers_str = ":".join(not_selected_datablock_identifiers)
+    execute_cmds.append("--not_selected_datablock_identifiers {}".format(not_selected_datablock_identifiers_str))
+
+    execute_cmds.append("--device {}".format(device))
+    if early_stopping:
+        execute_cmds.append("--early_stopping")
+    if len(summary_writer_path) > 0:
+        execute_cmds.append("--summary_writer_path {}".format(summary_writer_path))
+    execute_cmds.append("--LR {}".format(LR))
+    execute_cmds.append("--EPSILON {}".format(EPSILON))
+    if EPOCH_SET_EPSILON:
+        execute_cmds.append("--EPOCH_SET_EPSILON {}".format(EPOCH_SET_EPSILON))
+    execute_cmds.append("--DELTA {}".format(DELTA))
+    execute_cmds.append("--MAX_GRAD_NORM {}".format(MAX_GRAD_NORM))
+
+    execute_cmds.append("--BATCH_SIZE {}".format(BATCH_SIZE))
+    execute_cmds.append("--MAX_PHYSICAL_BATCH_SIZE {}".format(MAX_PHYSICAL_BATCH_SIZE))
+    execute_cmds.append("--EPOCHS {}".format(EPOCHS))
+    label_distributions_str = json.dumps(label_distributions)
+    # print("[label_distributions_str] dump result: ", label_distributions_str)
+    execute_cmds.append("--label_distributions '{}'".format(label_distributions_str))
+    train_configs_str = json.dumps(train_configs)
+    # print("[train_configs_str] dump result: ", train_configs_str)
+    execute_cmds.append("--train_configs '{}'".format(train_configs_str))
+
+    finally_execute_cmd = " ".join(execute_cmds)
+    print(finally_execute_cmd)
+    os.system(finally_execute_cmd)
+
 
 class Worker_server(object):
     def __init__(self, local_ip, local_port, sched_ip, sche_port):
@@ -33,49 +79,13 @@ class Worker_server(object):
         self.sche_port = sche_port
         self.jobid_2_origininfo = {}
         self.jobid_2_thread = {}
-
-        # self.datasets = {} # 考虑未来引入多种数据集
-        self.sub_train_datasets = None
-        self.valid_dataset = None
-        self.output_size = None
-        self.vocab_size = None
-        self.summary_writer = None # TODO(xlc): 之后需要将summary_writer写入
-
-        self.worker_dataset_ready = False
-        gpu_device_count = torch.cuda.device_count()
-        self.worker_gpus_ready = {index:True for index in range(gpu_device_count)} # 直接允许即可
+        # gpu_device_count = torch.cuda.device_count()
+        # self.worker_gpus_ready = {index:True for index in range(gpu_device_count)} # 直接允许即可
 
     def clear_all_jobs(self):
         self.jobid_2_origininfo = {}
         self.jobid_2_thread = {}
-
-    # 底层的数据直接共享, sub_train_datasets和valid_dataset应该由调度器来决定内容, 考虑从外部注入!
-    # 本操作应该是一个同步操作, 只有所有的worker都load到了数据, 才可以认为worker可用. 故需要增加worker状态的标记
-    def initial_dataset(self, fetch_dataset_origin_info, keep_origin_dataset):
-        if keep_origin_dataset and self.worker_dataset_ready:
-            print("worker load dataset success! [Warning: keep_origin_dataset]")
-            return
-        self.update_worker_dataset_status_callback(False)
-        DATASET_NAME = fetch_dataset_origin_info['DATASET_NAME']
-        LABEL_TYPE = fetch_dataset_origin_info['LABEL_TYPE']
-        VALID_SIZE = fetch_dataset_origin_info['VALID_SIZE']
-        SEQUENCE_LENGTH = fetch_dataset_origin_info['SEQUENCE_LENGTH']
-        # BATCH_SIZE = fetch_dataset_origin_info[] # TODO(xlc): 这里明显有问题, 不应该把BATCH_SIZE这种内容在这里传
-        SPLIT_NUM = fetch_dataset_origin_info['SPLIT_NUM']
-        # ALPHA = fetch_dataset_origin_info[]
-        same_capacity = fetch_dataset_origin_info['same_capacity']
-        # plot_path = fetch_dataset_origin_info[]
-        _, sub_train_datasets, valid_dataset, \
-            output_size, vocab_size = fetch_new_dataset(DATASET_NAME, LABEL_TYPE, VALID_SIZE, SEQUENCE_LENGTH, SPLIT_NUM, same_capacity)
-
-        self.sub_train_datasets = sub_train_datasets
-        self.valid_dataset = valid_dataset
-        self.output_size = output_size
-        self.vocab_size = vocab_size
-        print("worker load dataset success!")
-
-        self.update_worker_dataset_status_callback(True)        
-        
+        print("success clear all jobs in worker!")
 
     def get_scheduler_zerorpc_client(self):
         tcp_ip_port = "tcp://{}:{}".format(self.sched_ip, self.sche_port)
@@ -89,25 +99,19 @@ class Worker_server(object):
         tcp_ip_port = "tcp://{}:{}".format(self.sched_ip, self.sche_port)
         client = self.get_scheduler_zerorpc_client()
         client.worker_finished_job_callback(job_id, origin_info, result)
-        self.jobid_2_thread[job_id].join() # 尝试join进程, 避免出事
         del self.jobid_2_origininfo[job_id]
         del self.jobid_2_thread[job_id]
 
     def failed_job_callback(self, job_id, failed_result_key):
-        origin_info = self.jobid_2_origininfo[job_id]
         client = self.get_scheduler_zerorpc_client()
         client.worker_failed_job_callback(job_id, failed_result_key)
         if job_id in self.jobid_2_origininfo:
             del self.jobid_2_origininfo[job_id]
         if job_id in self.jobid_2_thread:
+            self.jobid_2_thread[job_id].join()
             del self.jobid_2_thread[job_id]
-        
-    def update_worker_dataset_status_callback(self, new_status):
-        # 需要告知调度器, worker的dataset进行了更改, 同时更改worker的状态
-        self.worker_dataset_ready = new_status
-        client = self.get_scheduler_zerorpc_client()
-        client.worker_dataset_status_callback(self.local_ip, self.worker_dataset_ready)
 
+    """
     def update_worker_gpus_status_callback(self, new_status_map):
         # 需要告知调度器, worker的gpu进行了更改, 同时更改worker的状态, 目前还是只考虑一起改变的情况吧
         for gpu_id in new_status_map:
@@ -116,64 +120,62 @@ class Worker_server(object):
         need_update_gpus_identifier = [("{}-{}".format(self.local_ip, gpu_id), gpu_id) for gpu_id in new_status_map]
         for worker_gpu_identifier, gpu_id in need_update_gpus_identifier:
             client.worker_gpu_status_callback(worker_gpu_identifier, new_status_map[gpu_id])
+    """
 
     def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info):
-        print("[bugxlc] job_id: {} call caculate => info: {}".format(job_id, origin_info))
-        if not self.worker_dataset_ready:
-            self.failed_job_callback(job_id, FAILED_RESULT_KEY.WORKER_NO_READY)
-            return
+        # print("[bugxlc] job_id: {} call caculate => info: {}".format(job_id, origin_info))
         self.jobid_2_origininfo[job_id] = origin_info
-        target_func = origin_info['target_func']
-        if target_func == "opacus_split_review":
-            # GPU调度
-            device = worker_gpu_id
-            
-            # DATASET调度
-            is_select = worker_dataset_config['is_select']
-            selected_datablock_ids = worker_dataset_config['selected_datablock_ids']
-            not_selected_datablock_ids = worker_dataset_config['not_selected_datablock_ids']
-            label_distributions = worker_dataset_config['label_distributions']
+        target_func = origin_info["target_func"]
+        try:
+            if target_func == "opacus_split_review":
+                # GPU调度
+                device = worker_gpu_id
+                
+                # DATASET调度
+                selected_datablock_identifiers = worker_dataset_config["selected_datablock_identifiers"]
+                not_selected_datablock_identifiers = worker_dataset_config["not_selected_datablock_identifiers"]
+                train_dataset_raw_paths = worker_dataset_config["train_dataset_raw_paths"]
+                test_dataset_raw_path = worker_dataset_config["test_dataset_raw_path"]
+                label_distributions = worker_dataset_config["label_distributions"]
 
-            model_name = origin_info['model_name']
-            early_stopping = origin_info['early_stopping']
-            train_configs = origin_info['train_configs']
-            
-            LR = origin_info['LR']
-            EPSILON = origin_info['EPSILON']
-            EPOCH_SET_EPSILON = origin_info['EPOCH_SET_EPSILON']
-            DELTA = origin_info['DELTA']
-            MAX_GRAD_NORM = origin_info['MAX_GRAD_NORM']
-            BATCH_SIZE = origin_info['BATCH_SIZE']
-            MAX_PHYSICAL_BATCH_SIZE = origin_info['MAX_PHYSICAL_BATCH_SIZE']
-            EPOCHS = origin_info['EPOCHS']
+                dataset_name = origin_info["dataset_name"]
+                label_type = origin_info["label_type"]
+                model_name = origin_info["model_name"]
+                early_stopping = origin_info["early_stopping"]
+                train_configs = origin_info["train_configs"]
+                
+                LR = origin_info["LR"]
+                EPSILON = origin_info["EPSILON"]
+                EPOCH_SET_EPSILON = origin_info["EPOCH_SET_EPSILON"]
+                DELTA = origin_info["DELTA"]
+                MAX_GRAD_NORM = origin_info["MAX_GRAD_NORM"]
+                BATCH_SIZE = origin_info["BATCH_SIZE"]
+                MAX_PHYSICAL_BATCH_SIZE = origin_info["MAX_PHYSICAL_BATCH_SIZE"]
+                EPOCHS = origin_info["EPOCHS"]
 
-            sub_train_datasets = self.sub_train_datasets # origin_info['sub_train_datasets']
-            valid_dataset = self.valid_dataset # origin_info['valid_dataset']
-            vocab_size = self.vocab_size # origin_info['vocab_size']
-            output_size = self.output_size # origin_info['output_size']
-            summary_writer = self.summary_writer
+                summary_writer_path = ""
+                worker_ip = self.local_ip
+                worker_port = self.local_port
 
-            p = threading.Thread(target=do_calculate_func, args=(job_id, model_name, is_select, 
-                                                                sub_train_datasets, valid_dataset,
-                                                                selected_datablock_ids, not_selected_datablock_ids, 
-                                                                device, early_stopping, summary_writer,
-                                                                LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, 
-                                                                BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, MAX_EPSILON, EPOCHS,
-                                                                vocab_size, output_size, label_distributions,
-                                                                train_configs, self.finished_job_callback))
-            self.jobid_2_thread[job_id] = p
-            p.start()
-        else:
-            self.failed_job_callback(job_id, FAILED_RESULT_KEY.JOB_TYPE_ERROR)
-            raise ValueError("No this calculate func: {}".format(target_func))
+                p = threading.Thread(target=do_system_calculate_func, args=(worker_ip, worker_port,
+                                                                    job_id, model_name, train_dataset_raw_paths, test_dataset_raw_path,
+                                                                    dataset_name, label_type, selected_datablock_identifiers, not_selected_datablock_identifiers,
+                                                                    device, early_stopping, summary_writer_path,
+                                                                    LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, 
+                                                                    BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
+                                                                    label_distributions,
+                                                                    train_configs), daemon=True)
+                self.jobid_2_thread[job_id] = p
+                p.start()
+            else:
+                self.failed_job_callback(job_id, FAILED_RESULT_KEY.JOB_TYPE_ERROR)
+                raise ValueError("No this calculate func: {}".format(target_func))
+        except Exception as e:
+            self.failed_job_callback(job_id, FAILED_RESULT_KEY.JOB_FAILED)
+            raise ValueError("No this calculate func: {}".format(e))
 
     def report_result(self, job_id, origin_info, result, real_duration_time):
-        print("=========  Worker  ===========")
-        print("job_id: {}".format(job_id))
-        print("origin_info: {}".format(origin_info))
-        print("result: {}".format(result))
-        print("real_duration_time: {}".format(real_duration_time))
-        print("====================")
+        print("Worker finished job [{}] => result: {}; time: {}".format(job_id, result, real_duration_time))
 
 
 def worker_listener_func(worker_server_item):

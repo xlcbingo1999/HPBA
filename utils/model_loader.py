@@ -273,7 +273,7 @@ def get_DNN(device, LR, input_dim, hidden_1_dim, hidden_2_dim, output_dim):
     return model, criterion, optimizer
 
 class PBS_LSTM(nn.Module):
-    def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers):
+    def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers, opacus_flag):
         super(PBS_LSTM, self).__init__()
         
         self.output_size = output_size
@@ -284,7 +284,16 @@ class PBS_LSTM(nn.Module):
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         # Define LSTM Model
         # nn.LSTM(input, hidden, num_hidden_layers, dropout, batch_first=True)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers, batch_first=True)
+        if opacus_flag:
+            self.lstm = DPLSTM(
+                embedding_dim,
+                hidden_dim,
+                num_layers=n_layers,
+                bidirectional=False,
+                batch_first=True,
+            )
+        else: 
+            self.lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers, batch_first=True)
         # Dropout (Deactivate some neurons randomly)
         # self.dropout = nn.Dropout(drop_prob)
         # Define the Fully Connected Layers
@@ -352,11 +361,11 @@ class focal_loss(nn.Module):
         self.size_average = size_average
         if isinstance(alpha,list):
             assert len(alpha)==num_classes   # α可以以list方式输入,size:[num_classes] 用于对不同类别精细地赋予权重
-            print(" --- Focal_loss alpha = {}, 将对每一类权重进行精细化赋值 --- ".format(alpha))
+            # print(" --- Focal_loss alpha = {}, 将对每一类权重进行精细化赋值 --- ".format(alpha))
             self.alpha = torch.Tensor(alpha)
         else:
             assert alpha<1   #如果α为一个常数,则降低第一类的影响,在目标检测中为第一类
-            print(" --- Focal_loss alpha = {} ,将对背景类进行衰减,请在目标检测任务中使用 --- ".format(alpha))
+            # print(" --- Focal_loss alpha = {} ,将对背景类进行衰减,请在目标检测任务中使用 --- ".format(alpha))
             self.alpha = torch.zeros(num_classes)
             self.alpha[0] += alpha
             self.alpha[1:] += (1-alpha) # α 最终为 [ α, 1-α, 1-α, 1-α, 1-α, ...] size:[num_classes]
@@ -388,14 +397,14 @@ class focal_loss(nn.Module):
             loss = loss.sum()
         return loss
 
-def get_PBS_LSTM(device, LR, vocab_size, label_distributions, embedding_dim, hidden_dim, n_layers):
+def get_PBS_LSTM(device, LR, vocab_size, label_distributions, embedding_dim, hidden_dim, n_layers, opacus_flag):
     num_classes = len(label_distributions)
     list_label_distribution = []
     for i in sorted(label_distributions): 
         print((i, label_distributions[i]), end =" ")
         list_label_distribution.append(1 - label_distributions[i])
 
-    model = PBS_LSTM(vocab_size, num_classes, embedding_dim, hidden_dim, n_layers).to(device)
+    model = PBS_LSTM(vocab_size, num_classes, embedding_dim, hidden_dim, n_layers, opacus_flag).to(device)
 
     criterion = focal_loss(alpha=list_label_distribution, gamma=2, num_classes=num_classes) # nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
