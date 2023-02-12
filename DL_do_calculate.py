@@ -1,14 +1,7 @@
 from utils.opacus_scheduler_job import do_calculate_func
 import argparse
 import json
-
-class StoreDictKeyPair(argparse.Action):
-     def __call__(self, parser, namespace, values, option_string=None):
-         my_dict = {}
-         for kv in values.split(","):
-             k, v = kv.split("=")
-             my_dict[k] = v
-         setattr(namespace, self.dest, my_dict)
+import zerorpc
 
 def get_df_config():
     parser = argparse.ArgumentParser(
@@ -37,10 +30,6 @@ def get_df_config():
     parser.add_argument("--MAX_PHYSICAL_BATCH_SIZE", type=int, required=True)
     parser.add_argument("--EPOCHS", type=int, required=True)
     
-    # parser.add_argument("--label_distributions", type=StoreDictKeyPair, required=True, metavar="KEY1=VAL1,KEY2=VAL2...") # 需要从str转成json
-    # parser.add_argument("--train_configs", type=StoreDictKeyPair, required=True, metavar="KEY1=VAL1,KEY2=VAL2...")
-    # parser.add_argument("--label_distributions", type=json.loads, required=True) # 需要从str转成json
-    # parser.add_argument("--train_configs", type=json.loads, required=True)
     parser.add_argument("--label_distributions", type=str, required=True) # 需要从str转成json
     parser.add_argument("--train_configs", type=str, required=True)
 
@@ -80,8 +69,14 @@ if __name__ == "__main__":
     train_configs = args.train_configs
     train_configs = json.loads(train_configs)
 
-    print("train_dataset_raw_paths: ", train_dataset_raw_paths)
-    print("selected_datablock_identifiers: ", selected_datablock_identifiers)
-    print("not_selected_datablock_identifiers: ", not_selected_datablock_identifiers)
-    print("label_distributions: ", label_distributions)
-    print("train_configs: ", train_configs)
+    job_id, all_results, real_duration_time = do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_raw_path,
+                    dataset_name, label_type, selected_datablock_identifiers, not_selected_datablock_identifiers,
+                    device, summary_writer_path,
+                    LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, 
+                    BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
+                    label_distributions, train_configs)
+    
+    tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)
+    client = zerorpc.Client()
+    client.connect(tcp_ip_port)
+    client.finished_job_callback(job_id, all_results, real_duration_time)

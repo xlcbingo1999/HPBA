@@ -2,7 +2,6 @@ import zerorpc
 import time
 import threading
 import argparse
-from utils.data_loader import fetch_new_dataset
 from utils.global_functions import FAILED_RESULT_KEY
 from utils.global_variable import WORKER_LOCAL_IP, WORKER_LOCAL_PORT, SCHE_IP, SCHE_PORT, SUB_TRAIN_DATASET_CONFIG_PATH, TEST_DATASET_CONFIG_PATH
 import torch

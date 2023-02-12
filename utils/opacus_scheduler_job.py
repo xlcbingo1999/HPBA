@@ -13,7 +13,8 @@ def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_
                     device, summary_writer_path,
                     LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, 
                     BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
-                    label_distributions, train_configs, callback):
+                    label_distributions, train_configs):
+    print("Job {} start!".format(job_id))
     begin_time = int(time.time())
     all_results = {}
     
@@ -21,7 +22,7 @@ def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_
     train_raw_dataset = train_raw_dataset.sort_values(by=['year', 'month', 'day']).reset_index(drop=True)
     test_raw_dataset = pd.read_csv(test_dataset_raw_path)
 
-    nltk.download('punkt') # Tokenizer
+    # nltk.download('punkt') # Tokenizer
     words = Counter()
 
     assert label_type == 'sentiment'
@@ -110,6 +111,6 @@ def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_
         'epsilon_consume': epsilon_consume,
     }
     real_duration_time = int(time.time()) - begin_time
-    callback(job_id, all_results, real_duration_time)
+    return job_id, all_results, real_duration_time
     # del all_train_dataset, test_dataset
     # torch.cuda.empty_cache() # 删除了一部分, 但是剩下的好像就是pytorch的上下文信息, 无法直接被删除, 估计要启动一个后台的script才可以

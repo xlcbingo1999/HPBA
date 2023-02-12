@@ -50,6 +50,7 @@ def classification_valid(model_type, model, valid_loader, criterion, epoch,
     else:
         early_stop_result = False
     '''
+    early_stop_result = False
     return np.mean(valid_acc), np.mean(valid_losses), early_stop_result
 
 def classification_train(model_type, model, train_loader, optimizer, criterion, epoch, 
