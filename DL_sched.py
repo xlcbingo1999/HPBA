@@ -147,9 +147,9 @@ class Scheduler_server(object):
 
     def update_gpu(self, init_gpuidentifiers):
         """
-        这个函数不能传, 必须时刻读取共享文件系统中的数据情况
+        这个函数不能传, 必须时刻读取共享文件系统中的数据情况, 慢操作, 开Thread读取
         """
-        for gpu_identifier in init_gpuidentifiers:
+        def read_gpu_state_from_file(gpu_identifier):
             gpu_config_path = GPU_PATH + "/{}.json".format(gpu_identifier)
             with open(gpu_config_path, "r") as f:
                 metadata = json.load(f)
@@ -159,6 +159,9 @@ class Scheduler_server(object):
                 else:
                     self.gpuidentifier_2_gpu_status[gpu_identifier] = False
                 f.close()
+
+        for gpu_identifier in init_gpuidentifiers:
+            threading.Thread(target=read_gpu_state_from_file, args=(gpu_identifier, )).start()
 
     def update_jobs(self, jobs_detail):
         for id, origin_info in jobs_detail:
@@ -344,6 +347,8 @@ class Scheduler_server(object):
         to_sched_gpu_jobids = self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE] + self.status_2_jobid[JOB_STATUS_KEY.DONE_DATASET_SCHED]
         for job_id in to_sched_gpu_jobids:
             all_workers_list = list(self.gpuidentifier_2_gpu_status.keys())
+            if len(all_workers_list) <= 0:
+                continue
             target_worker_id = job_id % len(all_workers_list) # 决定worker_gpu
             target_worker_identifier = all_workers_list[target_worker_id]
             
@@ -386,6 +391,7 @@ class Scheduler_server(object):
 
     def sched_dispatch_start(self, scheduler_update_sleep_time, summary_writer_path):
         def thread_func_timely_schedule(scheduler_update_sleep_time, summary_writer_path):
+            time.sleep(scheduler_update_sleep_time)
             while not self.all_finished:
                 self.sched_dispatch_main(summary_writer_path)
                 time.sleep(scheduler_update_sleep_time)

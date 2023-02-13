@@ -1,10 +1,50 @@
 import pynvml
 import torch
-import torch.nn as nn
-from torch.autograd import Variable
-from collections import OrderedDict
-import numpy as np
+from global_variable import GPU_PATH
+import json
+from concurrent.futures import ThreadPoolExecutor
+import time
 
+# import torch.nn as nn
+# from torch.autograd import Variable
+# from collections import OrderedDict
+# import numpy as np
+
+def get_current_gpu_status(device_id):
+    pynvml.nvmlInit() # 初始化
+    target_handle = pynvml.nvmlDeviceGetHandleByIndex(device_id)
+    typeinfo = pynvml.nvmlDeviceGetName(target_handle)
+    uuid = pynvml.nvmlDeviceGetUUID(target_handle)
+    meminfo = pynvml.nvmlDeviceGetMemoryInfo(target_handle)
+    used = meminfo.used / (1024 ** 2.)
+    free = meminfo.free / (1024 ** 2.)
+    total = meminfo.total / (1024 ** 2.)
+    pynvml.nvmlShutdown() # 最后要关闭管理工具
+    results = {
+        "type": bytes.decode(typeinfo),
+        "UUID": bytes.decode(uuid),
+        "server_id": device_id,
+        "used_mem": used,
+        "free_mem": free,
+        "total_mem": total
+    }
+    return results
+
+def write_gpu_status(device_id):
+    ip_add = "172.18.162.6"
+    gpu_status_path = "{}/{}-{}.json".format(GPU_PATH, ip_add, device_id)
+    current_gpu_status = get_current_gpu_status(device_id)
+    print("check current_gpu_status: {}".format(current_gpu_status))
+    with open(gpu_status_path, 'w') as f:
+        json.dump(current_gpu_status, f)
+
+def timely_update_gpu_status(dids, update_time):
+    while True:
+        with ThreadPoolExecutor(max_workers=len(dids)) as pool:
+            pool.map(write_gpu_status, dids)
+        time.sleep(update_time)
+
+'''
 def get_used_free_memory(device_id):
     pynvml.nvmlInit() # 初始化
     target_handle = pynvml.nvmlDeviceGetHandleByIndex(device_id)
@@ -138,3 +178,4 @@ def get_model_input_total_size(model, input_size, batch_size=-1, device="cuda"):
     print("Estimated Total Size (MB): %0.2f" % total_size)
     print("----------------------------------------------------------------")
     return total_size
+'''

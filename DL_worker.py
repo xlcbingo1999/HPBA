@@ -4,6 +4,7 @@ import threading
 import argparse
 from utils.global_functions import FAILED_RESULT_KEY
 from utils.global_variable import WORKER_LOCAL_IP, WORKER_LOCAL_PORT, SCHE_IP, SCHE_PORT, SUB_TRAIN_DATASET_CONFIG_PATH, TEST_DATASET_CONFIG_PATH
+from utils.profier import timely_update_gpu_status
 import torch
 import json
 import os
@@ -15,6 +16,8 @@ def get_df_config():
     parser.add_argument("--local_port", type=int, default=WORKER_LOCAL_PORT)
     parser.add_argument("--sched_ip", type=str, default=SCHE_IP)
     parser.add_argument("--sche_port", type=int, default=SCHE_PORT)
+    
+    parser.add_argument("--gpu_update_time", type=int, default=1)
 
     args = parser.parse_args()
     return args
@@ -71,12 +74,15 @@ def do_system_calculate_func(worker_ip, worker_port, job_id, model_name, train_d
 
 
 class Worker_server(object):
-    def __init__(self, local_ip, local_port, sched_ip, sche_port):
+    def __init__(self, local_ip, local_port, sched_ip, sche_port, gpu_update_time):
         # self.local_worker_id = None
         self.local_ip = local_ip
         self.local_port = local_port
         self.sched_ip = sched_ip
         self.sche_port = sche_port
+
+        self.gpu_update_time = gpu_update_time
+
         self.jobid_2_origininfo = {}
         self.jobid_2_thread = {}
         # gpu_device_count = torch.cuda.device_count()
@@ -176,6 +182,12 @@ class Worker_server(object):
     def report_result(self, job_id, origin_info, result, real_duration_time):
         print("Worker finished job [{}] => result: {}; time: {}".format(job_id, result, real_duration_time))
 
+    def timely_update_gpu_status(self):
+        gpu_devices_count = torch.cuda.device_count()
+        dids = range(gpu_devices_count)
+        p = threading.Thread(target=timely_update_gpu_status, args=(dids, self.gpu_update_time))
+        p.start()
+
 
 def worker_listener_func(worker_server_item):
     s = zerorpc.Server(worker_server_item)
@@ -186,7 +198,8 @@ def worker_listener_func(worker_server_item):
 
 if __name__ == "__main__":
     args = get_df_config()
-    local_ip, local_port, sched_ip, sche_port = args.local_ip, args.local_port, args.sched_ip, args.sche_port
-    worker_server_item = Worker_server(local_ip, local_port, sched_ip, sche_port)
+    local_ip, local_port, sched_ip, sche_port, gpu_update_time = args.local_ip, args.local_port, args.sched_ip, args.sche_port, args.gpu_update_time
+    worker_server_item = Worker_server(local_ip, local_port, sched_ip, sche_port, gpu_update_time)
+    worker_server_item.timely_update_gpu_status()
     worker_listener_func(worker_server_item)
     
