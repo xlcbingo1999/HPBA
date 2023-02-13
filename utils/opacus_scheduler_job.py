@@ -96,7 +96,8 @@ def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_
     train_configs['vocab_size'] = len(word2idx) + 1
     train_configs['label_distributions'] = label_distributions
     
-    summary_writer_keyword = "{}-{}-{}-{}".format(job_id, model_name, dataset_name, select_log_str)
+    summary_writer_date = summary_writer_path[-14:] # schedule-review-02-13-07-59-57
+    summary_writer_keyword = "{}-{}-{}-{}-{}".format(job_id, model_name, dataset_name, select_log_str, summary_writer_date)
     train_acc, train_loss, test_acc, test_loss, epsilon_consume = privacy_model_train_valid(
         model_name, select_log_str, target_train_loader, test_loader,
         device, label_num, summary_writer_path, summary_writer_keyword,
