@@ -161,7 +161,7 @@ class Scheduler_server(object):
                 f.close()
 
         for gpu_identifier in init_gpuidentifiers:
-            threading.Thread(target=read_gpu_state_from_file, args=(gpu_identifier, )).start()
+            threading.Thread(target=read_gpu_state_from_file, args=(gpu_identifier, ), daemon=True).start()
 
     def update_jobs(self, jobs_detail):
         for id, origin_info in jobs_detail:

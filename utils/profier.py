@@ -1,9 +1,9 @@
 import pynvml
 import torch
-from global_variable import GPU_PATH
+from utils.global_variable import GPU_PATH
 import json
-from concurrent.futures import ThreadPoolExecutor
 import time
+import threading
 
 # import torch.nn as nn
 # from torch.autograd import Variable
@@ -30,18 +30,19 @@ def get_current_gpu_status(device_id):
     }
     return results
 
-def write_gpu_status(device_id):
-    ip_add = "172.18.162.6"
-    gpu_status_path = "{}/{}-{}.json".format(GPU_PATH, ip_add, device_id)
+def write_gpu_status(ip, device_id):
+    gpu_status_path = "{}/{}-{}.json".format(GPU_PATH, ip, device_id)
     current_gpu_status = get_current_gpu_status(device_id)
-    print("check current_gpu_status: {}".format(current_gpu_status))
+    # print("check current_gpu_status: {} => gpu_status_path: {}".format(current_gpu_status, gpu_status_path))
     with open(gpu_status_path, 'w') as f:
+        # print("write")
         json.dump(current_gpu_status, f)
 
-def timely_update_gpu_status(dids, update_time):
+def timely_update_gpu_status(ip, dids, update_time):
     while True:
-        with ThreadPoolExecutor(max_workers=len(dids)) as pool:
-            pool.map(write_gpu_status, dids)
+        for device_id in dids:
+            p = threading.Thread(target=write_gpu_status, args=(ip, device_id), daemon=True)
+            p.start()
         time.sleep(update_time)
 
 '''

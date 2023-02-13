@@ -185,7 +185,7 @@ class Worker_server(object):
     def timely_update_gpu_status(self):
         gpu_devices_count = torch.cuda.device_count()
         dids = range(gpu_devices_count)
-        p = threading.Thread(target=timely_update_gpu_status, args=(dids, self.gpu_update_time))
+        p = threading.Thread(target=timely_update_gpu_status, args=(self.local_ip, dids, self.gpu_update_time), daemon=True)
         p.start()
 
 

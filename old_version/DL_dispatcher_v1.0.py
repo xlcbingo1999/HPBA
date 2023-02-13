@@ -157,7 +157,7 @@ def sched_update_gpu_status(sched_ip, sched_port, init_gpuidentifiers, sleep_tim
             client.update_gpu(init_gpuidentifiers)
             time.sleep(sleep_time)
     
-    p = threading.Thread(target=thread_func_timely_update, args=(sched_ip, sched_port, init_gpuidentifiers))
+    p = threading.Thread(target=thread_func_timely_update, args=(sched_ip, sched_port, init_gpuidentifiers), daemon=True)
     p.start()
     return p
 
