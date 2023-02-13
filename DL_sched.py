@@ -152,7 +152,12 @@ class Scheduler_server(object):
         def read_gpu_state_from_file(gpu_identifier):
             gpu_config_path = GPU_PATH + "/{}.json".format(gpu_identifier)
             with open(gpu_config_path, "r") as f:
-                metadata = json.load(f)
+                try:
+                    metadata = json.load(f)
+                except Exception as e:
+                    print("read {} exception: {}".format(gpu_config_path, e))
+                    f.close()
+                    return 
                 self.gpuidentifier_2_gpu_metadata[gpu_identifier] = metadata
                 if self.gpuidentifier_2_gpu_metadata[gpu_identifier]["free_mem"] > 0.0:
                     self.gpuidentifier_2_gpu_status[gpu_identifier] = True
