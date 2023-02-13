@@ -14,7 +14,6 @@ def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_
                     LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, 
                     BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
                     label_distributions, train_configs):
-    print("Job {} start!".format(job_id))
     begin_time = int(time.time())
     all_results = {}
     

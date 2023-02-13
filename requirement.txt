@@ -3,3 +3,6 @@ matplotlib
 pandas
 scikit-learn
 nltk
+zerorpc
+pynvml
+opacus

@@ -26,7 +26,7 @@ def do_system_calculate_func(worker_ip, worker_port, job_id, model_name, train_d
                             BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
                             label_distributions, train_configs):
     execute_cmds = []
-    execute_cmds.append("conda run -n py39torch113")
+    execute_cmds.append("conda run -n py39torch113") # 会卡住, 没有任何log, 这个时候最好做重定向!
     execute_cmds.append("python DL_do_calculate.py")
     execute_cmds.append("--worker_ip {}".format(worker_ip))
     execute_cmds.append("--worker_port {}".format(worker_port))
@@ -66,6 +66,7 @@ def do_system_calculate_func(worker_ip, worker_port, job_id, model_name, train_d
 
     finally_execute_cmd = " ".join(execute_cmds)
     print(finally_execute_cmd)
+    print("Job {} start!".format(job_id))
     os.system(finally_execute_cmd)
 
 

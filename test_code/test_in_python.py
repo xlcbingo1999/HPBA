@@ -6,9 +6,9 @@ import subprocess
 
 def do_thread():
     def do_thread_func():
-        # os.system("python long_time_output.py")
-        result = subprocess.run(['python', 'long_time_output.py'], stdout=subprocess.PIPE)
-        print(result.stdout.decode('utf-8'))
+        os.system("#!/bin/bash && conda activate py39torch113 && python long_time_output.py")
+        # result = subprocess.run(['python', 'long_time_output.py'], stdout=subprocess.PIPE)
+        # print(result.stdout.decode('utf-8'))
     p = threading.Thread(target=do_thread_func, daemon=True)
     p.start()
 

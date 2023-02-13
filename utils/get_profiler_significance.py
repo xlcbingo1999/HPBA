@@ -1,5 +1,3 @@
-import warnings
-warnings.simplefilter("ignore")
 import torch
 from torch.utils.data import DataLoader
 from collections import Counter
