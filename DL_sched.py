@@ -11,11 +11,11 @@ from functools import reduce
 import json
 import time
 
-def DL_server_do_jobs(job_id, origin_info, worker_ip, worker_port, worker_gpu_id, worker_dataset_config):
+def DL_server_do_jobs(job_id, origin_info, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, summary_writer_path):
     client = zerorpc.Client()
     client.connect("tcp://{}:{}".format(worker_ip, worker_port))
     
-    client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info)
+    client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info, summary_writer_path)
 
 class Scheduler_server(object):
     def __init__(self, sched_ip, sched_port, init_workerip_2_ports):
@@ -291,7 +291,7 @@ class Scheduler_server(object):
             get_profiler_selection_result(train_all_label_distribution, sub_train_datasetidentifier_2_label_distribution, target_select_num)
         return selected_datablock_identifiers, not_selected_datablock_identifiers, final_scores, selected_label_distribution
 
-    def sched_dispatch_main(self):
+    def sched_dispatch_main(self, summary_writer_path):
         # 未调度先调度
         to_reflash_job_ids = {
             JOB_STATUS_UPDATE_PATH.NOSCHED_2_DATASETSCHED: [],
@@ -358,9 +358,9 @@ class Scheduler_server(object):
                 self.sche_update_job_status(job_id, target_status)
             self.sche_reflash_job_status(to_reflash_job_ids[status_path], origin_status, target_status)
         
-        self.placement_dispatch()
+        self.placement_dispatch(summary_writer_path)
 
-    def placement_dispatch(self):
+    def placement_dispatch(self, summary_writer_path):
         # 放置任务
         args = []
         to_reflash_job_ids = []
@@ -371,7 +371,7 @@ class Scheduler_server(object):
             worker_identifier = self.jobid_2_gputarget[job_id]
             worker_ip, worker_gpu_id = self.get_worker_identifier_detail(worker_identifier)
             worker_port = self.workerip_2_ports[worker_ip]
-            args.append([job_id, origin_info, worker_ip, worker_port, worker_gpu_id, worker_dataset_config])
+            args.append([job_id, origin_info, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, summary_writer_path])
             self.sche_update_job_status(job_id, JOB_STATUS_KEY.RUNNING)
             self.jobid_2_started_time[job_id] = time.time()
             to_reflash_job_ids.append(job_id)
@@ -384,14 +384,14 @@ class Scheduler_server(object):
             with ThreadPoolExecutor(max_workers=len(args)) as pool:
                 pool.map(DL_server_do_jobs, *final_args)
 
-    def sched_dispatch_start(self, scheduler_update_sleep_time):
-        def thread_func_timely_schedule(scheduler_update_sleep_time):
+    def sched_dispatch_start(self, scheduler_update_sleep_time, summary_writer_path):
+        def thread_func_timely_schedule(scheduler_update_sleep_time, summary_writer_path):
             while not self.all_finished:
-                self.sched_dispatch_main()
+                self.sched_dispatch_main(summary_writer_path)
                 time.sleep(scheduler_update_sleep_time)
             print("Thread [thread_func_timely_schedule] finished!")
         self.all_finished = False
-        p = threading.Thread(target=thread_func_timely_schedule, args=(scheduler_update_sleep_time, ), daemon=True)
+        p = threading.Thread(target=thread_func_timely_schedule, args=(scheduler_update_sleep_time, summary_writer_path), daemon=True)
         self.sched_thread = p
         p.start()
         print("Thread [thread_func_timely_schedule] started!")

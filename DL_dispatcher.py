@@ -1,6 +1,6 @@
 import zerorpc
 import time
-from utils.global_variable import SCHE_IP, SCHE_PORT, DISPATCHER_IP, DISPATCHER_PORT, SUB_TRAIN_DATASET_CONFIG_PATH, TEST_DATASET_CONFIG_PATH, INIT_WORKERIDENTIFIERS
+from utils.global_variable import SCHE_IP, SCHE_PORT, DISPATCHER_IP, DISPATCHER_PORT, SUB_TRAIN_DATASET_CONFIG_PATH, TEST_DATASET_CONFIG_PATH, INIT_WORKERIDENTIFIERS, TENSORBOARD_PATH
 import threading
 from functools import reduce
 import sys
@@ -40,8 +40,11 @@ class Dispatcher(object):
 
         self.all_start_time = time.time()
         self.current_time = 0
-        
 
+        current_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
+        file_log_name = 'schedule-review-%s' % (current_time)
+        self.summary_writer_path = TENSORBOARD_PATH + "/{}".format(file_log_name)
+        
     def dispatch_jobs(self, sched_ip, sched_port):
         def thread_func_timely_dispatch_job(sched_ip, sched_port):
             while not self.all_finished:
@@ -132,7 +135,7 @@ class Dispatcher(object):
 
     def sched_dispatch_start(self, ip, port, scheduler_update_sleep_time):
         client = self.get_zerorpc_client(ip, port)
-        client.sched_dispatch_start(scheduler_update_sleep_time)
+        client.sched_dispatch_start(scheduler_update_sleep_time, self.summary_writer_path)
     
     def sched_end(self, ip, port):
         client = self.get_zerorpc_client(ip, port)

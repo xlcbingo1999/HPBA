@@ -122,7 +122,7 @@ class Worker_server(object):
             client.worker_gpu_status_callback(worker_gpu_identifier, new_status_map[gpu_id])
     """
 
-    def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info):
+    def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info, summary_writer_path):
         # print("[bugxlc] job_id: {} call caculate => info: {}".format(job_id, origin_info))
         self.jobid_2_origininfo[job_id] = origin_info
         target_func = origin_info["target_func"]
@@ -153,7 +153,6 @@ class Worker_server(object):
                 MAX_PHYSICAL_BATCH_SIZE = origin_info["MAX_PHYSICAL_BATCH_SIZE"]
                 EPOCHS = origin_info["EPOCHS"]
 
-                summary_writer_path = ""
                 worker_ip = self.local_ip
                 worker_port = self.local_port
 

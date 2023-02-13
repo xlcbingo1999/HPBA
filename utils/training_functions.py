@@ -147,7 +147,7 @@ def classification_train(model_type, model, train_loader, optimizer, criterion, 
     return np.mean(train_acc), np.mean(train_losses), epsilon
 
 def privacy_model_train_valid(model_name, target_label, target_train_loader, valid_loader,
-                    device, label_num, summary_writer_path,
+                    device, label_num, summary_writer_path, summary_writer_keyword,
                     LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
                     other_configs=None):
     privacy_engine = PrivacyEngine() if EPSILON > 0 else None
@@ -193,19 +193,19 @@ def privacy_model_train_valid(model_name, target_label, target_train_loader, val
 
         # all_epsilon_consume += epsilon_consume
         if summary_writer is not None:
-            summary_writer.add_scalar('train_acc', train_acc, epoch)
-            summary_writer.add_scalar('train_loss', train_loss, epoch)
-            summary_writer.add_scalar('valid_acc', valid_acc, epoch)
-            summary_writer.add_scalar('valid_loss', valid_loss, epoch)
-            summary_writer.add_scalar('all_epsilon_consume', epsilon_consume, epoch)
+            summary_writer.add_scalar('{}/train_acc'.format(summary_writer_keyword), train_acc, epoch)
+            summary_writer.add_scalar('{}/train_loss'.format(summary_writer_keyword), train_loss, epoch)
+            summary_writer.add_scalar('{}/valid_acc'.format(summary_writer_keyword), valid_acc, epoch)
+            summary_writer.add_scalar('{}/valid_loss'.format(summary_writer_keyword), valid_loss, epoch)
+            summary_writer.add_scalar('{}/all_epsilon_consume'.format(summary_writer_keyword), epsilon_consume, epoch)
         if is_early_stop:
             print('Early Stop!')
     if summary_writer is not None:
-        summary_writer.add_text('{}_train_acc'.format(target_label), str(train_acc), 0)
-        summary_writer.add_text('{}_train_loss'.format(target_label), str(train_loss), 0)
-        summary_writer.add_text('{}_valid_acc'.format(target_label), str(valid_acc), 0)
-        summary_writer.add_text('{}_valid_loss'.format(target_label), str(valid_loss), 0)
-        summary_writer.add_text('{}_all_epsilon_consume'.format(target_label), str(epsilon_consume), 0)
+        summary_writer.add_text('{}/{}_train_acc'.format(summary_writer_keyword, target_label), str(train_acc), 0)
+        summary_writer.add_text('{}/{}_train_loss'.format(summary_writer_keyword, target_label), str(train_loss), 0)
+        summary_writer.add_text('{}/{}_valid_acc'.format(summary_writer_keyword, target_label), str(valid_acc), 0)
+        summary_writer.add_text('{}/{}_valid_loss'.format(summary_writer_keyword, target_label), str(valid_loss), 0)
+        summary_writer.add_text('{}/{}_all_epsilon_consume'.format(summary_writer_keyword, target_label), str(epsilon_consume), 0)
     print('{}_train_acc: {}'.format(target_label, train_acc))
     print('{}_train_loss: {}'.format(target_label, train_loss))
     print('{}_valid_acc: {}'.format(target_label, valid_acc))

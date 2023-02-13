@@ -1,5 +1,7 @@
 # 独立的变量
 utils/global_variable.py
+tensorboard_*/
+log_*/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
