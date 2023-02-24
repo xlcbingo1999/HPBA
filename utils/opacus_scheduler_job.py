@@ -10,7 +10,7 @@ from collections import Counter
 
 def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_raw_path,
                     dataset_name, label_type, selected_datablock_identifiers, not_selected_datablock_identifiers,
-                    loss_func, device, summary_writer_path,
+                    loss_func, device_index, summary_writer_path,
                     LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, 
                     BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
                     label_distributions, train_configs):
@@ -92,7 +92,7 @@ def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_
     print("load test dataset finished! len: {}".format(len(test_dataset)))
     print("load all dataset finished! len: {}".format(len(all_train_dataset)))
 
-    target_train_loader = DataLoader(all_train_dataset, batch_size=BATCH_SIZE)
+    target_train_loader = DataLoader(all_train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
 
     selected_datablock_ids_str = '['
@@ -109,7 +109,7 @@ def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_
     summary_writer_keyword = "{}-{}-{}-{}-{}".format(job_id, model_name, dataset_name, select_log_str, summary_writer_date)
     train_acc, train_loss, test_acc, test_loss, epsilon_consume = privacy_model_train_valid(
         model_name, select_log_str, target_train_loader, test_loader,
-        loss_func, device, label_num, summary_writer_path, summary_writer_keyword,
+        loss_func, device_index, label_num, summary_writer_path, summary_writer_keyword,
         LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
         train_configs
     )

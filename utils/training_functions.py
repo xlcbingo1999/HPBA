@@ -104,7 +104,7 @@ def classification_train(model_type, model, train_loader, optimizer, criterion, 
                         f"Loss: {np.mean(train_losses):.6f} "
                         f"Acc@1: {np.mean(train_acc) * 100:.6f} "
                         f"(ε = {epsilon:.2f}, δ = {DELTA}"
-                    )  
+                    )
     else:
         for i, (inputs, labels) in enumerate(train_loader):
             optimizer.zero_grad()
@@ -119,8 +119,10 @@ def classification_train(model_type, model, train_loader, optimizer, criterion, 
                 output, _ = model(inputs, h0, c0)
             else:
                 output = model(inputs)
+            # print("output: ", output)
+            # print("labels: ", labels)
             loss = criterion(output, labels)
-
+            
             preds = np.argmax(output.detach().cpu().numpy(), axis=1)
             labels = labels.detach().cpu().numpy()
 
@@ -147,10 +149,11 @@ def classification_train(model_type, model, train_loader, optimizer, criterion, 
     return np.mean(train_acc), np.mean(train_losses), epsilon
 
 def privacy_model_train_valid(model_name, target_label, target_train_loader, valid_loader,
-                    loss_func, device, label_num, summary_writer_path, summary_writer_keyword,
+                    loss_func, device_index, label_num, summary_writer_path, summary_writer_keyword,
                     LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
                     other_configs=None):
     privacy_engine = PrivacyEngine() if EPSILON > 0 else None
+    device = torch.device("cuda:{}".format(device_index) if torch.cuda.is_available() else "cpu")
     if model_name == 'resnet-18-split':
         model, criterion, optimizer = get_resnet18(device, LR, num_classes=label_num)
     elif model_name == 'cnn-split':
