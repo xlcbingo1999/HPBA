@@ -222,14 +222,17 @@ def get_split_train_dataset_index(combine_years_months_days, SPLIT_NUM, same_cap
         split_train_dataset_indexes_result.pop(-1)
     return split_train_dataset_indexes_result
 
-def extract_data(content_review): #Returns: (sentence,label)
-    sentiment = list(content_review['sentiment'])
-    overall = list(content_review['overall'])
-    sentences = list(content_review['reviews'])
-    years = list(content_review['year'])
-    months = list(content_review['month'])
-    days = list(content_review['day'])
-    return sentences, sentiment, overall, years, months, days
+def extract_data(content_review, label_names): #Returns: (sentence,label)
+    result = []
+    for label_n in label_names:
+        result.append(content_review[label_n])
+    # sentiment = list(content_review['sentiment'])
+    # overall = list(content_review['overall'])
+    # sentences = list(content_review['reviews'])
+    # years = list(content_review['year'])
+    # months = list(content_review['month'])
+    # days = list(content_review['day'])
+    return result
 
 '''
 def get_review_dataset_combine_split(categorys, label_type, GROUP_NUM, VALID_SIZE, SEQUENCE_LENGTH, BATCH_SIZE, SPLIT_NUM, ALPHA, same_capacity):

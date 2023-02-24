@@ -10,7 +10,7 @@ from collections import Counter
 
 def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_raw_path,
                     dataset_name, label_type, selected_datablock_identifiers, not_selected_datablock_identifiers,
-                    device, summary_writer_path,
+                    loss_func, device, summary_writer_path,
                     LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, 
                     BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
                     label_distributions, train_configs):
@@ -18,15 +18,20 @@ def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_
     all_results = {}
     
     train_raw_dataset = pd.concat([pd.read_csv(path) for path in train_dataset_raw_paths])
-    train_raw_dataset = train_raw_dataset.sort_values(by=['year', 'month', 'day']).reset_index(drop=True)
     test_raw_dataset = pd.read_csv(test_dataset_raw_path)
 
     # nltk.download('punkt') # Tokenizer
     words = Counter()
 
-    assert label_type == 'sentiment'
-    train_sentences, train_sentiment, _, _, _, _ = extract_data(train_raw_dataset)
-    test_sentences, test_sentiment, _, _, _, _  = extract_data(test_raw_dataset)
+    if dataset_name == 'Home_and_Kitchen':
+        assert label_type == 'sentiment'
+        train_raw_dataset = train_raw_dataset.sort_values(by=['year', 'month', 'day']).reset_index(drop=True)
+        label_names = ['sentiment', 'overall' ]
+    elif dataset_name == 'class_2_1.8MTrain_20kTest':
+        label_names = ['text', 'label']
+    
+    train_sentences, train_label = extract_data(train_raw_dataset, label_names)
+    test_sentences, test_label = extract_data(test_raw_dataset, label_names)
 
     train_sentences = list(filter(None, train_sentences))
     test_sentences = list(filter(None, test_sentences))
@@ -34,7 +39,7 @@ def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_
     test_sentences = [sen for sen in test_sentences if sen is not np.nan]
     # print(f'Valid Training Sentences: {len(train_sentences)}')
     # print(f'Valid Test Sentences: {len(test_sentences)}')
-
+    print("[time consumed...] begin calculated sentence")
     for i, sentence in enumerate(train_sentences):
         try:
             #tokens = nltk.word_tokenize(sentence)
@@ -45,7 +50,7 @@ def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_
                 train_sentences[i].append(word)
         except:
             print(sentence)
-    # print(f"tokenize 100% done")
+    print("[time consumed...] end calculated sentence")
 
     # Remove infrequent words (i.e. words that only appear once)
     words = {k:v for k,v in words.items() if v>1}
@@ -65,20 +70,24 @@ def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_
         test_sentences[i] = [word2idx[word.lower()] if word in word2idx else 0 for word in nltk.regexp_tokenize(sentence, pattern="\s+", gaps = True)]
     # print(f"word2idx 100% done")
 
+    cut_train_sentences = pad_input(train_sentences, train_configs['sequence_length'])
+    cut_test_sentences = pad_input(test_sentences, train_configs['sequence_length'])
+    train_sentences = torch.from_numpy(cut_train_sentences)
+    test_sentences = torch.from_numpy(cut_test_sentences)
     
-    train_sentences = torch.from_numpy(pad_input(train_sentences, train_configs['sequence_length']))
-    test_sentences = torch.from_numpy(pad_input(test_sentences, train_configs['sequence_length']))
+    label_num = len(set(train_label) | set(test_label))
+    train_label = np.array(train_label)
+    test_label = np.array(test_label)
+    train_label = torch.from_numpy(train_label)
+    test_label = torch.from_numpy(test_label)
     
-    label_num = len(set(train_sentiment) | set(test_sentiment))
-    train_sentiment = torch.from_numpy(np.array(train_sentiment))
-    test_sentiment = torch.from_numpy(np.array(test_sentiment))
     all_train_dataset = TensorDataset(
         train_sentences,
-        train_sentiment
+        train_label
     )
     test_dataset = TensorDataset(
         test_sentences,
-        test_sentiment
+        test_label
     )
     print("load test dataset finished! len: {}".format(len(test_dataset)))
     print("load all dataset finished! len: {}".format(len(all_train_dataset)))
@@ -100,7 +109,7 @@ def do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_
     summary_writer_keyword = "{}-{}-{}-{}-{}".format(job_id, model_name, dataset_name, select_log_str, summary_writer_date)
     train_acc, train_loss, test_acc, test_loss, epsilon_consume = privacy_model_train_valid(
         model_name, select_log_str, target_train_loader, test_loader,
-        device, label_num, summary_writer_path, summary_writer_keyword,
+        loss_func, device, label_num, summary_writer_path, summary_writer_keyword,
         LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
         train_configs
     )

@@ -147,7 +147,7 @@ def classification_train(model_type, model, train_loader, optimizer, criterion, 
     return np.mean(train_acc), np.mean(train_losses), epsilon
 
 def privacy_model_train_valid(model_name, target_label, target_train_loader, valid_loader,
-                    device, label_num, summary_writer_path, summary_writer_keyword,
+                    loss_func, device, label_num, summary_writer_path, summary_writer_keyword,
                     LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
                     other_configs=None):
     privacy_engine = PrivacyEngine() if EPSILON > 0 else None
@@ -162,14 +162,14 @@ def privacy_model_train_valid(model_name, target_label, target_train_loader, val
         embedding_size = other_configs['embedding_size']
         label_distributions = other_configs['label_distributions']
         opacus_flag = (privacy_engine is not None)
-        model, criterion, optimizer = get_PBS_LSTM(device, LR, vocab_size, label_distributions, embedding_size, hidden_size, n_layer, opacus_flag)
+        model, criterion, optimizer = get_PBS_LSTM(loss_func, device, LR, vocab_size, label_distributions, embedding_size, hidden_size, n_layer, opacus_flag)
     elif model_name == 'FF-split':
         hidden_size = other_configs['hidden_size']
         assert len(hidden_size) == 2
         vocab_size = other_configs['vocab_size']
         embedding_size = other_configs['embedding_size']
         label_distributions = other_configs['label_distributions']
-        model, criterion, optimizer = get_PBS_FF(device, LR, vocab_size, label_distributions, embedding_size, hidden_size[0], hidden_size[1])
+        model, criterion, optimizer = get_PBS_FF(loss_func, device, LR, vocab_size, label_distributions, embedding_size, hidden_size[0], hidden_size[1])
     else:
         model, criterion, optimizer = None, None, None
     if not EPOCH_SET_EPSILON:

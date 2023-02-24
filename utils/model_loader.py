@@ -339,12 +339,13 @@ class PBS_FF(nn.Module):
     def forward(self, x):
         embeds = self.embedding(x)
         # print("check embeds: {}; embeds.mean(1).squeeze(1): {}".format(embeds.shape, embeds.mean(1).shape))
-        out = self.fc1(embeds.mean(1)) # embeds[:, -1: :].squeeze(1)
+        out = self.fc1(embeds) # embeds[:, -1: :].squeeze(1) embeds.mean(1)
         out = self.relu1(out)
         out = self.fc2(out)
         out = self.relu2(out)
         out = self.fc3(out)
         out = self.relu3(out)
+        out = out[:, -1, :]
         return out
 
 class focal_loss(nn.Module):
@@ -397,29 +398,36 @@ class focal_loss(nn.Module):
             loss = loss.sum()
         return loss
 
-def get_PBS_LSTM(device, LR, vocab_size, label_distributions, embedding_dim, hidden_dim, n_layers, opacus_flag):
+def get_PBS_LSTM(loss_func, device, LR, vocab_size, label_distributions, embedding_dim, hidden_dim, n_layers, opacus_flag):
     num_classes = len(label_distributions)
-    list_label_distribution = []
-    for i in sorted(label_distributions): 
-        print((i, label_distributions[i]), end =" ")
-        list_label_distribution.append(1 - label_distributions[i])
-
     model = PBS_LSTM(vocab_size, num_classes, embedding_dim, hidden_dim, n_layers, opacus_flag).to(device)
-
-    criterion = focal_loss(alpha=list_label_distribution, gamma=2, num_classes=num_classes) # nn.CrossEntropyLoss()
+    if loss_func == 'focal_loss':
+        list_label_distribution = []
+        for i in sorted(label_distributions): 
+            print((i, label_distributions[i]), end = " ")
+            list_label_distribution.append(1 - label_distributions[i])
+        criterion = focal_loss(alpha=list_label_distribution, gamma=2, num_classes=num_classes) # nn.CrossEntropyLoss()
+    elif loss_func == 'CrossEntropyLoss':
+        criterion = nn.CrossEntropyLoss()
+    else:
+        criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
     print("Finished Load Model!")
     return model, criterion, optimizer
 
-def get_PBS_FF(device, LR, vocab_size, label_distributions, embedding_dim, hidden_dim1, hidden_dim2):
+def get_PBS_FF(loss_func, device, LR, vocab_size, label_distributions, embedding_dim, hidden_dim1, hidden_dim2):
     num_classes = len(label_distributions)
-    list_label_distribution = []
-    for i in sorted(label_distributions): 
-        print((i, label_distributions[i]), end =" ")
-        list_label_distribution.append(1 - label_distributions[i])
     model = PBS_FF(vocab_size, num_classes, embedding_dim, hidden_dim1, hidden_dim2).to(device)
-
-    criterion = focal_loss(alpha=list_label_distribution, gamma=2, num_classes=num_classes)
+    if loss_func == 'focal_loss':
+        list_label_distribution = []
+        for i in sorted(label_distributions): 
+            print((i, label_distributions[i]), end = " ")
+            list_label_distribution.append(1 - label_distributions[i])
+        criterion = focal_loss(alpha=list_label_distribution, gamma=2, num_classes=num_classes)
+    elif loss_func == 'CrossEntropyLoss':
+        criterion = nn.CrossEntropyLoss()
+    else:
+        criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
     print("Finished Load Model!")
     return model, criterion, optimizer

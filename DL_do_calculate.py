@@ -17,6 +17,7 @@ def get_df_config():
     parser.add_argument("--label_type", type=str, required=True)
     parser.add_argument("--selected_datablock_identifiers", type=str, required=True) # : 用这个进行split
     parser.add_argument("--not_selected_datablock_identifiers", type=str, required=True) # : 用这个进行split
+    parser.add_argument("--loss_func", type=str, required=True)
     parser.add_argument("--device", type=int, required=True)
     parser.add_argument("--early_stopping", action="store_true")
     parser.add_argument("--summary_writer_path", type=str, default="")
@@ -52,6 +53,7 @@ if __name__ == "__main__":
     selected_datablock_identifiers = selected_datablock_identifiers.split(":")
     not_selected_datablock_identifiers = args.not_selected_datablock_identifiers
     not_selected_datablock_identifiers = not_selected_datablock_identifiers.split(":")
+    loss_func = args.loss_func
     device = args.device
     early_stopping = args.early_stopping
     summary_writer_path = args.summary_writer_path
@@ -71,7 +73,7 @@ if __name__ == "__main__":
 
     job_id, all_results, real_duration_time = do_calculate_func(job_id, model_name, train_dataset_raw_paths, test_dataset_raw_path,
                     dataset_name, label_type, selected_datablock_identifiers, not_selected_datablock_identifiers,
-                    device, summary_writer_path,
+                    loss_func, device, summary_writer_path,
                     LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, 
                     BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
                     label_distributions, train_configs)

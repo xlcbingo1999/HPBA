@@ -24,7 +24,7 @@ def get_df_config():
 
 def do_system_calculate_func(worker_ip, worker_port, job_id, model_name, train_dataset_raw_paths, test_dataset_raw_path,
                             dataset_name, label_type, selected_datablock_identifiers, not_selected_datablock_identifiers,
-                            device, early_stopping, summary_writer_path,
+                            loss_func, device, early_stopping, summary_writer_path,
                             LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, 
                             BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
                             label_distributions, train_configs):
@@ -44,7 +44,7 @@ def do_system_calculate_func(worker_ip, worker_port, job_id, model_name, train_d
     execute_cmds.append("--selected_datablock_identifiers {}".format(selected_datablock_identifiers_str))
     not_selected_datablock_identifiers_str = ":".join(not_selected_datablock_identifiers)
     execute_cmds.append("--not_selected_datablock_identifiers {}".format(not_selected_datablock_identifiers_str))
-
+    execute_cmds.append("--loss_func {}".format(loss_func))
     execute_cmds.append("--device {}".format(device))
     if early_stopping:
         execute_cmds.append("--early_stopping")
@@ -150,6 +150,7 @@ class Worker_server(object):
                 early_stopping = origin_info["early_stopping"]
                 train_configs = origin_info["train_configs"]
                 
+                loss_func = origin_info["loss_func"]
                 LR = origin_info["LR"]
                 EPSILON = origin_info["EPSILON"]
                 EPOCH_SET_EPSILON = origin_info["EPOCH_SET_EPSILON"]
@@ -165,7 +166,7 @@ class Worker_server(object):
                 p = threading.Thread(target=do_system_calculate_func, args=(worker_ip, worker_port,
                                                                     job_id, model_name, train_dataset_raw_paths, test_dataset_raw_path,
                                                                     dataset_name, label_type, selected_datablock_identifiers, not_selected_datablock_identifiers,
-                                                                    device, early_stopping, summary_writer_path,
+                                                                    loss_func, device, early_stopping, summary_writer_path,
                                                                     LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, 
                                                                     BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
                                                                     label_distributions,
