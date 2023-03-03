@@ -12,6 +12,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_absolute_error
 from opacus import PrivacyEngine
 from opacus.utils.batch_memory_manager import BatchMemoryManager
+from torch.utils.tensorboard import SummaryWriter
+import time
+
 
 from utils.opacus_engine_tools import get_privacy_dataloader
 
@@ -57,9 +60,14 @@ if __name__ == "__main__":
 
     device = torch.device("cuda:{}".format(device_index) if torch.cuda.is_available() else "cpu")
     print(device)
-    path = "/mnt/linuxidc_client/dataset/Amazon_Review_split/NYC_taxi_dataset/yellow_tripdata_2019-01-all.csv"
-    # "/home/ubuntu/data/labInDiWu/dataset/NYC_taxi_dataset/yellow_tripdata_2019-01.csv"
-    df = pd.read_csv(path)
+    dataset_path = "/mnt/linuxidc_client/dataset/Amazon_Review_split/NYC_taxi_dataset/yellow_tripdata_2019-01-all.csv"
+    summary_writer_path = "/home/netlab/DL_lab/opacus_testbed/tensorboard_nyc"
+    summary_writer = SummaryWriter(summary_writer_path)
+    model_name = "MLP"
+    dataset_name = "nyc"
+    summary_writer_date = time.strftime('%m-%d-%H-%M-%S', time.localtime())
+    summary_writer_keyword = "{}-{}-{}".format(model_name, dataset_name, summary_writer_date)
+    df = pd.read_csv(dataset_path)
     if 0.0 < sample_frac < 1.0:
         df = df.sample(frac=args.sample_frac)
     print("Finished load dataset!")
@@ -129,6 +137,10 @@ if __name__ == "__main__":
                     total_train_mae.append(train_mae)
                     loss.backward()
                     optimizer.step()
+                    summary_writer.add_scalar('{}/train_loss'.format(summary_writer_keyword), np.mean(total_train_loss), epoch)
+                    summary_writer.add_scalar('{}/train_mae'.format(summary_writer_keyword), np.mean(total_train_mae), epoch)
+                    epsilon_consume = privacy_engine.get_epsilon(DELTA)
+                    summary_writer.add_scalar('{}/all_epsilon_consume'.format(summary_writer_keyword), epsilon_consume, epoch)
                     if (i + 1) % 1000 == 0:
                         print("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
                         print("epoch[{}]: temp_train_mae: {}".format(epoch, np.mean(total_train_mae)))
@@ -145,6 +157,10 @@ if __name__ == "__main__":
                 total_train_mae.append(train_mae)
                 loss.backward()
                 optimizer.step()
+                summary_writer.add_scalar('{}/train_loss'.format(summary_writer_keyword), np.mean(total_train_loss), epoch)
+                summary_writer.add_scalar('{}/train_mae'.format(summary_writer_keyword), np.mean(total_train_mae), epoch)
+                epsilon_consume = 0.0
+                summary_writer.add_scalar('{}/all_epsilon_consume'.format(summary_writer_keyword), epsilon_consume, epoch)
                 if (i + 1) % 1000 == 0:
                     print("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
                     print("epoch[{}]: temp_train_mae: {}".format(epoch, np.mean(total_train_mae)))
