@@ -10,7 +10,6 @@ from torchvision.transforms import Compose, ToTensor, Normalize
 from opacus import PrivacyEngine
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 from utils.opacus_engine_tools import get_privacy_dataloader
-from utils.logging_tools import get_logger
 
 
 
@@ -43,8 +42,6 @@ raw_data_path = '/mnt/linuxidc_client/dataset/Amazon_Review_split/EMNIST'
 logger_path_prefix = '/home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_{}_{}'.format(EPSILON, SAMPLE_FRAC)
 summary_writer_path = '/home/netlab/DL_lab/opacus_testbed/tensorboard_20230304/EMNIST_{}_{}'.format(EPSILON, SAMPLE_FRAC)
 summary_writer = SummaryWriter(summary_writer_path)
-logger_path = '%s.log' % (logger_path_prefix)
-logger = get_logger(logger_path, enable_multiprocess=False)
 transform = Compose([
     ToTensor(),
     Normalize((0.1307,), (0.3081,))
@@ -64,9 +61,9 @@ test_dataset = EMNIST(
     transform=transform
 )
 
-logger.info("Finished load datasets!")
-logger.info("train num: {}; train class num: {}".format(len(train_dataset), len(train_dataset.classes)) )
-logger.info("test num: {}; test class num: {}".format(len(test_dataset), len(test_dataset.classes)) )
+print("Finished load datasets!")
+print("train num: {}; train class num: {}".format(len(train_dataset), len(train_dataset.classes)) )
+print("test num: {}; test class num: {}".format(len(test_dataset), len(test_dataset.classes)) )
 
 
 
@@ -116,9 +113,9 @@ np.random.shuffle(test_indices)
 real_test_indices = test_indices[:test_split]
 test_sampler = SubsetRandomSampler(real_test_indices)
 test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, sampler=test_sampler)
-logger.info("Finished split datasets!")
-logger.info("check train_loader: {}".format(len(train_loader) * BATCH_SIZE))
-logger.info("check test_loader: {}".format(len(test_loader) * BATCH_SIZE))
+print("Finished split datasets!")
+print("check train_loader: {}".format(len(train_loader) * BATCH_SIZE))
+print("check test_loader: {}".format(len(test_loader) * BATCH_SIZE))
 
 
 device = torch.device("cuda:{}".format(DEVICE_INDEX) if torch.cuda.is_available() else "cpu")
@@ -161,12 +158,12 @@ for epoch in range(EPOCHS):
                 loss.backward()
                 optimizer.step()
                 if (i + 1) % 100 == 0:
-                    logger.info("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
-                    logger.info("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
+                    print("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
+                    print("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
                     
     else:
         for i, (inputs, labels) in enumerate(train_loader):
-            # logger.info("check inputs: {}, labels: {}".format(inputs, labels))
+            # print("check inputs: {}, labels: {}".format(inputs, labels))
             inputs = inputs.to(device)
             labels = labels.to(device)
             output = model(inputs)
@@ -182,10 +179,10 @@ for epoch in range(EPOCHS):
             loss.backward()
             optimizer.step()
             if (i + 1) % 100 == 0:
-                logger.info("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
-                logger.info("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
-    logger.info("epoch[{}]: total_train_loss: {}".format(epoch, np.mean(total_train_loss)))
-    logger.info("epoch[{}]: total_train_acc: {}".format(epoch, np.mean(total_train_acc)))
+                print("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
+                print("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
+    print("epoch[{}]: total_train_loss: {}".format(epoch, np.mean(total_train_loss)))
+    print("epoch[{}]: total_train_acc: {}".format(epoch, np.mean(total_train_acc)))
     summary_writer.add_scalar('total_train_loss', np.mean(total_train_loss), epoch)
     summary_writer.add_scalar('total_train_acc', np.mean(total_train_acc), epoch)
 
@@ -202,11 +199,9 @@ for i, (inputs, labels) in enumerate(test_loader):
     preds = np.argmax(output.detach().cpu().numpy(), axis=1)
     labels = labels.detach().cpu().numpy()
     acc = accuracy(preds, labels)
-    total_train_acc.append(acc)
+    total_val_acc.append(acc)
     if (i + 1) % 1000 == 0:
-        logger.info("val: temp_val_loss: {}".format(np.mean(total_val_loss)))
-        logger.info("val: temp_val_acc: {}".format(np.mean(total_val_acc)))
-logger.info("val: total_val_loss: {}".format(np.mean(total_val_loss)))
-logger.info("val: total_val_acc: {}".format(np.mean(total_val_acc)))
-summary_writer.add_scalar('total_val_loss', np.mean(total_val_loss), epoch)
-summary_writer.add_scalar('total_val_acc', np.mean(total_val_acc), epoch)
+        print("val: temp_val_loss: {}".format(np.mean(total_val_loss)))
+        print("val: temp_val_acc: {}".format(np.mean(total_val_acc)))
+print("val: total_val_loss: {}".format(np.mean(total_val_loss)))
+print("val: total_val_acc: {}".format(np.mean(total_val_acc)))
