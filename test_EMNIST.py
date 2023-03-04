@@ -30,7 +30,7 @@ args = get_df_config()
 
 BATCH_SIZE = 2048
 MAX_PHYSICAL_BATCH_SIZE = int(BATCH_SIZE / 2)
-EPOCHS = 40
+EPOCHS = 50
 DEVICE_INDEX = args.device_index
 LR = 1e-3
 EPSILON = args.EPSILON
@@ -205,3 +205,5 @@ for i, (inputs, labels) in enumerate(test_loader):
         print("val: temp_val_acc: {}".format(np.mean(total_val_acc)))
 print("val: total_val_loss: {}".format(np.mean(total_val_loss)))
 print("val: total_val_acc: {}".format(np.mean(total_val_acc)))
+summary_writer.add_text('total_val_loss', str(np.mean(total_val_loss)))
+summary_writer.add_text('total_val_acc', str(np.mean(total_val_acc)))
