@@ -132,8 +132,9 @@ model, optimizer, train_loader = \
                             train_loader, EPOCHS, 
                             EPSILON, DELTA, MAX_GRAD_NORM) 
 
-model.train()
+
 for epoch in range(EPOCHS):
+    model.train()
     total_train_loss = []
     total_train_acc = []
     if privacy_engine is not None:
@@ -186,24 +187,24 @@ for epoch in range(EPOCHS):
     summary_writer.add_scalar('total_train_loss', np.mean(total_train_loss), epoch)
     summary_writer.add_scalar('total_train_acc', np.mean(total_train_acc), epoch)
 
-model.eval()
-total_val_loss = []
-total_val_acc = []
-for i, (inputs, labels) in enumerate(test_loader):
-    inputs = inputs.to(device)
-    labels = labels.to(device)
-    output = model(inputs)
-    loss = criterion(output, labels)
-    total_val_loss.append(loss.item())
+    model.eval()
+    total_val_loss = []
+    total_val_acc = []
+    for i, (inputs, labels) in enumerate(test_loader):
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+        output = model(inputs)
+        loss = criterion(output, labels)
+        total_val_loss.append(loss.item())
 
-    preds = np.argmax(output.detach().cpu().numpy(), axis=1)
-    labels = labels.detach().cpu().numpy()
-    acc = accuracy(preds, labels)
-    total_val_acc.append(acc)
-    if (i + 1) % 1000 == 0:
-        print("val: temp_val_loss: {}".format(np.mean(total_val_loss)))
-        print("val: temp_val_acc: {}".format(np.mean(total_val_acc)))
-print("val: total_val_loss: {}".format(np.mean(total_val_loss)))
-print("val: total_val_acc: {}".format(np.mean(total_val_acc)))
-summary_writer.add_text('total_val_loss', str(np.mean(total_val_loss)))
-summary_writer.add_text('total_val_acc', str(np.mean(total_val_acc)))
+        preds = np.argmax(output.detach().cpu().numpy(), axis=1)
+        labels = labels.detach().cpu().numpy()
+        acc = accuracy(preds, labels)
+        total_val_acc.append(acc)
+        if (i + 1) % 1000 == 0:
+            print("val epoch[{}]: temp_val_loss: {}".format(epoch, np.mean(total_val_loss)))
+            print("val epoch[{}]: temp_val_acc: {}".format(epoch, np.mean(total_val_acc)))
+    print("val epoch[{}]: total_val_loss: {}".format(epoch, np.mean(total_val_loss)))
+    print("val epoch[{}]: total_val_acc: {}".format(epoch, np.mean(total_val_acc)))
+    summary_writer.add_scalar('total_val_loss', np.mean(total_val_loss), epoch)
+    summary_writer.add_scalar('total_val_acc', np.mean(total_val_acc), epoch)
