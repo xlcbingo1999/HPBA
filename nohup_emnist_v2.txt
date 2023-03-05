@@ -1,0 +1,42 @@
+6
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=2 --EPSILON=5.0 --sample_frac=1.0 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_5.0_1.0.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=3 --EPSILON=5.0 --sample_frac=0.75 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_5.0_0.75.log 2>&1 &
+
+5
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=0 --EPSILON=5.0 --sample_frac=0.5 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_5.0_0.5.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=1 --EPSILON=5.0 --sample_frac=0.25 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_5.0_0.25.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=2 --EPSILON=5.0 --sample_frac=0.2 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_5.0_0.2.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=3 --EPSILON=5.0 --sample_frac=0.1 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_5.0_0.1.log 2>&1 &
+
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=0 --EPSILON=10.0 --sample_frac=1.0 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_10.0_1.0.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=1 --EPSILON=10.0 --sample_frac=0.75 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_10.0_0.75.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=2 --EPSILON=10.0 --sample_frac=0.5 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_10.0_0.5.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=3 --EPSILON=10.0 --sample_frac=0.25 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_10.0_0.25.log 2>&1 &
+
+4
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=0 --EPSILON=10.0 --sample_frac=0.2 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_10.0_0.2.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=1 --EPSILON=10.0 --sample_frac=0.1 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_10.0_0.1.log 2>&1 &
+
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=2 --EPSILON=15.0 --sample_frac=1.0 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_15.0_1.0.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=3 --EPSILON=15.0 --sample_frac=0.75 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_15.0_0.75.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=0 --EPSILON=15.0 --sample_frac=0.5 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_15.0_0.5.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=1 --EPSILON=15.0 --sample_frac=0.25 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_15.0_0.25.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=2 --EPSILON=15.0 --sample_frac=0.2 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_15.0_0.2.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=3 --EPSILON=15.0 --sample_frac=0.1 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_15.0_0.1.log 2>&1 &
+
+3
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=0 --EPSILON=1.0 --sample_frac=1.0 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_1.0_1.0.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=1 --EPSILON=1.0 --sample_frac=0.75 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_1.0_0.75.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=2 --EPSILON=1.0 --sample_frac=0.5 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_1.0_0.5.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=3 --EPSILON=1.0 --sample_frac=0.25 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_1.0_0.25.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=0 --EPSILON=1.0 --sample_frac=0.2 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_1.0_0.2.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=1 --EPSILON=1.0 --sample_frac=0.1 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_1.0_0.1.log 2>&1 &
+
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=2 --EPSILON=20.0 --sample_frac=1.0 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_20.0_1.0.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=3 --EPSILON=20.0 --sample_frac=0.75 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_20.0_0.75.log 2>&1 &
+
+2
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=2 --EPSILON=20.0 --sample_frac=0.5 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_20.0_0.5.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=3 --EPSILON=20.0 --sample_frac=0.25 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_20.0_0.25.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=0 --EPSILON=20.0 --sample_frac=0.2 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_20.0_0.2.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=1 --EPSILON=20.0 --sample_frac=0.1 > /home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_20.0_0.1.log 2>&1 &

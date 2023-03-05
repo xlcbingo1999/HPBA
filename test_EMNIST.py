@@ -10,14 +10,17 @@ from torchvision.transforms import Compose, ToTensor, Normalize
 from opacus import PrivacyEngine
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 from utils.opacus_engine_tools import get_privacy_dataloader
-from utils.split_dataset import split_and_draw
 
+import json
+import time
 
 def get_df_config():
     parser = argparse.ArgumentParser(
                 description="Sweep through lambda values")
-    parser.add_argument("--EPSILON", type=float, default=15.0)
+    parser.add_argument("--EPSILON", type=float, default=10.0)
     parser.add_argument("--device_index", type=int, default=0)
+    parser.add_argument("--train_id", type=int, default=0)
+    parser.add_argument("--test_id", type=int, default=0)
     args = parser.parse_args()
     return args
 
@@ -35,15 +38,30 @@ LR = 1e-3
 EPSILON = args.EPSILON
 DELTA = 1e-7
 MAX_GRAD_NORM = 1.2
-TRAIN_N_CLIENTS = 10
-TEST_TYPES = 6
-TRAIN_DIRICHLET_ALPHA = 1.0
-TEST_DIRICHLET_ALPHA = 1.0
 
 raw_data_path = '/mnt/linuxidc_client/dataset/Amazon_Review_split/EMNIST'
-logger_path_prefix = '/home/netlab/DL_lab/opacus_testbed/log_20230214/EMNIST_{}_{}_{}_{}_{}'.format(EPSILON, TRAIN_N_CLIENTS, TEST_TYPES, TRAIN_DIRICHLET_ALPHA, TEST_DIRICHLET_ALPHA)
-summary_writer_path = '/home/netlab/DL_lab/opacus_testbed/tensorboard_20230304/EMNIST_{}_{}_{}_{}_{}'.format(EPSILON, TRAIN_N_CLIENTS, TEST_TYPES, TRAIN_DIRICHLET_ALPHA, TEST_DIRICHLET_ALPHA)
-summary_writer = SummaryWriter(summary_writer_path)
+sub_train_config_path = '/mnt/linuxidc_client/dataset/Amazon_Review_split/sub_train_datasets_config.json'
+sub_test_config_path = '/mnt/linuxidc_client/dataset/Amazon_Review_split/test_dataset_config.json'
+
+dataset_name = 'EMNIST'
+train_id = args.train_id
+test_id = args.test_id
+sub_train_key = 'train_sub_{}'.format(train_id)
+sub_test_key = 'test_sub_{}'.format(test_id)
+
+current_time =  time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
+summary_writer_path = '/home/netlab/DL_lab/opacus_testbed/tensorboard_20230304/EMNIST_{}_{}_{}_{}'.format(EPSILON, train_id, test_id, current_time)
+
+with open(sub_train_config_path, 'r+') as f:
+    current_subtrain_config = json.load(f)
+    f.close()
+with open(sub_test_config_path, 'r+') as f:
+    current_subtest_config = json.load(f)
+    f.close()
+real_train_index = current_subtrain_config[dataset_name][sub_train_key]["indexes"]
+read_test_index = current_subtest_config[dataset_name][sub_test_key]["indexes"]
+
+
 transform = Compose([
     ToTensor(),
     Normalize((0.1307,), (0.3081,))
@@ -98,112 +116,103 @@ class CNN(nn.Module):
         output = self.out(x)
         return output
 
+print("begin train: {} test: {}".format(train_id, test_id))
+train_sampler = SubsetRandomSampler(real_train_index)
+train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, sampler=train_sampler)
+test_sampler = SubsetRandomSampler(read_test_index)
+test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, sampler=test_sampler)
+print("Finished split datasets!")
+print("check train_loader: {}".format(len(train_loader) * BATCH_SIZE))
+print("check test_loader: {}".format(len(test_loader) * BATCH_SIZE))
 
 
-train_dataset_size = len(train_dataset)
-real_train_indices = split_and_draw("train", train_dataset, TRAIN_DIRICHLET_ALPHA, TRAIN_N_CLIENTS)
-test_dataset_size = len(test_dataset)
-real_test_indices = split_and_draw("test", test_dataset, TEST_DIRICHLET_ALPHA, TEST_TYPES)
+device = torch.device("cuda:{}".format(DEVICE_INDEX) if torch.cuda.is_available() else "cpu")
 
-for train_id, real_train_index in enumerate(real_train_indices):
-    for test_id, read_test_index in enumerate(real_test_indices):
-        print("begin train: {} test: {}".format(train_id, test_id))
-        train_sampler = SubsetRandomSampler(real_train_index)
-        train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, sampler=train_sampler)
-        test_sampler = SubsetRandomSampler(read_test_index)
-        test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, sampler=test_sampler)
-        print("Finished split datasets!")
-        print("check train_loader: {}".format(len(train_loader) * BATCH_SIZE))
-        print("check test_loader: {}".format(len(test_loader) * BATCH_SIZE))
+model = CNN(output_dim=len(train_dataset.classes))
+model = model.to(device)
+criterion = nn.CrossEntropyLoss()
+optimizer = optimizer = torch.optim.Adam(model.parameters(), lr=LR)  # optimize all cnn parameters
 
 
-        device = torch.device("cuda:{}".format(DEVICE_INDEX) if torch.cuda.is_available() else "cpu")
+privacy_engine = PrivacyEngine() if EPSILON > 0 else None
+model, optimizer, train_loader = \
+    get_privacy_dataloader(privacy_engine, model, optimizer, 
+                            train_loader, EPOCHS, 
+                            EPSILON, DELTA, MAX_GRAD_NORM) 
 
-        model = CNN(output_dim=len(train_dataset.classes))
-        model = model.to(device)
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optimizer = torch.optim.Adam(model.parameters(), lr=LR)  # optimize all cnn parameters
-
-
-        privacy_engine = PrivacyEngine() if EPSILON > 0 else None
-        model, optimizer, train_loader = \
-            get_privacy_dataloader(privacy_engine, model, optimizer, 
-                                    train_loader, EPOCHS, 
-                                    EPSILON, DELTA, MAX_GRAD_NORM) 
-
-
-        for epoch in range(EPOCHS):
-            model.train()
-            total_train_loss = []
-            total_train_acc = []
-            if privacy_engine is not None:
-                with BatchMemoryManager(
-                    data_loader=train_loader, 
-                    max_physical_batch_size=MAX_PHYSICAL_BATCH_SIZE, 
-                    optimizer=optimizer
-                ) as memory_safe_data_loader:
-                    for i, (inputs, labels) in enumerate(memory_safe_data_loader):
-                        inputs = inputs.to(device)
-                        labels = labels.to(device)
-                        output = model(inputs)
-                        loss = criterion(output, labels)
-                        total_train_loss.append(loss.item())
-
-                        preds = np.argmax(output.detach().cpu().numpy(), axis=1)
-                        labels = labels.detach().cpu().numpy()
-                        acc = accuracy(preds, labels)
-                        total_train_acc.append(acc)
-
-                        optimizer.zero_grad()
-                        loss.backward()
-                        optimizer.step()
-                        if (i + 1) % 100 == 0:
-                            print("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
-                            print("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
-                            
-            else:
-                for i, (inputs, labels) in enumerate(train_loader):
-                    # print("check inputs: {}, labels: {}".format(inputs, labels))
-                    inputs = inputs.to(device)
-                    labels = labels.to(device)
-                    output = model(inputs)
-                    loss = criterion(output, labels)
-                    total_train_loss.append(loss.item())
-
-                    preds = np.argmax(output.detach().cpu().numpy(), axis=1)
-                    labels = labels.detach().cpu().numpy()
-                    acc = accuracy(preds, labels)
-                    total_train_acc.append(acc)
-
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
-                    if (i + 1) % 100 == 0:
-                        print("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
-                        print("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
-            print("epoch[{}]: total_train_loss: {}".format(epoch, np.mean(total_train_loss)))
-            print("epoch[{}]: total_train_acc: {}".format(epoch, np.mean(total_train_acc)))
-            summary_writer.add_scalar('{}-{}/total_train_loss'.format(train_id, test_id), np.mean(total_train_loss), epoch)
-            summary_writer.add_scalar('{}-{}/total_train_acc'.format(train_id, test_id), np.mean(total_train_acc), epoch)
-
-            model.eval()
-            total_val_loss = []
-            total_val_acc = []
-            for i, (inputs, labels) in enumerate(test_loader):
+summary_writer = SummaryWriter(summary_writer_path)
+for epoch in range(EPOCHS):
+    model.train()
+    total_train_loss = []
+    total_train_acc = []
+    if privacy_engine is not None:
+        with BatchMemoryManager(
+            data_loader=train_loader, 
+            max_physical_batch_size=MAX_PHYSICAL_BATCH_SIZE, 
+            optimizer=optimizer
+        ) as memory_safe_data_loader:
+            for i, (inputs, labels) in enumerate(memory_safe_data_loader):
                 inputs = inputs.to(device)
                 labels = labels.to(device)
                 output = model(inputs)
                 loss = criterion(output, labels)
-                total_val_loss.append(loss.item())
+                total_train_loss.append(loss.item())
 
                 preds = np.argmax(output.detach().cpu().numpy(), axis=1)
                 labels = labels.detach().cpu().numpy()
                 acc = accuracy(preds, labels)
-                total_val_acc.append(acc)
-                if (i + 1) % 1000 == 0:
-                    print("val epoch[{}]: temp_val_loss: {}".format(epoch, np.mean(total_val_loss)))
-                    print("val epoch[{}]: temp_val_acc: {}".format(epoch, np.mean(total_val_acc)))
-            print("val epoch[{}]: total_val_loss: {}".format(epoch, np.mean(total_val_loss)))
-            print("val epoch[{}]: total_val_acc: {}".format(epoch, np.mean(total_val_acc)))
-            summary_writer.add_scalar('{}-{}/total_val_loss'.format(train_id, test_id), np.mean(total_val_loss), epoch)
-            summary_writer.add_scalar('{}-{}/total_val_acc'.format(train_id, test_id), np.mean(total_val_acc), epoch)
+                total_train_acc.append(acc)
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                if (i + 1) % 100 == 0:
+                    print("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
+                    print("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
+                    
+    else:
+        for i, (inputs, labels) in enumerate(train_loader):
+            # print("check inputs: {}, labels: {}".format(inputs, labels))
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            output = model(inputs)
+            loss = criterion(output, labels)
+            total_train_loss.append(loss.item())
+
+            preds = np.argmax(output.detach().cpu().numpy(), axis=1)
+            labels = labels.detach().cpu().numpy()
+            acc = accuracy(preds, labels)
+            total_train_acc.append(acc)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            if (i + 1) % 100 == 0:
+                print("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
+                print("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
+    print("epoch[{}]: total_train_loss: {}".format(epoch, np.mean(total_train_loss)))
+    print("epoch[{}]: total_train_acc: {}".format(epoch, np.mean(total_train_acc)))
+    summary_writer.add_scalar('{}-{}/total_train_loss'.format(train_id, test_id), np.mean(total_train_loss), epoch)
+    summary_writer.add_scalar('{}-{}/total_train_acc'.format(train_id, test_id), np.mean(total_train_acc), epoch)
+
+    model.eval()
+    total_val_loss = []
+    total_val_acc = []
+    for i, (inputs, labels) in enumerate(test_loader):
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+        output = model(inputs)
+        loss = criterion(output, labels)
+        total_val_loss.append(loss.item())
+
+        preds = np.argmax(output.detach().cpu().numpy(), axis=1)
+        labels = labels.detach().cpu().numpy()
+        acc = accuracy(preds, labels)
+        total_val_acc.append(acc)
+        if (i + 1) % 1000 == 0:
+            print("val epoch[{}]: temp_val_loss: {}".format(epoch, np.mean(total_val_loss)))
+            print("val epoch[{}]: temp_val_acc: {}".format(epoch, np.mean(total_val_acc)))
+    print("val epoch[{}]: total_val_loss: {}".format(epoch, np.mean(total_val_loss)))
+    print("val epoch[{}]: total_val_acc: {}".format(epoch, np.mean(total_val_acc)))
+    summary_writer.add_scalar('{}-{}/total_val_loss'.format(train_id, test_id), np.mean(total_val_loss), epoch)
+    summary_writer.add_scalar('{}-{}/total_val_acc'.format(train_id, test_id), np.mean(total_val_acc), epoch)
