@@ -5,11 +5,14 @@ import numpy as np
 from torch.utils.data import DataLoader, SubsetRandomSampler, Dataset
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.datasets import EMNIST
-from torchvision.transforms import Compose, ToTensor, Normalize
+from torchvision.transforms import Compose, ToTensor, Normalize, Lambda
+from torchvision import models
 
 from opacus import PrivacyEngine
 from opacus.utils.batch_memory_manager import BatchMemoryManager
+from opacus.validators import ModuleValidator
 from utils.opacus_engine_tools import get_privacy_dataloader
+
 
 import json
 import time
@@ -21,6 +24,7 @@ def get_df_config():
     parser.add_argument("--device_index", type=int, default=0)
     parser.add_argument("--train_id", type=int, default=0)
     parser.add_argument("--test_id", type=int, default=0)
+    parser.add_argument("--model_name", type=str, default="CNN") # resnet
     args = parser.parse_args()
     return args
 
@@ -30,8 +34,7 @@ def accuracy(preds, labels):
 
 args = get_df_config()
 
-BATCH_SIZE = 2048
-MAX_PHYSICAL_BATCH_SIZE = int(BATCH_SIZE / 2)
+MODEL_NAME = args.model_name
 EPOCHS = 50
 DEVICE_INDEX = args.device_index
 LR = 1e-3
@@ -50,7 +53,7 @@ sub_train_key = 'train_sub_{}'.format(train_id)
 sub_test_key = 'test_sub_{}'.format(test_id)
 
 current_time =  time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-summary_writer_path = '/mnt/linuxidc_client/tensorboard_20230305/EMNIST_{}_{}_{}_{}'.format(EPSILON, train_id, test_id, current_time)
+summary_writer_path = '/mnt/linuxidc_client/tensorboard_20230305/EMNIST_{}_{}_{}_{}_{}'.format(MODEL_NAME, EPSILON, train_id, test_id, current_time)
 
 with open(sub_train_config_path, 'r+') as f:
     current_subtrain_config = json.load(f)
@@ -61,11 +64,22 @@ with open(sub_test_config_path, 'r+') as f:
 real_train_index = current_subtrain_config[dataset_name][sub_train_key]["indexes"]
 real_test_index = current_subtest_config[dataset_name][sub_test_key]["indexes"]
 
+if MODEL_NAME == "CNN":
+    transform = Compose([
+        ToTensor(),
+        Normalize((0.1307,), (0.3081,))
+    ])
+    BATCH_SIZE = 2048
+    MAX_PHYSICAL_BATCH_SIZE = int(BATCH_SIZE / 2)
+elif MODEL_NAME == "resnet":
+    transform = Compose([
+        ToTensor(),
+        Lambda(lambda x: x.repeat(3, 1, 1)),
+        Normalize((0.1307, 0.1307, 0.1307), (0.3081, 0.3081, 0.3081))
+    ])
+    BATCH_SIZE = 64
+    MAX_PHYSICAL_BATCH_SIZE = 64
 
-transform = Compose([
-    ToTensor(),
-    Normalize((0.1307,), (0.3081,))
-])
 train_dataset = EMNIST(
     root=raw_data_path,
     split="bymerge",
@@ -147,7 +161,14 @@ print("check test_loader: {}".format(len(test_loader) * BATCH_SIZE))
 
 device = torch.device("cuda:{}".format(DEVICE_INDEX) if torch.cuda.is_available() else "cpu")
 
-model = CNN(output_dim=len(train_dataset.classes))
+if MODEL_NAME == "CNN":
+    model = CNN(output_dim=len(train_dataset.classes))
+elif MODEL_NAME == "resnet":
+    model = models.resnet18(num_classes=len(train_dataset.classes))
+model = ModuleValidator.fix(model)
+errors = ModuleValidator.validate(model, strict=False)
+print("error: {}".format(errors))
+
 model = model.to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optimizer = torch.optim.Adam(model.parameters(), lr=LR)  # optimize all cnn parameters
@@ -177,7 +198,6 @@ for epoch in range(EPOCHS):
                 # temp_value = temp_dis[1]
                 # for index in range(len(temp_key)):
                 #     temp_debug_tensor[temp_key[index]] += temp_value[index]
-
                 inputs = inputs.to(device)
                 labels = labels.to(device)
                 output = model(inputs)
@@ -205,7 +225,6 @@ for epoch in range(EPOCHS):
             # temp_value = temp_dis[1]
             # for index in range(len(temp_key)):
             #     temp_debug_tensor[temp_key[index]] += temp_value[index]
-            
             inputs = inputs.to(device)
             labels = labels.to(device)
             output = model(inputs)
