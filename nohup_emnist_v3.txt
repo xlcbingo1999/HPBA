@@ -1,0 +1,19 @@
+6
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=2 --EPSILON=1.0 --train_id=8 --test_id=1 > /home/netlab/DL_lab/opacus_testbed/log_20230305/EMNIST_1.0_8_1.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=3 --EPSILON=1.0 --train_id=9 --test_id=1 > /home/netlab/DL_lab/opacus_testbed/log_20230305/EMNIST_1.0_9_1.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=0 --EPSILON=1.0 --train_id=0 --test_id=2 > /home/netlab/DL_lab/opacus_testbed/log_20230305/EMNIST_1.0_0_2.log 2>&1 &
+
+5
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=1 --EPSILON=1.0 --train_id=1 --test_id=2 > /home/netlab/DL_lab/opacus_testbed/log_20230305/EMNIST_1.0_1_2.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=2 --EPSILON=1.0 --train_id=2 --test_id=2 > /home/netlab/DL_lab/opacus_testbed/log_20230305/EMNIST_1.0_2_2.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=3 --EPSILON=1.0 --train_id=3 --test_id=2 > /home/netlab/DL_lab/opacus_testbed/log_20230305/EMNIST_1.0_3_2.log 2>&1 &
+
+4
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=0 --EPSILON=1.0 --train_id=4 --test_id=2 > /home/netlab/DL_lab/opacus_testbed/log_20230305/EMNIST_1.0_4_2.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=1 --EPSILON=1.0 --train_id=5 --test_id=2 > /home/netlab/DL_lab/opacus_testbed/log_20230305/EMNIST_1.0_5_2.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=2 --EPSILON=1.0 --train_id=6 --test_id=2 > /home/netlab/DL_lab/opacus_testbed/log_20230305/EMNIST_1.0_6_2.log 2>&1 &
+
+3
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=3 --EPSILON=1.0 --train_id=7 --test_id=2 > /home/netlab/DL_lab/opacus_testbed/log_20230305/EMNIST_1.0_7_2.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=0 --EPSILON=1.0 --train_id=8 --test_id=2 > /home/netlab/DL_lab/opacus_testbed/log_20230305/EMNIST_1.0_8_2.log 2>&1 &
+nohup python -u /home/netlab/DL_lab/opacus_testbed/test_EMNIST.py --device_index=1 --EPSILON=1.0 --train_id=9 --test_id=2 > /home/netlab/DL_lab/opacus_testbed/log_20230305/EMNIST_1.0_9_2.log 2>&1 &
