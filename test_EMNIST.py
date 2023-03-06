@@ -192,8 +192,8 @@ for epoch in range(EPOCHS):
                 print("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
     print("epoch[{}]: total_train_loss: {}".format(epoch, np.mean(total_train_loss)))
     print("epoch[{}]: total_train_acc: {}".format(epoch, np.mean(total_train_acc)))
-    summary_writer.add_scalar('{}-{}/total_train_loss'.format(train_id, test_id), np.mean(total_train_loss), epoch)
-    summary_writer.add_scalar('{}-{}/total_train_acc'.format(train_id, test_id), np.mean(total_train_acc), epoch)
+    summary_writer.add_scalar('total_train_loss', np.mean(total_train_loss), epoch)
+    summary_writer.add_scalar('total_train_acc', np.mean(total_train_acc), epoch)
 
     model.eval()
     total_val_loss = []
@@ -214,5 +214,5 @@ for epoch in range(EPOCHS):
             print("val epoch[{}]: temp_val_acc: {}".format(epoch, np.mean(total_val_acc)))
     print("val epoch[{}]: total_val_loss: {}".format(epoch, np.mean(total_val_loss)))
     print("val epoch[{}]: total_val_acc: {}".format(epoch, np.mean(total_val_acc)))
-    summary_writer.add_scalar('{}-{}/total_val_loss'.format(train_id, test_id), np.mean(total_val_loss), epoch)
-    summary_writer.add_scalar('{}-{}/total_val_acc'.format(train_id, test_id), np.mean(total_val_acc), epoch)
+    summary_writer.add_scalar('total_val_loss', np.mean(total_val_loss), epoch)
+    summary_writer.add_scalar('total_val_acc', np.mean(total_val_acc), epoch)
