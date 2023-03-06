@@ -50,7 +50,7 @@ sub_train_key = 'train_sub_{}'.format(train_id)
 sub_test_key = 'test_sub_{}'.format(test_id)
 
 current_time =  time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-summary_writer_path = '/home/netlab/DL_lab/opacus_testbed/tensorboard_20230305/EMNIST_{}_{}_{}_{}'.format(EPSILON, train_id, test_id, current_time)
+summary_writer_path = '/mnt/linuxidc_client/tensorboard_20230305/EMNIST_{}_{}_{}_{}'.format(EPSILON, train_id, test_id, current_time)
 
 with open(sub_train_config_path, 'r+') as f:
     current_subtrain_config = json.load(f)
@@ -231,6 +231,7 @@ for epoch in range(EPOCHS):
         epsilon = 0.0
     print("epoch[{}]: total_train_loss: {}".format(epoch, np.mean(total_train_loss)))
     print("epoch[{}]: total_train_acc: {}".format(epoch, np.mean(total_train_acc)))
+    print("epoch[{}]: epsilon_consume: {}".format(epoch, epsilon))
     summary_writer.add_scalar('total_train_loss', np.mean(total_train_loss), epoch)
     summary_writer.add_scalar('total_train_acc', np.mean(total_train_acc), epoch)
     summary_writer.add_scalar('epsilon_consume', epsilon, epoch)
