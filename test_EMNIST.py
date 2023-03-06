@@ -250,3 +250,5 @@ for epoch in range(EPOCHS):
     print("val epoch[{}]: total_val_acc: {}".format(epoch, np.mean(total_val_acc)))
     summary_writer.add_scalar('total_val_loss', np.mean(total_val_loss), epoch)
     summary_writer.add_scalar('total_val_acc', np.mean(total_val_acc), epoch)
+
+time.sleep(5)
