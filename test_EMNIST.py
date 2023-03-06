@@ -224,10 +224,16 @@ for epoch in range(EPOCHS):
                 print("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
                 print("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
                 # print("epoch[{}] check temp_debug_tensor: {}".format(epoch, temp_debug_tensor))
+    
+    if privacy_engine is not None:
+        epsilon = privacy_engine.get_epsilon(DELTA)
+    else:
+        epsilon = 0.0
     print("epoch[{}]: total_train_loss: {}".format(epoch, np.mean(total_train_loss)))
     print("epoch[{}]: total_train_acc: {}".format(epoch, np.mean(total_train_acc)))
     summary_writer.add_scalar('total_train_loss', np.mean(total_train_loss), epoch)
     summary_writer.add_scalar('total_train_acc', np.mean(total_train_acc), epoch)
+    summary_writer.add_scalar('epsilon_consume', epsilon, epoch)
 
     model.eval()
     total_val_loss = []
