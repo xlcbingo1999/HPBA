@@ -2,7 +2,7 @@ import argparse
 import torch
 import torch.nn as nn
 import numpy as np
-from torch.utils.data import DataLoader, SubsetRandomSampler
+from torch.utils.data import DataLoader, SubsetRandomSampler, Dataset
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.datasets import EMNIST
 from torchvision.transforms import Compose, ToTensor, Normalize
@@ -50,7 +50,7 @@ sub_train_key = 'train_sub_{}'.format(train_id)
 sub_test_key = 'test_sub_{}'.format(test_id)
 
 current_time =  time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-summary_writer_path = '/home/netlab/DL_lab/opacus_testbed/tensorboard_20230304/EMNIST_{}_{}_{}_{}'.format(EPSILON, train_id, test_id, current_time)
+summary_writer_path = '/home/netlab/DL_lab/opacus_testbed/tensorboard_20230305/EMNIST_{}_{}_{}_{}'.format(EPSILON, train_id, test_id, current_time)
 
 with open(sub_train_config_path, 'r+') as f:
     current_subtrain_config = json.load(f)
@@ -59,7 +59,7 @@ with open(sub_test_config_path, 'r+') as f:
     current_subtest_config = json.load(f)
     f.close()
 real_train_index = current_subtrain_config[dataset_name][sub_train_key]["indexes"]
-read_test_index = current_subtest_config[dataset_name][sub_test_key]["indexes"]
+real_test_index = current_subtest_config[dataset_name][sub_test_key]["indexes"]
 
 
 transform = Compose([
@@ -85,7 +85,26 @@ print("Finished load datasets!")
 print("train num: {}; train class num: {}".format(len(train_dataset), len(train_dataset.classes)) )
 print("test num: {}; test class num: {}".format(len(test_dataset), len(test_dataset.classes)) )
 
+class CustomDataset(Dataset):
+    """An abstract Dataset class wrapped around Pytorch Dataset class.
+    """
 
+    def __init__(self, dataset, indices):
+        self.dataset = dataset
+        self.indices = [int(i) for i in indices]
+        self.targets = dataset.targets # 保留targets属性
+        self.classes = dataset.classes # 保留classes属性
+        
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, item):
+        x, y = self.dataset[self.indices[item]]
+        return x, y
+    
+    def get_class_distribution(self):
+        sub_targets = self.targets[self.indices]
+        return sub_targets.unique(return_counts=True)
 
 class CNN(nn.Module):
     def __init__(self, output_dim):
@@ -117,10 +136,10 @@ class CNN(nn.Module):
         return output
 
 print("begin train: {} test: {}".format(train_id, test_id))
-train_sampler = SubsetRandomSampler(real_train_index)
-train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, sampler=train_sampler)
-test_sampler = SubsetRandomSampler(read_test_index)
-test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, sampler=test_sampler)
+train_dataset = CustomDataset(train_dataset, real_train_index)
+train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE)
+test_dataset = CustomDataset(test_dataset, real_test_index)
+test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE)
 print("Finished split datasets!")
 print("check train_loader: {}".format(len(train_loader) * BATCH_SIZE))
 print("check test_loader: {}".format(len(test_loader) * BATCH_SIZE))
@@ -134,7 +153,7 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optimizer = torch.optim.Adam(model.parameters(), lr=LR)  # optimize all cnn parameters
 
 
-privacy_engine = PrivacyEngine() if EPSILON > 0 else None
+privacy_engine = PrivacyEngine() if EPSILON > 0.0 else None
 model, optimizer, train_loader = \
     get_privacy_dataloader(privacy_engine, model, optimizer, 
                             train_loader, EPOCHS, 
@@ -145,6 +164,7 @@ for epoch in range(EPOCHS):
     model.train()
     total_train_loss = []
     total_train_acc = []
+    temp_debug_tensor = torch.zeros(size=(len(train_dataset.classes), ))
     if privacy_engine is not None:
         with BatchMemoryManager(
             data_loader=train_loader, 
@@ -152,6 +172,12 @@ for epoch in range(EPOCHS):
             optimizer=optimizer
         ) as memory_safe_data_loader:
             for i, (inputs, labels) in enumerate(memory_safe_data_loader):
+                # temp_dis = labels.unique(return_counts=True)
+                # temp_key = temp_dis[0]
+                # temp_value = temp_dis[1]
+                # for index in range(len(temp_key)):
+                #     temp_debug_tensor[temp_key[index]] += temp_value[index]
+
                 inputs = inputs.to(device)
                 labels = labels.to(device)
                 output = model(inputs)
@@ -166,13 +192,20 @@ for epoch in range(EPOCHS):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                if (i + 1) % 100 == 0:
+                if (i + 1) % 10 == 0:
                     print("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
                     print("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
+                    # print("epoch[{}] check temp_debug_tensor: {}".format(epoch, temp_debug_tensor))
                     
     else:
         for i, (inputs, labels) in enumerate(train_loader):
             # print("check inputs: {}, labels: {}".format(inputs, labels))
+            # temp_dis = labels.unique(return_counts=True)
+            # temp_key = temp_dis[0]
+            # temp_value = temp_dis[1]
+            # for index in range(len(temp_key)):
+            #     temp_debug_tensor[temp_key[index]] += temp_value[index]
+            
             inputs = inputs.to(device)
             labels = labels.to(device)
             output = model(inputs)
@@ -187,9 +220,10 @@ for epoch in range(EPOCHS):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            if (i + 1) % 100 == 0:
+            if (i + 1) % 10 == 0:
                 print("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
                 print("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
+                # print("epoch[{}] check temp_debug_tensor: {}".format(epoch, temp_debug_tensor))
     print("epoch[{}]: total_train_loss: {}".format(epoch, np.mean(total_train_loss)))
     print("epoch[{}]: total_train_acc: {}".format(epoch, np.mean(total_train_acc)))
     summary_writer.add_scalar('total_train_loss', np.mean(total_train_loss), epoch)
