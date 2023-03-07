@@ -16,13 +16,16 @@ from utils.opacus_engine_tools import get_privacy_dataloader
 
 import json
 import time
+from operator import add
+from functools import reduce
+
 
 def get_df_config():
     parser = argparse.ArgumentParser(
                 description="Sweep through lambda values")
     parser.add_argument("--EPSILON", type=float, default=10.0)
     parser.add_argument("--device_index", type=int, default=0)
-    parser.add_argument("--train_id", type=int, default=0)
+    parser.add_argument("--train_ids", type=int, nargs='+', default=[0])
     parser.add_argument("--test_id", type=int, default=0)
     parser.add_argument("--model_name", type=str, default="CNN") # resnet
     args = parser.parse_args()
@@ -47,13 +50,13 @@ sub_train_config_path = '/mnt/linuxidc_client/dataset/Amazon_Review_split/sub_tr
 sub_test_config_path = '/mnt/linuxidc_client/dataset/Amazon_Review_split/test_dataset_config.json'
 
 dataset_name = 'EMNIST'
-train_id = args.train_id
+train_ids = args.train_ids
 test_id = args.test_id
-sub_train_key = 'train_sub_{}'.format(train_id)
+sub_train_keys = ['train_sub_{}'.format(train_id) for train_id in train_ids]
 sub_test_key = 'test_sub_{}'.format(test_id)
 
 current_time =  time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-summary_writer_path = '/mnt/linuxidc_client/tensorboard_20230305/EMNIST_{}_{}_{}_{}_{}'.format(MODEL_NAME, EPSILON, train_id, test_id, current_time)
+summary_writer_path = '/mnt/linuxidc_client/tensorboard_20230305/EMNIST_{}_{}_{}_{}_{}'.format(MODEL_NAME, EPSILON, train_ids, test_id, current_time)
 
 with open(sub_train_config_path, 'r+') as f:
     current_subtrain_config = json.load(f)
@@ -61,7 +64,7 @@ with open(sub_train_config_path, 'r+') as f:
 with open(sub_test_config_path, 'r+') as f:
     current_subtest_config = json.load(f)
     f.close()
-real_train_index = current_subtrain_config[dataset_name][sub_train_key]["indexes"]
+real_train_index = reduce(lambda x, y: x+y, [current_subtrain_config[dataset_name][sub_train_key]["indexes"] for sub_train_key in sub_train_keys])
 real_test_index = current_subtest_config[dataset_name][sub_test_key]["indexes"]
 
 if MODEL_NAME == "CNN":
@@ -149,7 +152,7 @@ class CNN(nn.Module):
         output = self.out(x)
         return output
 
-print("begin train: {} test: {}".format(train_id, test_id))
+print("begin train: {} test: {}".format(train_ids, test_id))
 train_dataset = CustomDataset(train_dataset, real_train_index)
 train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE)
 test_dataset = CustomDataset(test_dataset, real_test_index)
