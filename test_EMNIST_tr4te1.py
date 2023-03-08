@@ -168,9 +168,6 @@ if MODEL_NAME == "CNN":
     model = CNN(output_dim=len(train_dataset.classes))
 elif MODEL_NAME == "resnet":
     model = models.resnet18(num_classes=len(train_dataset.classes))
-model = ModuleValidator.fix(model)
-errors = ModuleValidator.validate(model, strict=False)
-print("error: {}".format(errors))
 
 model = model.to(device)
 criterion = nn.CrossEntropyLoss()

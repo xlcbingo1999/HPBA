@@ -1,4 +1,5 @@
 from opacus import PrivacyEngine
+from opacus.validators import ModuleValidator
 
 def get_privacy_dataloader(privacy_engine, model, optimizer, train_loader, EPOCHS, EPSILON, DELTA, MAX_GRAD_NORM):
     if EPSILON > 0:
@@ -11,6 +12,9 @@ def get_privacy_dataloader(privacy_engine, model, optimizer, train_loader, EPOCH
             target_delta=DELTA,
             max_grad_norm=MAX_GRAD_NORM,
         )
+        model = ModuleValidator.fix(model)
+        errors = ModuleValidator.validate(model, strict=False)
+        print("error: {}".format(errors))
 
         print(f"Using sigma={optimizer.noise_multiplier} and C={MAX_GRAD_NORM}")
     return model, optimizer, train_loader
