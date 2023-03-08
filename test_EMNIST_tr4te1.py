@@ -46,7 +46,7 @@ DELTA = 1e-7
 MAX_GRAD_NORM = 1.2
 
 raw_data_path = '/mnt/linuxidc_client/dataset/Amazon_Review_split/EMNIST'
-sub_train_config_path = '/mnt/linuxidc_client/dataset/Amazon_Review_split/EMNIST_sub_train_datasets_config_4_10.0.json'
+sub_train_config_path = '/mnt/linuxidc_client/dataset/Amazon_Review_split/EMNIST_sub_train_datasets_config_4_1.0.json'
 sub_test_config_path = '/mnt/linuxidc_client/dataset/Amazon_Review_split/EMNIST_test_dataset_config_4_10.0.json'
 
 dataset_name = 'EMNIST'
@@ -56,7 +56,7 @@ sub_train_keys = ['train_sub_{}'.format(train_id) for train_id in train_ids]
 sub_test_key = 'test_sub_{}'.format(test_id)
 
 current_time =  time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-summary_writer_path = '/mnt/linuxidc_client/tensorboard_20230307/EMNIST_{}_{}_{}_{}_{}'.format(MODEL_NAME, EPSILON, train_ids, test_id, current_time)
+summary_writer_path = '/mnt/linuxidc_client/tensorboard_20230307_1.0_10.0/EMNIST_{}_{}_{}_{}_{}'.format(MODEL_NAME, EPSILON, train_ids, test_id, current_time)
 
 with open(sub_train_config_path, 'r+') as f:
     current_subtrain_config = json.load(f)
