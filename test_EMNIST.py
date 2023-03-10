@@ -56,7 +56,7 @@ sub_train_keys = ['train_sub_{}'.format(train_id) for train_id in train_ids]
 sub_test_key = 'test_sub_{}'.format(test_id)
 
 current_time =  time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
-summary_writer_path = '/mnt/linuxidc_client/tensorboard_20230305/EMNIST_{}_{}_{}_{}_{}'.format(MODEL_NAME, EPSILON, train_ids, test_id, current_time)
+summary_writer_path = '/mnt/linuxidc_client/tensorboard_20230311_resnet_0.1_1.0/EMNIST_{}_{}_{}_{}_{}'.format(MODEL_NAME, EPSILON, train_ids, test_id, current_time)
 
 with open(sub_train_config_path, 'r+') as f:
     current_subtrain_config = json.load(f)
@@ -154,9 +154,9 @@ class CNN(nn.Module):
 
 print("begin train: {} test: {}".format(train_ids, test_id))
 train_dataset = CustomDataset(train_dataset, real_train_index)
-train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE)
+train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 test_dataset = CustomDataset(test_dataset, real_test_index)
-test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE)
+test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 print("Finished split datasets!")
 print("check train_loader: {}".format(len(train_loader) * BATCH_SIZE))
 print("check test_loader: {}".format(len(test_loader) * BATCH_SIZE))
@@ -168,9 +168,6 @@ if MODEL_NAME == "CNN":
     model = CNN(output_dim=len(train_dataset.classes))
 elif MODEL_NAME == "resnet":
     model = models.resnet18(num_classes=len(train_dataset.classes))
-model = ModuleValidator.fix(model)
-errors = ModuleValidator.validate(model, strict=False)
-print("error: {}".format(errors))
 
 model = model.to(device)
 criterion = nn.CrossEntropyLoss()

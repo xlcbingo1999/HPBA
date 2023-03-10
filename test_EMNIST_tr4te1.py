@@ -154,9 +154,9 @@ class CNN(nn.Module):
 
 print("begin train: {} test: {}".format(train_ids, test_id))
 train_dataset = CustomDataset(train_dataset, real_train_index)
-train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE)
+train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 test_dataset = CustomDataset(test_dataset, real_test_index)
-test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE)
+test_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 print("Finished split datasets!")
 print("check train_loader: {}".format(len(train_loader) * BATCH_SIZE))
 print("check test_loader: {}".format(len(test_loader) * BATCH_SIZE))
