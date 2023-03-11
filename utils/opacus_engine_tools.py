@@ -3,9 +3,6 @@ from opacus.validators import ModuleValidator
 
 def get_privacy_dataloader(privacy_engine, model, optimizer, train_loader, EPOCHS, EPSILON, DELTA, MAX_GRAD_NORM):
     if EPSILON > 0:
-        model = ModuleValidator.fix(model)
-        errors = ModuleValidator.validate(model, strict=False)
-        print("error: {}".format(errors))
         model, optimizer, train_loader = privacy_engine.make_private_with_epsilon(
             module=model,
             optimizer=optimizer,

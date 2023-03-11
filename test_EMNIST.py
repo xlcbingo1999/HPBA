@@ -169,12 +169,17 @@ if MODEL_NAME == "CNN":
 elif MODEL_NAME == "resnet":
     model = models.resnet18(num_classes=len(train_dataset.classes))
 
+if EPSILON > 0.0:
+    model = ModuleValidator.fix(model)
+    errors = ModuleValidator.validate(model, strict=False)
+    print("error: {}".format(errors))
+    privacy_engine = PrivacyEngine()
+else:
+    privacy_engine = None
+
 model = model.to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optimizer = torch.optim.Adam(model.parameters(), lr=LR)  # optimize all cnn parameters
-
-
-privacy_engine = PrivacyEngine() if EPSILON > 0.0 else None
 model, optimizer, train_loader = \
     get_privacy_dataloader(privacy_engine, model, optimizer, 
                             train_loader, EPOCHS, 
