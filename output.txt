@@ -21,34 +21,52 @@ python DL_do_calculate.py \
 python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_0 --sub_test_key_ids test_sub_0 --device_index 0
 python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_1 --sub_test_key_ids test_sub_0 --device_index 1
 python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_2 --sub_test_key_ids test_sub_0 --device_index 2
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_3 --sub_test_key_ids test_sub_0 --device_index 3
-
-5
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_4 --sub_test_key_ids test_sub_0 --device_index 0
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_5 --sub_test_key_ids test_sub_0 --device_index 1
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_6 --sub_test_key_ids test_sub_0 --device_index 2
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_7 --sub_test_key_ids test_sub_0 --device_index 3
-
-4
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_8 --sub_test_key_ids test_sub_0 --device_index 0
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_9 --sub_test_key_ids test_sub_0 --device_index 1
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_10 --sub_test_key_ids test_sub_0 --device_index 2
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_11 --sub_test_key_ids test_sub_0 --device_index 3
-
-3
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_0 --sub_test_key_ids test_sub_0 --device_index 0
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_1 --sub_test_key_ids test_sub_0 --device_index 1
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_2 --sub_test_key_ids test_sub_0 --device_index 2
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_3 --sub_test_key_ids test_sub_0 --device_index 3
-
-2
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_4 --sub_test_key_ids test_sub_0 --device_index 0
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_5 --sub_test_key_ids test_sub_0 --device_index 1
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_6 --sub_test_key_ids test_sub_0 --device_index 2
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_7 --sub_test_key_ids test_sub_0 --device_index 3
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_3 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 32
 
 6
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_8 --sub_test_key_ids test_sub_0 --device_index 0
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_9 --sub_test_key_ids test_sub_0 --device_index 1
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_10 --sub_test_key_ids test_sub_0 --device_index 2
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_11 --sub_test_key_ids test_sub_0 --device_index 3
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_4 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_5 --sub_test_key_ids test_sub_0 --device_index 1
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_6 --sub_test_key_ids test_sub_0 --device_index 2
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_7 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32
+
+6
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_8 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_9 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_10 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_11 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
+
+6 仍未启动的代码
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_0 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_1 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_2 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_3 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 32  
+
+6
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_4 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_5 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_6 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_7 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 32 
+
+6
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_8 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_9 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_10 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_11 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 32 
+
+6
+python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_0 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_1 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_2 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_3 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 32  
+
+6
+python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_4 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_5 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_6 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_7 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 32 
+
+6
+python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_8 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_9 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_10 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32 
+python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_11 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 32 

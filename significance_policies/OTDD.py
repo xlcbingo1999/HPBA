@@ -106,14 +106,14 @@ class OTDDPolicy(SigPolicy):
         #     fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         #     self.significance_trace = json.load(f)
         #     fcntl.flock(f, fcntl.LOCK_UN)
-        if train_dataset_name not in self.significance_trace:
-            self.significance_trace[train_dataset_name] = {}
-        if test_dataset_name not in self.significance_trace[train_dataset_name]:
-            self.significance_trace[train_dataset_name][test_dataset_name] = {}
-        if hashed_sub_train_key_ids not in self.significance_trace[train_dataset_name][test_dataset_name]:
-            self.significance_trace[train_dataset_name][test_dataset_name][hashed_sub_train_key_ids] = {}
-        if hashed_sub_test_key_ids not in self.significance_trace[train_dataset_name][test_dataset_name][hashed_sub_train_key_ids]:
-            self.significance_trace[train_dataset_name][test_dataset_name][hashed_sub_train_key_ids][hashed_sub_test_key_ids] = result_d
+        # if train_dataset_name not in self.significance_trace:
+        #     self.significance_trace[train_dataset_name] = {}
+        # if test_dataset_name not in self.significance_trace[train_dataset_name]:
+        #     self.significance_trace[train_dataset_name][test_dataset_name] = {}
+        # if hashed_sub_train_key_ids not in self.significance_trace[train_dataset_name][test_dataset_name]:
+        #     self.significance_trace[train_dataset_name][test_dataset_name][hashed_sub_train_key_ids] = {}
+        # if hashed_sub_test_key_ids not in self.significance_trace[train_dataset_name][test_dataset_name][hashed_sub_train_key_ids]:
+        #     self.significance_trace[train_dataset_name][test_dataset_name][hashed_sub_train_key_ids][hashed_sub_test_key_ids] = result_d
         # with open(self.significance_trace_path, "w+") as f:
         #     fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         #     json.dump(self.significance_trace, f)
