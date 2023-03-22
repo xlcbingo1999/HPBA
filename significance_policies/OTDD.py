@@ -15,6 +15,7 @@ import random
 
 import torch
 from torchvision import models
+import fcntl
 
 from utils.data_loader import load_torchvision_data_from_indexes
 
@@ -28,7 +29,9 @@ class OTDDPolicy(SigPolicy):
         self.significance_trace = {}
         self.significance_trace_path = SIGNIFICANCE_TRACE_PATH + "/significance_{}.json".format(self.name)
         with open(self.significance_trace_path, "r+") as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
             self.significance_trace = json.load(f)
+            fcntl.flock(f, fcntl.LOCK_UN)
 
     def get_job_datablock_significance_sync(self, signficance_state):
         begin = time.time()
@@ -96,6 +99,13 @@ class OTDDPolicy(SigPolicy):
 
         
         result_d = dist.distance(maxsamples = 10000)
+        print("result distance => [{}-{}-{}-{}]: {}".format(
+            train_dataset_name, test_dataset_name, hashed_sub_train_key_ids, hashed_sub_test_key_ids, result_d
+        ))
+        with open(self.significance_trace_path, "r+") as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            self.significance_trace = json.load(f)
+            fcntl.flock(f, fcntl.LOCK_UN)
         if train_dataset_name not in self.significance_trace:
             self.significance_trace[train_dataset_name] = {}
         if test_dataset_name not in self.significance_trace[train_dataset_name]:
@@ -105,7 +115,9 @@ class OTDDPolicy(SigPolicy):
         if hashed_sub_test_key_ids not in self.significance_trace[train_dataset_name][test_dataset_name][hashed_sub_train_key_ids]:
             self.significance_trace[train_dataset_name][test_dataset_name][hashed_sub_train_key_ids][hashed_sub_test_key_ids] = result_d
         with open(self.significance_trace_path, "w+") as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
             json.dump(self.significance_trace, f)
+            fcntl.flock(f, fcntl.LOCK_UN)
         return result_d
 
     def update_job_datablock_signficance(self, signficance_state):
