@@ -1,40 +1,17 @@
-问题: 好像不会自己结束任务并释放资源...
-=========  Scheduler: Job Finished! ===========
-job_id: 3
-origin_info: {'time': 1, 'submited': True, 'target_func': 'opacus_split_review', 'model_name': 'FF-split', 'dataset_name': 'Home_and_Kitchen', 'label_type': 'sentiment', 'select_num': 8, 'early_stopping': None, 'device': 0, 'LR': 0.001, 'EPSILON': 0, 'EPOCH_SET_EPSILON': False, 'DELTA': 1e-05, 'MAX_GRAD_NORM': 1.2, 'BATCH_SIZE': 128, 'MAX_PHYSICAL_BATCH_SIZE': 32.0, 'EPOCHS': 20, 'train_configs': {'hidden_size': [150, 110], 'embedding_size': 100, 'sequence_length': 50, 'vocab_size': 50708, 'label_distributions': {'1': 0.3189144347001659, '2': 0.3122037212609623, '0': 0.36888184403887175}}, 'dispatcher_ip': '172.18.162.3', 'dispatcher_port': 16100}
-result: {'train_acc': 0.825979521780303, 'train_loss': 0.18971190816073707, 'test_acc': 0.6721450864276568, 'test_loss': 0.569952849980811, 'epsilon_consume': 0.0}
-=========  Scheduler: Job Finished! ===========
-job_id: 0
-origin_info: {'time': 1, 'submited': True, 'target_func': 'opacus_split_review', 'model_name': 'FF-split', 'dataset_name': 'Home_and_Kitchen', 'label_type': 'sentiment', 'select_num': 8, 'early_stopping': None, 'device': 0, 'LR': 0.001, 'EPSILON': 16.0, 'EPOCH_SET_EPSILON': False, 'DELTA': 1e-05, 'MAX_GRAD_NORM': 1.2, 'BATCH_SIZE': 128, 'MAX_PHYSICAL_BATCH_SIZE': 32.0, 'EPOCHS': 20, 'train_configs': {'hidden_size': [150, 110], 'embedding_size': 100, 'sequence_length': 50, 'vocab_size': 50708, 'label_distributions': {'1': 0.3189144347001659, '2': 0.3122037212609623, '0': 0.36888184403887175}}, 'dispatcher_ip': '172.18.162.3', 'dispatcher_port': 16100}
-result: {'train_acc': 0.5117828004552651, 'train_loss': 0.2954549402422841, 'test_acc': 0.6025783806373595, 'test_loss': 0.2777016301390151, 'epsilon_consume': 15.994701383373553}
-====================
-=========  Scheduler: Job Finished! ===========
-job_id: 1
-origin_info: {'time': 1, 'submited': True, 'target_func': 'opacus_split_review', 'model_name': 'FF-split', 'dataset_name': 'Home_and_Kitchen', 'label_type': 'sentiment', 'select_num': 8, 'early_stopping': None, 'device': 0, 'LR': 0.001, 'EPSILON': 32.0, 'EPOCH_SET_EPSILON': False, 'DELTA': 1e-05, 'MAX_GRAD_NORM': 1.2, 'BATCH_SIZE': 128, 'MAX_PHYSICAL_BATCH_SIZE': 32.0, 'EPOCHS': 20, 'train_configs': {'hidden_size': [150, 110], 'embedding_size': 100, 'sequence_length': 50, 'vocab_size': 50708, 'label_distributions': {'1': 0.3189144347001659, '2': 0.3122037212609623, '0': 0.36888184403887175}}, 'dispatcher_ip': '172.18.162.3', 'dispatcher_port': 16100}
-result: {'train_acc': 0.51254149345534, 'train_loss': 0.31874579687913257, 'test_acc': 0.576500035566937, 'test_loss': 0.30781409249339303, 'epsilon_consume': 31.994726327749433}
-====================
-=========  Scheduler: Job Finished! ===========
-job_id: 2
-origin_info: {'time': 1, 'submited': True, 'target_func': 'opacus_split_review', 'model_name': 'FF-split', 'dataset_name': 'Home_and_Kitchen', 'label_type': 'sentiment', 'select_num': 8, 'early_stopping': None, 'device': 0, 'LR': 0.001, 'EPSILON': 64.0, 'EPOCH_SET_EPSILON': False, 'DELTA': 1e-05, 'MAX_GRAD_NORM': 1.2, 'BATCH_SIZE': 128, 'MAX_PHYSICAL_BATCH_SIZE': 32.0, 'EPOCHS': 20, 'train_configs': {'hidden_size': [150, 110], 'embedding_size': 100, 'sequence_length': 50, 'vocab_size': 50708, 'label_distributions': {'1': 0.3189144347001659, '2': 0.3122037212609623, '0': 0.36888184403887175}}, 'dispatcher_ip': '172.18.162.3', 'dispatcher_port': 16100}
-result: {'train_acc': 0.510602113107558, 'train_loss': 0.29358181680805234, 'test_acc': 0.5576084346991037, 'test_loss': 0.3068211659998961, 'epsilon_consume': 63.99308850206053}
-====================
-=========  Scheduler: Job Finished! ===========
-job_id: 3
-origin_info: {'time': 1, 'submited': True, 'target_func': 'opacus_split_review', 'model_name': 'FF-split', 'dataset_name': 'Home_and_Kitchen', 'label_type': 'sentiment', 'select_num': 8, 'early_stopping': None, 'device': 0, 'LR': 0.001, 'EPSILON': 0, 'EPOCH_SET_EPSILON': False, 'DELTA': 1e-05, 'MAX_GRAD_NORM': 1.2, 'BATCH_SIZE': 128, 'MAX_PHYSICAL_BATCH_SIZE': 32.0, 'EPOCHS': 20, 'train_configs': {'hidden_size': [150, 110], 'embedding_size': 100, 'sequence_length': 50, 'vocab_size': 50708, 'label_distributions': {'1': 0.3189144347001659, '2': 0.3122037212609623, '0': 0.36888184403887175}}, 'dispatcher_ip': '172.18.162.3', 'dispatcher_port': 16100}
-result: {'train_acc': 0.825979521780303, 'train_loss': 0.18971190816073707, 'test_acc': 0.6721450864276568, 'test_loss': 0.569952849980811, 'epsilon_consume': 0.0}
-====================
-=========  Scheduler: Job Finished! ===========
-job_id: 0
-origin_info: {'time': 1, 'submited': True, 'target_func': 'opacus_split_review', 'model_name': 'FF-split', 'dataset_name': 'Home_and_Kitchen', 'label_type': 'sentiment', 'select_num': 2, 'early_stopping': None, 'device': 0, 'LR': 0.001, 'EPSILON': 128.0, 'EPOCH_SET_EPSILON': False, 'DELTA': 1e-05, 'MAX_GRAD_NORM': 1.2, 'BATCH_SIZE': 128, 'MAX_PHYSICAL_BATCH_SIZE': 32.0, 'EPOCHS': 20, 'train_configs': {'hidden_size': [150, 110], 'embedding_size': 100, 'sequence_length': 50, 'vocab_size': 22096, 'label_distributions': {'0': 0.38545863948803033, '2': 0.3042782649917042, '1': 0.3102630955202655}}, 'dispatcher_ip': '172.18.162.3', 'dispatcher_port': 16100}
-result: {'train_acc': 0.47279278289977356, 'train_loss': 0.3182236128824356, 'test_acc': 0.6585918605064732, 'test_loss': 0.2600222202673764, 'epsilon_consume': 127.99682246991027}
-====================
-=========  Scheduler: Job Finished! ===========
-job_id: 1
-origin_info: {'time': 1, 'submited': True, 'target_func': 'opacus_split_review', 'model_name': 'FF-split', 'dataset_name': 'Home_and_Kitchen', 'label_type': 'sentiment', 'select_num': 4, 'early_stopping': None, 'device': 0, 'LR': 0.001, 'EPSILON': 128.0, 'EPOCH_SET_EPSILON': False, 'DELTA': 1e-05, 'MAX_GRAD_NORM': 1.2, 'BATCH_SIZE': 128, 'MAX_PHYSICAL_BATCH_SIZE': 32.0, 'EPOCHS': 20, 'train_configs': {'hidden_size': [150, 110], 'embedding_size': 100, 'sequence_length': 50, 'vocab_size': 34007, 'label_distributions': {'0': 0.39882081061863, '2': 0.2942640436122304, '1': 0.3069151457691396}}, 'dispatcher_ip': '172.18.162.3', 'dispatcher_port': 16100}
-result: {'train_acc': 0.4297677299519642, 'train_loss': 0.33168678475259833, 'test_acc': 0.4354093309859155, 'test_loss': 0.3530757467091923, 'epsilon_consume': 127.99196063345315}
-====================
-=========  Scheduler: Job Finished! ===========
-job_id: 2
-origin_info: {'time': 1, 'submited': True, 'target_func': 'opacus_split_review', 'model_name': 'FF-split', 'dataset_name': 'Home_and_Kitchen', 'label_type': 'sentiment', 'select_num': 8, 'early_stopping': None, 'device': 0, 'LR': 0.001, 'EPSILON': 128.0, 'EPOCH_SET_EPSILON': False, 'DELTA': 1e-05, 'MAX_GRAD_NORM': 1.2, 'BATCH_SIZE': 128, 'MAX_PHYSICAL_BATCH_SIZE': 32.0, 'EPOCHS': 20, 'train_configs': {'hidden_size': [150, 110], 'embedding_size': 100, 'sequence_length': 50, 'vocab_size': 50708, 'label_distributions': {'0': 0.36888184403887175, '2': 0.3122037212609623, '1': 0.3189144347001659}}, 'dispatcher_ip': '172.18.162.3', 'dispatcher_port': 16100}
-result: {'train_acc': 0.5263232423244628, 'train_loss': 0.31344477243784097, 'test_acc': 0.5953671841655996, 'test_loss': 0.300986056806336, 'epsilon_consume': 127.99805663822444}
-====================
+python DL_do_calculate.py \
+    --worker_ip 172.18.162.6 \
+    --worker_port 16006 \
+    --job_id 0 \
+    --model_name CNN \
+    --train_dataset_name EMNIST \
+    --test_dataset_name EMNIST_MNIST-1000_1000 \
+    --sub_train_key_ids train_sub_0:train_sub_1 \
+    --sub_test_key_ids test_sub_0 \
+    --device_index 0 \
+    --LR 1e-3 \
+    --EPSILON 0.05 \
+    --DELTA 1e-7 \
+    --MAX_GRAD_NORM 1.2 \
+    --BATCH_SIZE 1024 \
+    --MAX_PHYSICAL_BATCH_SIZE 512 \
+    --EPOCHS 1

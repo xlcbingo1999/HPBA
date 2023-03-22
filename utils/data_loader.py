@@ -4,10 +4,12 @@ import torchvision.transforms as transforms
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_sequence
 
+import torchvision
 from torchvision.datasets import CIFAR10, CIFAR100
 from torchvision.datasets import ImageFolder
+
 from torch.utils.data import Dataset
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import TensorDataset, DataLoader, ConcatDataset
 from torch.utils.data import random_split
 from torch.utils.data.sampler import SubsetRandomSampler
 
@@ -29,6 +31,52 @@ import re
 from utils.global_variable import GLOBAL_PATH, DATASET_PATH
 import pickle
 from tqdm import tqdm
+import string
+import json
+
+DATASET_SIZES = {
+    'MNIST': (28,28),
+    'FashionMNIST': (28,28),
+    'EMNIST': (28,28),
+    'QMNIST': (28,28),
+    'KMNIST': (28,28),
+    'USPS': (16,16),
+    'SVHN': (32, 32),
+    'CIFAR10': (32, 32),
+    'STL10': (96, 96),
+    'tiny-ImageNet': (64,64)
+}
+
+DATASET_NORMALIZATION = {
+    'MNIST': ((0.1307,), (0.3081,)),
+    'USPS' : ((0.1307,), (0.3081,)),
+    'FashionMNIST' : ((0.1307,), (0.3081,)),
+    'QMNIST' : ((0.1307,), (0.3081,)),
+    'EMNIST' : ((0.1307,), (0.3081,)),
+    'KMNIST' : ((0.1307,), (0.3081,)),
+    'ImageNet': ((0.485, 0.456, 0.406),(0.229, 0.224, 0.225)),
+    'tiny-ImageNet': ((0.485, 0.456, 0.406),(0.229, 0.224, 0.225)),
+    'CIFAR10': ((0.485, 0.456, 0.406),(0.229, 0.224, 0.225)),
+    'CIFAR100': ((0.485, 0.456, 0.406),(0.229, 0.224, 0.225)),
+    'STL10': ((0.485, 0.456, 0.406),(0.229, 0.224, 0.225))
+}
+
+class SubsetSampler(torch.utils.data.Sampler):
+    r"""Samples elements in order (not randomly) from a given list of indices, without replacement.
+
+    Arguments:
+        indices (sequence): a sequence of indices
+        (this is identical to torch's SubsetRandomSampler except not random)
+    """
+
+    def __init__(self, indices):
+        self.indices = indices
+
+    def __iter__(self):
+        return (self.indices[i] for i in range(len(self.indices)))
+
+    def __len__(self):
+        return len(self.indices)
 
 class CustomVisionDataset(Dataset):
     """An abstract Dataset class wrapped around Pytorch Dataset class.
@@ -750,3 +798,160 @@ def fetch_new_dataset(category, label_type, VALID_SIZE, SEQUENCE_LENGTH, SPLIT_N
     train_all_dataset, sub_train_datasets, \
     valid_dataset, output_size, vocab_size = get_review_dataset_multi_split(category, label_type, VALID_SIZE, SEQUENCE_LENGTH, SPLIT_NUM, same_capacity)
     return train_all_dataset, sub_train_datasets, valid_dataset, output_size, vocab_size
+
+def load_torchvision_data_from_indexes(dataname, datadir=None, target_indexes=None, sample_num=None, target_type='train',
+                            shuffle=True,  random_seed=None,
+                            resize=None, to3channels=False,
+                            transform=None,
+                            data=None, download=True):
+    """ Load torchvision datasets.
+
+        We return train and test for plots and post-training experiments
+    """
+    if target_type == 'train' and target_indexes is None:
+        raise ValueError("target_type == train and target_indexes is None")
+    if (target_indexes is None and sample_num is None) or (target_indexes is not None and sample_num is not None):
+        raise ValueError("(target_indexes is None and ratio is None) or (target_indexes is not None and ratio is not None)")
+    if shuffle == True and random_seed:
+        np.random.seed(random_seed)
+    if transform is None:
+        if dataname in DATASET_NORMALIZATION.keys():
+            transform_dataname = dataname
+        else:
+            transform_dataname = 'ImageNet'
+
+        transform_list = []
+
+        if dataname in ['MNIST', 'USPS', 'EMNIST'] and to3channels:
+            transform_list.append(torchvision.transforms.Grayscale(3))
+
+        transform_list.append(torchvision.transforms.ToTensor())
+        transform_list.append(
+            torchvision.transforms.Normalize(*DATASET_NORMALIZATION[transform_dataname])
+        )
+
+        if resize:
+            if not dataname in DATASET_SIZES or DATASET_SIZES[dataname][0] != resize:
+                ## Avoid adding an "identity" resizing
+                transform_list.insert(0, transforms.Resize((resize, resize)))
+
+        transform = transforms.Compose(transform_list)
+        train_transform, valid_transform = transform, transform
+    elif data is None:
+        if len(transform) == 1:
+            train_transform, valid_transform = transform, transform
+        elif len(transform) == 2:
+            train_transform, valid_transform = transform
+        else:
+            raise ValueError()
+
+    if data is None:
+        DATASET = getattr(torchvision.datasets, dataname)
+        if dataname == 'EMNIST':
+            split = 'bymerge'
+            train = DATASET(datadir, split=split, train=True, download=download, transform=train_transform)
+            test = DATASET(datadir, split=split, train=False, download=download, transform=valid_transform)
+            ## EMNIST seems to have a bug - classes are wrong
+            _merged_classes = {"c", "i", "j", "k", "l", "m", "o", "p", "s", "u", "v", "w", "x", "y", "z"}
+            _all_classes = set(list(string.digits + string.ascii_letters))
+            classes_split_dict = {
+                'byclass': list(_all_classes),
+                'bymerge': sorted(list(_all_classes - _merged_classes)),
+                'balanced': sorted(list(_all_classes - _merged_classes)),
+                'letters': list(string.ascii_lowercase),
+                'digits': list(string.digits),
+                'mnist': list(string.digits),
+            }
+            train.classes = classes_split_dict[split]
+            if split == 'letters':
+                ## The letters fold (and only that fold!!!) is 1-indexed
+                train.targets -= 1
+                test.targets -= 1
+        elif dataname == 'STL10':
+            train = DATASET(datadir, split='train', download=download, transform=train_transform)
+            test = DATASET(datadir, split='test', download=download, transform=valid_transform)
+            train.classes = ['airplane', 'bird', 'car', 'cat', 'deer', 'dog', 'horse', 'monkey', 'ship', 'truck']
+            test.classes = train.classes
+            train.targets = torch.tensor(train.labels)
+            test.targets = torch.tensor(test.labels)
+        elif dataname == 'SVHN':
+            train = DATASET(datadir, split='train', download=download, transform=train_transform)
+            test = DATASET(datadir, split='test', download=download, transform=valid_transform)
+            ## In torchvision, SVHN 0s have label 0, not 10
+            train.classes = test.classes = [str(i) for i in range(10)]
+            train.targets = torch.tensor(train.labels)
+            test.targets = torch.tensor(train.labels)
+        elif dataname == 'LSUN':
+            train = DATASET(datadir, classes='train', download=download, transform=train_transform)
+        else:
+            train = DATASET(datadir, train=True, download=download, transform=train_transform)
+            test = DATASET(datadir, train=False, download=download, transform=valid_transform)
+    else:
+        train, test = data
+
+
+    if type(train.targets) is list:
+        train.targets = torch.LongTensor(train.targets)
+        test.targets  = torch.LongTensor(test.targets)
+
+    if not hasattr(train, 'classes') or not train.classes:
+        train.classes = sorted(torch.unique(train.targets).tolist())
+        test.classes  = sorted(torch.unique(train.targets).tolist())
+
+    sampler_class = SubsetRandomSampler if shuffle else SubsetSampler
+    if target_indexes is None and sample_num is not None:
+        if target_type == 'train':
+            target_indexes = np.random.choice(range(len(train)), sample_num, replace=False)
+        elif target_type == 'test':
+            target_indexes = np.random.choice(range(len(test)), sample_num, replace=False)
+    if target_type == 'train':
+        sample_num = len(target_indexes)
+    elif target_type == 'test':
+        sample_num = len(target_indexes)
+    sampler = sampler_class(target_indexes)
+    ### Create DataLoaders
+    # dataloader_args = dict(batch_size=batch_size,num_workers=num_workers)
+    if target_type == 'train':
+        custom_train = CustomVisionDataset(train, target_indexes)
+        # loader = dataloader.DataLoader(custom_train, shuffle=True, **dataloader_args)
+        return sample_num, custom_train
+    elif target_type == 'test':
+        custom_test = CustomVisionDataset(test, target_indexes)
+        # loader = dataloader.DataLoader(custom_test,**dataloader_args)
+        return sample_num, custom_test
+
+def get_concat_dataset(dataset_name, key_ids, DATASET_PATH, DATASET_CONFIG_PATH, type="train"):
+    all_datasets = []
+
+    dir = DATASET_PATH
+    dataset_name_2_indexes = {}
+    with open(DATASET_CONFIG_PATH, 'r+') as f:
+        dataset_config = json.load(f)
+        for key in key_ids:
+            dataset_names = dataset_config[dataset_name][key]["name"]
+            dataset_idxes = dataset_config[dataset_name][key]["indexes"]
+            for name, idxes in zip(dataset_names, dataset_idxes):
+                if name not in dataset_name_2_indexes:
+                    dataset_name_2_indexes[name] = idxes
+                else:
+                    dataset_name_2_indexes[name].extend(idxes)
+
+    for train_name in dataset_name_2_indexes:
+        origin_indexes_list = dataset_name_2_indexes[train_name]
+        # 从文件里读取config, 并从config中获取dataset的raw path
+        # 然后根据dataset_name->train_ids获取index, 读取即可        
+        sub_train_sample_num, sub_train_dataset = load_torchvision_data_from_indexes(
+            train_name,
+            datadir=dir,
+            target_indexes=origin_indexes_list, 
+            sample_num=None, 
+            target_type=type, 
+            resize=28, 
+            to3channels=True
+        )
+        all_datasets.append(sub_train_dataset)
+    if len(all_datasets) > 1:
+        result_dataset = ConcatDataset(all_datasets)
+    else:
+        result_dataset = all_datasets[0]
+    return result_dataset

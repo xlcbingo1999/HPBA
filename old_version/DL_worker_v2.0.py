@@ -22,42 +22,50 @@ def get_df_config():
     args = parser.parse_args()
     return args
 
-def do_system_calculate_func(worker_ip, worker_port, 
-                            job_id, model_name, 
-                            train_dataset_name, test_dataset_name,
-                            sub_train_key_ids, sub_test_key_ids, 
-                            device_index, 
-                            summary_writer_path, logging_file_path,
-                            LR, EPSILON, DELTA, MAX_GRAD_NORM, 
-                            BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS):
+def do_system_calculate_func(worker_ip, worker_port, job_id, model_name, train_dataset_raw_paths, test_dataset_raw_path,
+                            dataset_name, label_type, selected_datablock_identifiers, not_selected_datablock_identifiers,
+                            loss_func, device, early_stopping, summary_writer_path,
+                            LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, 
+                            BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
+                            label_distributions, train_configs):
     execute_cmds = []
-    # execute_cmds.append("conda run -n py39torch113") # 会卡住, 没有任何log, 这个时候最好做重定向!
+    execute_cmds.append("conda run -n py39torch113") # 会卡住, 没有任何log, 这个时候最好做重定向!
     execute_cmds.append("python DL_do_calculate.py")
     execute_cmds.append("--worker_ip {}".format(worker_ip))
     execute_cmds.append("--worker_port {}".format(worker_port))
     execute_cmds.append("--job_id {}".format(job_id))
     execute_cmds.append("--model_name {}".format(model_name))
-
-    execute_cmds.append("--train_dataset_name {}".format(train_dataset_name))
-    execute_cmds.append("--test_dataset_name {}".format(test_dataset_name))
-    sub_train_key_ids = ":".join(sub_train_key_ids)
-    sub_test_key_ids = ":".join(sub_test_key_ids)
-    execute_cmds.append("--sub_train_key_ids {}".format(sub_train_key_ids))
-    execute_cmds.append("--sub_test_key_ids {}".format(sub_test_key_ids))
-
-    execute_cmds.append("--device_index {}".format(device_index))
+    train_dataset_raw_paths_str = ":".join(train_dataset_raw_paths)
+    execute_cmds.append("--train_dataset_raw_paths {}".format(train_dataset_raw_paths_str))
+    execute_cmds.append("--test_dataset_raw_path {}".format(test_dataset_raw_path))
+    execute_cmds.append("--dataset_name {}".format(dataset_name))
+    execute_cmds.append("--label_type {}".format(label_type))
+    selected_datablock_identifiers_str = ":".join(selected_datablock_identifiers)
+    execute_cmds.append("--selected_datablock_identifiers {}".format(selected_datablock_identifiers_str))
+    not_selected_datablock_identifiers_str = ":".join(not_selected_datablock_identifiers)
+    execute_cmds.append("--not_selected_datablock_identifiers {}".format(not_selected_datablock_identifiers_str))
+    execute_cmds.append("--loss_func {}".format(loss_func))
+    execute_cmds.append("--device {}".format(device))
+    if early_stopping:
+        execute_cmds.append("--early_stopping")
     if len(summary_writer_path) > 0:
         execute_cmds.append("--summary_writer_path {}".format(summary_writer_path))
-    if len(logging_file_path) > 0:
-        execute_cmds.append("--logging_file_path {}".format(logging_file_path))
     execute_cmds.append("--LR {}".format(LR))
     execute_cmds.append("--EPSILON {}".format(EPSILON))
+    if EPOCH_SET_EPSILON:
+        execute_cmds.append("--EPOCH_SET_EPSILON {}".format(EPOCH_SET_EPSILON))
     execute_cmds.append("--DELTA {}".format(DELTA))
     execute_cmds.append("--MAX_GRAD_NORM {}".format(MAX_GRAD_NORM))
 
     execute_cmds.append("--BATCH_SIZE {}".format(BATCH_SIZE))
     execute_cmds.append("--MAX_PHYSICAL_BATCH_SIZE {}".format(MAX_PHYSICAL_BATCH_SIZE))
     execute_cmds.append("--EPOCHS {}".format(EPOCHS))
+    label_distributions_str = json.dumps(label_distributions)
+    # print("[label_distributions_str] dump result: ", label_distributions_str)
+    execute_cmds.append("--label_distributions '{}'".format(label_distributions_str))
+    train_configs_str = json.dumps(train_configs)
+    # print("[train_configs_str] dump result: ", train_configs_str)
+    execute_cmds.append("--train_configs '{}'".format(train_configs_str))
 
     finally_execute_cmd = " ".join(execute_cmds)
     print(finally_execute_cmd)
@@ -120,42 +128,54 @@ class Worker_server(object):
             client.worker_gpu_status_callback(worker_gpu_identifier, new_status_map[gpu_id])
     """
 
-    def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info, summary_writer_path, logging_file_path):
+    def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info, summary_writer_path):
         # print("[bugxlc] job_id: {} call caculate => info: {}".format(job_id, origin_info))
         self.jobid_2_origininfo[job_id] = origin_info
+        target_func = origin_info["target_func"]
         try:
-            # GPU调度
-            device_index = worker_gpu_id
-            
-            # DATASET调度
-            train_dataset_name = worker_dataset_config["train_dataset_name"]
-            test_dataset_name = worker_dataset_config["test_dataset_name"]
-            sub_train_key_ids = worker_dataset_config["sub_train_key_ids"]
-            sub_test_key_ids = worker_dataset_config["sub_test_key_ids"]
+            if target_func == "opacus_split_review":
+                # GPU调度
+                device = worker_gpu_id
+                
+                # DATASET调度
+                selected_datablock_identifiers = worker_dataset_config["selected_datablock_identifiers"]
+                not_selected_datablock_identifiers = worker_dataset_config["not_selected_datablock_identifiers"]
+                train_dataset_raw_paths = worker_dataset_config["train_dataset_raw_paths"]
+                test_dataset_raw_path = worker_dataset_config["test_dataset_raw_path"]
+                label_distributions = worker_dataset_config["label_distributions"]
 
-            model_name = origin_info["model_name"]
-            
-            LR = origin_info["LR"]
-            EPSILON = origin_info["EPSILON"]
-            DELTA = origin_info["DELTA"]
-            MAX_GRAD_NORM = origin_info["MAX_GRAD_NORM"]
-            BATCH_SIZE = origin_info["BATCH_SIZE"]
-            MAX_PHYSICAL_BATCH_SIZE = origin_info["MAX_PHYSICAL_BATCH_SIZE"]
-            EPOCHS = origin_info["EPOCHS"]
+                dataset_name = origin_info["dataset_name"]
+                label_type = origin_info["label_type"]
+                model_name = origin_info["model_name"]
+                early_stopping = origin_info["early_stopping"]
+                train_configs = origin_info["train_configs"]
+                
+                loss_func = origin_info["loss_func"]
+                LR = origin_info["LR"]
+                EPSILON = origin_info["EPSILON"]
+                EPOCH_SET_EPSILON = origin_info["EPOCH_SET_EPSILON"]
+                DELTA = origin_info["DELTA"]
+                MAX_GRAD_NORM = origin_info["MAX_GRAD_NORM"]
+                BATCH_SIZE = origin_info["BATCH_SIZE"]
+                MAX_PHYSICAL_BATCH_SIZE = origin_info["MAX_PHYSICAL_BATCH_SIZE"]
+                EPOCHS = origin_info["EPOCHS"]
 
-            worker_ip = self.local_ip
-            worker_port = self.local_port
+                worker_ip = self.local_ip
+                worker_port = self.local_port
 
-            p = threading.Thread(target=do_system_calculate_func, args=(worker_ip, worker_port, 
-                job_id, model_name, 
-                train_dataset_name, test_dataset_name,
-                sub_train_key_ids, sub_test_key_ids, 
-                device_index, 
-                summary_writer_path, logging_file_path,
-                LR, EPSILON, DELTA, MAX_GRAD_NORM, 
-                BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS), daemon=True)
-            self.jobid_2_thread[job_id] = p
-            p.start()
+                p = threading.Thread(target=do_system_calculate_func, args=(worker_ip, worker_port,
+                                                                    job_id, model_name, train_dataset_raw_paths, test_dataset_raw_path,
+                                                                    dataset_name, label_type, selected_datablock_identifiers, not_selected_datablock_identifiers,
+                                                                    loss_func, device, early_stopping, summary_writer_path,
+                                                                    LR, EPSILON, EPOCH_SET_EPSILON, DELTA, MAX_GRAD_NORM, 
+                                                                    BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS,
+                                                                    label_distributions,
+                                                                    train_configs), daemon=True)
+                self.jobid_2_thread[job_id] = p
+                p.start()
+            else:
+                self.failed_job_callback(job_id, FAILED_RESULT_KEY.JOB_TYPE_ERROR)
+                raise ValueError("No this calculate func: {}".format(target_func))
         except Exception as e:
             self.failed_job_callback(job_id, FAILED_RESULT_KEY.JOB_FAILED)
             raise ValueError("No this calculate func: {}".format(e))
@@ -183,3 +203,4 @@ if __name__ == "__main__":
     worker_server_item = Worker_server(local_ip, local_port, sched_ip, sche_port, gpu_update_time)
     worker_server_item.timely_update_gpu_status()
     worker_listener_func(worker_server_item)
+    
