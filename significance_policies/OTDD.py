@@ -19,11 +19,11 @@ from torchvision import models
 from utils.data_loader import load_torchvision_data_from_indexes
 
 class OTDDPolicy(SigPolicy):
-    def __init__(self):
+    def __init__(self, batch_size):
         super().__init__()
         self._name = "OTDDPolicy"
-        self.distance_batch_size = 512
-        self.calculate_batch_size = 512
+        self.distance_batch_size = batch_size
+        self.calculate_batch_size = batch_size
 
         self.significance_trace = {}
         self.significance_trace_path = SIGNIFICANCE_TRACE_PATH + "/significance_{}.json".format(self.name)
