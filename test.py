@@ -10,11 +10,12 @@ def get_df_config():
     parser.add_argument("--sub_train_key_ids", type=str, default="train_sub_0")
     parser.add_argument("--sub_test_key_ids", type=str, default="test_sub_0")
     parser.add_argument("--device_index", type=int, default=0)
+    parser.add_argument("--batch_size", type=int, default=256)
     args = parser.parse_args()
     return args
 
 args = get_df_config()
-ot = OTDDPolicy()
+ot = OTDDPolicy(args.batch_size)
 signficance_state = {
     "train_dataset_name": args.train_dataset_name,
     "test_dataset_name": args.test_dataset_name,
