@@ -96,7 +96,14 @@ class OTDDPolicy(SigPolicy):
 
         
         result_d = dist.distance(maxsamples = 10000)
-        self.significance_trace[train_dataset_name][test_dataset_name][hashed_sub_train_key_ids][hashed_sub_test_key_ids] = result_d
+        if train_dataset_name not in self.significance_trace:
+            self.significance_trace[train_dataset_name] = {}
+        if test_dataset_name not in self.significance_trace[train_dataset_name]:
+            self.significance_trace[train_dataset_name][test_dataset_name] = {}
+        if hashed_sub_train_key_ids not in self.significance_trace[train_dataset_name][test_dataset_name]:
+            self.significance_trace[train_dataset_name][test_dataset_name][hashed_sub_train_key_ids] = {}
+        if hashed_sub_test_key_ids not in self.significance_trace[train_dataset_name][test_dataset_name][hashed_sub_train_key_ids]:
+            self.significance_trace[train_dataset_name][test_dataset_name][hashed_sub_train_key_ids][hashed_sub_test_key_ids] = result_d
         with open(self.significance_trace_path, "w+") as f:
             json.dump(self.significance_trace, f)
         return result_d
