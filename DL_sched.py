@@ -25,11 +25,11 @@ from functools import reduce
 import json
 import time
 
-def DL_server_do_jobs(job_id, origin_info, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, summary_writer_path, logging_file_path):
+def DL_server_do_jobs(job_id, origin_info, update_sched_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, summary_writer_path, logging_file_path):
     client = zerorpc.Client()
     client.connect("tcp://{}:{}".format(worker_ip, worker_port))
     
-    client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info, summary_writer_path, logging_file_path)
+    client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info, update_sched_epoch_num, summary_writer_path, logging_file_path)
 
 class Scheduler_server(object):
     def __init__(self, sched_ip, sched_port, init_workerip_2_ports):
@@ -42,6 +42,8 @@ class Scheduler_server(object):
         self.cal_significance_thread = None
         self.placement_thread = None
         self.gpu_thread = None
+
+        self.update_sched_epoch_num = 1
         
         self.gpuidentifier_2_gpu_status = {}
         self.gpuidentifier_2_gpu_metadata = {}
@@ -86,6 +88,11 @@ class Scheduler_server(object):
         self.jobid_2_sub_test_key_ids = {}
         self.jobid_2_significance = {}
         self.jobid_2_arrival_index = {}
+
+        self.jobid_2_max_epochs = {}
+        self.jobid_2_real_sched_epochs = {}
+        self.jobid_2_failed_epochs = {}
+        self.jobid_2_current_epochs = {}
 
         self.job_sequence_all_num = 0
         self.history_job_priority_weights = []
@@ -147,6 +154,11 @@ class Scheduler_server(object):
         self.jobid_2_significance = {}
         self.jobid_2_arrival_index = {}
 
+        self.jobid_2_max_epochs = {}
+        self.jobid_2_real_sched_epochs = {}
+        self.jobid_2_failed_epochs = {}
+        self.jobid_2_current_epochs = {}
+
         self.jobid_2_submited_time = {}
         self.jobid_2_started_time = {}
         self.jobid_2_finished_time = {}
@@ -185,7 +197,6 @@ class Scheduler_server(object):
         return worker_ip, int(worker_gpu_id)
 
     def update_dataset(self, init_subtrain_datasets_map):
-        # TODO(xlc): 暂时不考虑test
         dispatch_datasetidentifier_2_epsilon_capacity = {}
         for dataset_name in init_subtrain_datasets_map:
             for sub_train_dataset_identifier in init_subtrain_datasets_map[dataset_name]:
@@ -271,6 +282,12 @@ class Scheduler_server(object):
                 self.jobid_2_test_dataset_name[id] = test_dataset_name
                 self.jobid_2_sub_test_key_ids[id] = sub_test_key_ids
                 self.jobid_2_arrival_index[id] = count
+
+                self.jobid_2_max_epochs[id] = origin_info["MAX_EPOCHS"]
+                self.jobid_2_current_epochs[id] = 0
+                self.jobid_2_real_sched_epochs[id] = 0
+                self.jobid_2_failed_epochs[id] = 0
+                
                 count += 1
         self.job_sequence_all_num = count
         print("success add new jobs number: {}".format(self.job_sequence_all_num))
@@ -430,7 +447,7 @@ class Scheduler_server(object):
         self.jobid_2_real_epsilon[job_id] = result["epsilon_consume"]
         remain_epsilon = self.jobid_2_target_epsilon[job_id] - self.jobid_2_real_epsilon[job_id]
         train_dataset_name = self.jobid_2_train_dataset_name[job_id]
-        datablock_identifiers = self.jobid_2_sub_train_key_ids[job_id] # TODO(xlc): 修改目标
+        datablock_identifiers = self.jobid_2_sub_train_key_ids[job_id]
         for identifier in datablock_identifiers:
             self.sub_train_datasetidentifier_2_epsilon_remain[train_dataset_name][identifier] += remain_epsilon
             if self.sub_train_datasetidentifier_2_epsilon_remain[train_dataset_name][identifier] > 0.0:
@@ -470,6 +487,13 @@ class Scheduler_server(object):
             elif origin_status == JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL:
                 update_path =JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_FAILED
                 new_status = JOB_STATUS_KEY.FAILED
+        elif operator == "recoming":
+            if origin_status == JOB_STATUS_KEY.DONE_ALL_SCHED:
+                update_path = JOB_STATUS_UPDATE_PATH.ALLSCHED_2_NOSCHED
+                new_status = JOB_STATUS_KEY.NO_SCHE
+            elif origin_status == JOB_STATUS_KEY.RUNNING:
+                update_path = JOB_STATUS_UPDATE_PATH.RUNNING_2_NOSCHED
+                new_status = JOB_STATUS_KEY.NO_SCHE
         return update_path, new_status
 
     def get_job_status_update_origin_target(self, status_update_path):
@@ -496,6 +520,13 @@ class Scheduler_server(object):
         elif status_update_path == JOB_STATUS_UPDATE_PATH.ALLSCHED_2_FAILED:
             origin_status = JOB_STATUS_KEY.DONE_ALL_SCHED
             target_status = JOB_STATUS_KEY.FAILED
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.ALLSCHED_2_NOSCHED:
+            origin_status = JOB_STATUS_KEY.DONE_ALL_SCHED
+            target_status = JOB_STATUS_KEY.NO_SCHE
+
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.RUNNING_2_NOSCHED:
+            origin_status = JOB_STATUS_KEY.RUNNING
+            target_status = JOB_STATUS_KEY.NO_SCHE
 
         return origin_status, target_status
 
@@ -509,7 +540,7 @@ class Scheduler_server(object):
             sub_train_index_2_significance[index] = result_d
         # 将所有为None的提取出来, 异步请求一下
         async_indexes = [k for k, v in sub_train_index_2_significance.items() if v is None]
-        for index in async_indexes: # TODO(xlc): 这里暂时不做特殊处理, 直接同步?
+        for index in async_indexes:
             print("[WARNING] enter into get_job_datablock_significance_async!")
             result_d = self.significance_policy.get_job_datablock_significance_async(all_significance_state[index], device_index)
             sub_train_index_2_significance[index] = result_d
@@ -584,11 +615,16 @@ class Scheduler_server(object):
             self.sche_reflash_job_status(temp_job_id, origin_status, target_status)
             need_failed_job.remove(temp_job_id)
 
+            self.job_add_to_history(temp_job_id)
+
         for temp_job_id in need_failed_job:
-            print("failed job [{}]".format(temp_job_id))
+            print("failed job scheduling [{}]".format(temp_job_id))
+            # TODO(xlc): 这里不应该直接设置为Failed状态, 而是考虑max_time的情况, 决定是否将任务放到NO_SCHED的状态, 同时需要知道模型的最新保存位置?
             status_update_path, target_status = self.get_target_job_status_update_path_and_status(temp_job_id, "failed")
             origin_status, target_status = self.get_job_status_update_origin_target(status_update_path)
             self.sche_reflash_job_status(temp_job_id, origin_status, target_status)
+
+            self.job_add_to_history(temp_job_id)
 
     def placement_dispatch(self, summary_writer_path):
         # 放置任务
@@ -615,7 +651,7 @@ class Scheduler_server(object):
                     worker_ip, worker_gpu_id = self.get_worker_identifier_detail(gpu_identifer)
                     worker_port = self.workerip_2_ports[worker_ip]
                     logging_file_path = ""
-                    args.append([job_id, origin_info, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, summary_writer_path, logging_file_path])
+                    args.append([job_id, origin_info, self.update_sched_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, summary_writer_path, logging_file_path])
                     self.jobid_2_started_time[job_id] = time.time()
                     self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.DONE_ALL_SCHED, JOB_STATUS_KEY.RUNNING)
         if len(args) > 0:

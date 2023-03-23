@@ -20,12 +20,13 @@ import fcntl
 from utils.global_variable import SIGNIFICANCE_TRACE_PATH
 
 class HISOTDDPolicy(SigPolicy):
-    def __init__(self, batch_size=16):
+    def __init__(self, batch_size=16, history_alpha=0.2):
         super().__init__()
         self._name = "HISOTDDPolicy"
         self.trace_name = "OTDDPolicy"
         self.distance_batch_size = batch_size
         self.calculate_batch_size = batch_size
+        self.history_alpha = history_alpha
 
         self.significance_trace_path = SIGNIFICANCE_TRACE_PATH + "/significance_{}.json".format(self.trace_name)
         with open(self.significance_trace_path, "r+") as f:
@@ -102,5 +103,5 @@ class HISOTDDPolicy(SigPolicy):
         ))
         return result_d
 
-    def update_job_datablock_signficance(self, signficance_state):
+    def update_job_datablock_signficance(self, test_dataset_name, hashed_sub_test_key_ids, ):
         print("TODO!!!!")
