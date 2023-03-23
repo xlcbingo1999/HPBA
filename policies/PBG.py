@@ -59,16 +59,16 @@ class PBGPolicy(Policy):
         return is_select, compare_epsilon
         
     def get_allocation(self, state):
-        job_id_2_target_dataset_name = state["job_id_2_target_dataset_name"]
-        assert len(job_id_2_target_dataset_name) == 1
-        set_job_id = set(job_id_2_target_dataset_name.keys())
-        set_dataset_name = set(job_id_2_target_dataset_name.values())
+        job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]
+        assert len(job_id_2_train_dataset_name) == 1
+        set_job_id = set(job_id_2_train_dataset_name.keys())
+        set_dataset_name = set(job_id_2_train_dataset_name.values())
         assert len(set_dataset_name) == 1 # 必须保证所有的任务都是针对同一个数据集的
         job_id = list(set_job_id)[0]
-        target_dataset_name = list(set_dataset_name)[0]
+        train_dataset_name = list(set_dataset_name)[0]
         
-        sub_train_datasetidentifier_2_epsilon_remain = state["current_sub_train_datasetidentifier_2_epsilon_remain"][target_dataset_name]
-        sub_train_datasetidentifier_2_epsilon_capcity = state["current_sub_train_datasetidentifier_2_epsilon_capcity"][target_dataset_name]
+        sub_train_datasetidentifier_2_epsilon_remain = state["current_sub_train_datasetidentifier_2_epsilon_remain"][train_dataset_name]
+        sub_train_datasetidentifier_2_epsilon_capcity = state["current_sub_train_datasetidentifier_2_epsilon_capcity"][train_dataset_name]
         target_epsilon_require = state["job_id_2_target_epsilon_require"][job_id]
         target_datablock_select_num = state["job_id_2_target_datablock_selected_num"][job_id]
         job_priority_weight = state["job_id_2_job_priority_weight"][job_id]

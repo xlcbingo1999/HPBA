@@ -8,9 +8,9 @@ import heapq
 import json
 
 class WaitingJob(object):
-    def __init__(self, job_id, target_dataset_name, target_datablock_select_num, target_epsilon_require, job_priority_weight, sub_train_datasetidentifier_2_significance):
+    def __init__(self, job_id, train_dataset_name, target_datablock_select_num, target_epsilon_require, job_priority_weight, sub_train_datasetidentifier_2_significance):
         self.job_id = job_id
-        self.target_dataset_name = target_dataset_name
+        self.train_dataset_name = train_dataset_name
         self.target_datablock_select_num = target_datablock_select_num
         self.target_epsilon_require = target_epsilon_require
         self.job_priority_weight = job_priority_weight
@@ -39,36 +39,37 @@ class DPFHISPolicy(Policy):
         job_id_2_target_epsilon_require = state["job_id_2_target_epsilon_require"]
         job_id_2_target_datablock_select_num = state["job_id_2_target_datablock_selected_num"]
         job_id_2_job_priority_weight = state["job_id_2_job_priority_weight"]
-        job_id_2_target_dataset_name = state["job_id_2_target_dataset_name"]
+        job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]
         job_id_2_significance = state["job_id_2_significance"]
+        job_id_2_arrival_index = state["job_id_2_arrival_index"]
 
-        job_arrival_index = state["job_arrival_index"]
         all_job_sequence_num = state["all_job_sequence_num"]
         history_job_priority_weights = state["history_job_priority_weights"]
         history_job_budget_consumes = state["history_job_budget_consumes"]
         history_job_signficance = state["history_job_significance"]
         history_job_target_datablock_selected_num = state["history_job_target_datablock_selected_num"]
 
-        assert len(job_id_2_target_dataset_name) >= self.waiting_queue_capacity
-        set_dataset_name = set(job_id_2_target_dataset_name.values())
+        assert len(job_id_2_train_dataset_name) >= self.waiting_queue_capacity
+        set_dataset_name = set(job_id_2_train_dataset_name.values())
         assert len(set_dataset_name) == 1 # 必须保证所有的任务都是针对同一个数据集的
-        target_dataset_name = list(set_dataset_name)[0]
+        train_dataset_name = list(set_dataset_name)[0]
 
-        # sub_train_datasetidentifier_2_significance = state["current_sub_train_datasetidentifier_2_significance"][target_dataset_name]
-        sub_train_datasetidentifier_2_epsilon_remain = state["current_sub_train_datasetidentifier_2_epsilon_remain"][target_dataset_name]
-        sub_train_datasetidentifier_2_epsilon_capcity = state["current_sub_train_datasetidentifier_2_epsilon_capcity"][target_dataset_name]
+        # sub_train_datasetidentifier_2_significance = state["current_sub_train_datasetidentifier_2_significance"][train_dataset_name]
+        sub_train_datasetidentifier_2_epsilon_remain = state["current_sub_train_datasetidentifier_2_epsilon_remain"][train_dataset_name]
+        sub_train_datasetidentifier_2_epsilon_capcity = state["current_sub_train_datasetidentifier_2_epsilon_capcity"][train_dataset_name]
     
         self.on_job_arrival(sub_train_datasetidentifier_2_epsilon_capcity, all_job_sequence_num) # OK
-        for job_id, target_dataset_name in job_id_2_target_dataset_name.items():
+        for job_id, train_dataset_name in job_id_2_train_dataset_name.items():
             target_datablock_select_num = job_id_2_target_datablock_select_num[job_id]
             target_epsilon_require = job_id_2_target_epsilon_require[job_id]
             job_priority_weight = job_id_2_job_priority_weight[job_id]
             sub_train_datasetidentifier_2_significance = job_id_2_significance[job_id]
-            waiting_job = WaitingJob(job_id, target_dataset_name, target_datablock_select_num, target_epsilon_require, job_priority_weight, sub_train_datasetidentifier_2_significance)
+            waiting_job = WaitingJob(job_id, train_dataset_name, target_datablock_select_num, target_epsilon_require, job_priority_weight, sub_train_datasetidentifier_2_significance)
             self.waiting_queue.append(waiting_job)
         job_2_selected_datablock_identifiers = {} 
         calcu_compare_epsilon = 0.0
-        if job_arrival_index <= self.beta * all_job_sequence_num:
+        min_job_arrival_index = min(job_id_2_arrival_index.values())
+        if min_job_arrival_index < self.beta * all_job_sequence_num:
             job_2_selected_datablock_identifiers = {}
             calcu_compare_epsilon = 0.0
         else:

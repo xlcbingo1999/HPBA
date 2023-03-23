@@ -33,7 +33,7 @@ def get_df_config():
     parser.add_argument("--worker_ip", type=str, required=True)
     parser.add_argument("--worker_port", type=str, required=True)
     
-    parser.add_argument("--job_id", type=int, required=True)
+    parser.add_argument("--job_id", type=str, required=True)
     parser.add_argument("--model_name", type=str, required=True)
     parser.add_argument("--train_dataset_name", type=str, required=True) # : 用这个进行split
     parser.add_argument("--test_dataset_name", type=str, required=True)

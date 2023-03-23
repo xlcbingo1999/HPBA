@@ -32,7 +32,7 @@ def do_system_calculate_func(worker_ip, worker_port,
                             BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS):
     execute_cmds = []
     # execute_cmds.append("conda run -n py39torch113") # 会卡住, 没有任何log, 这个时候最好做重定向!
-    execute_cmds.append("python DL_do_calculate.py")
+    execute_cmds.append("python -u DL_do_calculate.py")
     execute_cmds.append("--worker_ip {}".format(worker_ip))
     execute_cmds.append("--worker_port {}".format(worker_port))
     execute_cmds.append("--job_id {}".format(job_id))
@@ -157,7 +157,7 @@ class Worker_server(object):
             self.jobid_2_thread[job_id] = p
             p.start()
         except Exception as e:
-            self.failed_job_callback(job_id, FAILED_RESULT_KEY.JOB_FAILED)
+            self.failed_job_callback(job_id, "FAILED_RESULT_KEY.JOB_FAILED")
             raise ValueError("No this calculate func: {}".format(e))
 
     def report_result(self, job_id, origin_info, result, real_duration_time):
