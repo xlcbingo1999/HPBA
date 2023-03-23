@@ -26,6 +26,13 @@ class OTDDPolicy(SigPolicy):
         self.distance_batch_size = batch_size
         self.calculate_batch_size = batch_size
 
+        # self.significance_trace = {}
+        # self.significance_trace_path = SIGNIFICANCE_TRACE_PATH + "/significance_{}.json".format(self.name)
+        # with open(self.significance_trace_path, "r+") as f:
+        #     fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        #     self.significance_trace = json.load(f)
+        #     fcntl.flock(f, fcntl.LOCK_UN)
+
     def get_job_datablock_significance_sync(self, signficance_state):
         begin = time.time()
         train_dataset_name = signficance_state["train_dataset_name"]
