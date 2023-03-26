@@ -105,8 +105,9 @@ class Worker_server(object):
         del self.jobid_2_thread[job_id]
 
     def failed_job_callback(self, job_id, failed_result_key):
+        origin_info = self.jobid_2_origininfo[job_id]
         client = self.get_scheduler_zerorpc_client()
-        client.worker_failed_job_callback(job_id, failed_result_key)
+        client.worker_failed_job_callback(job_id, origin_info, failed_result_key)
         if job_id in self.jobid_2_origininfo:
             del self.jobid_2_origininfo[job_id]
         if job_id in self.jobid_2_thread:

@@ -239,7 +239,7 @@ def do_calculate_func(job_id, model_name,
         summary_writer.add_scalar('{}/total_val_loss'.format(summary_writer_key), np.mean(total_val_loss), begin_epoch_num + epoch)
         summary_writer.add_scalar('{}/total_val_acc'.format(summary_writer_key), np.mean(total_val_acc), begin_epoch_num + epoch)
     
-    
+    summary_writer.close()
     if not os.path.exists(model_save_path):
         os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
     torch.save(model._module.state_dict(), model_save_path)

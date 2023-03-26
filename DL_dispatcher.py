@@ -9,10 +9,10 @@ import argparse
 def get_df_config():
     parser = argparse.ArgumentParser(
                 description="Sweep through lambda values")
-    parser.add_argument("--gpu_update_sleep_time", type=int, default=5)
+    parser.add_argument("--global_sleep_time", type=int, default=5)
 
-    parser.add_argument("--scheduler_update_sleep_time", type=int, default=2)
-    parser.add_argument("--cal_significance_sleep_time", type=int, default=2)
+    parser.add_argument("--scheduler_update_sleep_time", type=int, default=0)
+    parser.add_argument("--cal_significance_sleep_time", type=int, default=0)
     parser.add_argument("--placement_sleep_time", type=int, default=2)
 
     parser.add_argument("--waiting_time", type=int, default=10)
@@ -161,17 +161,18 @@ class Dispatcher(object):
 
     def sched_dispatch_start(self, ip, port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time):
         client = self.get_zerorpc_client(ip, port)
+        # client.sched_dispatch_testbed_start(cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time)
         client.cal_significance_dispatch_start(cal_significance_sleep_time)
         client.sched_dispatch_start(scheduler_update_sleep_time)
         client.placement_dispatch_start(placement_sleep_time)
     
     def sched_end(self, ip, port):
         client = self.get_zerorpc_client(ip, port)
-        client.schd_end()
+        client.sched_end()
 
-    def sched_update_gpu_status_start(self, ip, port,  init_gpuidentifiers, sleep_time):
+    def sched_update_gpu_status_start(self, ip, port,  init_gpuidentifiers):
         client = self.get_zerorpc_client(ip, port)
-        client.sched_update_gpu_status_start(init_gpuidentifiers, sleep_time)
+        client.sched_update_gpu_status_start(init_gpuidentifiers)
 
     def sched_init_sched_policy(self, ip, port, assignment_policy, significance_policy):
         client = self.get_zerorpc_client(ip, port)
@@ -224,7 +225,7 @@ if __name__ == "__main__":
     dispatcher_port = DISPATCHER_PORT
     
     init_gpuidentifiers = INIT_WORKERIDENTIFIERS
-    gpu_update_sleep_time = args.gpu_update_sleep_time
+    global_sleep_time = args.global_sleep_time
     dataset_update_timeout = args.dataset_update_timeout
     scheduler_update_sleep_time = args.scheduler_update_sleep_time
     cal_significance_sleep_time = args.cal_significance_sleep_time
@@ -283,7 +284,61 @@ if __name__ == "__main__":
             "MAX_GRAD_NORM": 1.2,
             "BATCH_SIZE": 1024,
             "MAX_PHYSICAL_BATCH_SIZE": 512,
-            "MAX_EPOCHS": 50,
+            "MAX_EPOCHS": 10,
+            "priority_weight": 1.0,
+            "dispatcher_ip": dispatcher_ip,
+            "dispatcher_port": dispatcher_port,
+        }, {
+            "time": 100,
+            "submited": False,
+            "model_name": "CNN",
+            "train_dataset_name": "EMNIST",
+            "test_dataset_name": "MNIST-2000", # "EMNIST_iid", "SVHN"
+            "sub_test_key_id": "test_sub_0",
+            "datablock_select_num": 1,
+            "LR": 3e-4,
+            "EPSILON": 0.1,
+            "DELTA": 1e-5,
+            "MAX_GRAD_NORM": 1.2,
+            "BATCH_SIZE": 1024,
+            "MAX_PHYSICAL_BATCH_SIZE": 512,
+            "MAX_EPOCHS": 10,
+            "priority_weight": 1.0,
+            "dispatcher_ip": dispatcher_ip,
+            "dispatcher_port": dispatcher_port,
+        }, {
+            "time": 100,
+            "submited": False,
+            "model_name": "CNN",
+            "train_dataset_name": "EMNIST",
+            "test_dataset_name": "MNIST-2000", # "EMNIST_iid", "SVHN"
+            "sub_test_key_id": "test_sub_0",
+            "datablock_select_num": 1,
+            "LR": 1e-4,
+            "EPSILON": 0.1,
+            "DELTA": 1e-5,
+            "MAX_GRAD_NORM": 1.2,
+            "BATCH_SIZE": 1024,
+            "MAX_PHYSICAL_BATCH_SIZE": 512,
+            "MAX_EPOCHS": 10,
+            "priority_weight": 1.0,
+            "dispatcher_ip": dispatcher_ip,
+            "dispatcher_port": dispatcher_port,
+        }, {
+            "time": 100,
+            "submited": False,
+            "model_name": "CNN",
+            "train_dataset_name": "EMNIST",
+            "test_dataset_name": "MNIST-2000", # "EMNIST_iid", "SVHN"
+            "sub_test_key_id": "test_sub_0",
+            "datablock_select_num": 1,
+            "LR": 1e-2,
+            "EPSILON": 0.1,
+            "DELTA": 1e-5,
+            "MAX_GRAD_NORM": 1.2,
+            "BATCH_SIZE": 1024,
+            "MAX_PHYSICAL_BATCH_SIZE": 512,
+            "MAX_EPOCHS": 10,
             "priority_weight": 1.0,
             "dispatcher_ip": dispatcher_ip,
             "dispatcher_port": dispatcher_port,
@@ -348,40 +403,40 @@ if __name__ == "__main__":
         "EMNIST": {
             "train_sub_0": {
                 "submited": False,
-                "epsilon_capacity": 5.0,
+                "epsilon_capacity": 0.1,
                 "delta_capacity": 1e-7,
                 "time": 0,
             },
             "train_sub_1": {
                 "submited": False,
-                "epsilon_capacity": 5.0,
+                "epsilon_capacity": 0.1,
                 "delta_capacity": 1e-7,
                 "time": 0,
             },
             "train_sub_2": {
                 "submited": False,
-                "epsilon_capacity": 5.0,
+                "epsilon_capacity": 0.1,
                 "delta_capacity": 1e-7,
                 "time": 0,
             },
-            "train_sub_3": {
-                "submited": False,
-                "epsilon_capacity": 5.0,
-                "delta_capacity": 1e-7,
-                "time": 0,
-            },
-            "train_sub_4": {
-                "submited": False,
-                "epsilon_capacity": 5.0,
-                "delta_capacity": 1e-7,
-                "time": 0,
-            },
-            "train_sub_5": {
-                "submited": False,
-                "epsilon_capacity": 5.0,
-                "delta_capacity": 1e-7,
-                "time": 0,
-            },
+            # "train_sub_3": {
+            #     "submited": False,
+            #     "epsilon_capacity": 0.1,
+            #     "delta_capacity": 1e-7,
+            #     "time": 0,
+            # },
+            # "train_sub_4": {
+            #     "submited": False,
+            #     "epsilon_capacity": 0.1,
+            #     "delta_capacity": 1e-7,
+            #     "time": 0,
+            # },
+            # "train_sub_5": {
+            #     "submited": False,
+            #     "epsilon_capacity": 0.1,
+            #     "delta_capacity": 1e-7,
+            #     "time": 0,
+            # },
         }
     } # 注意: 这里时间全部设置为0即可
     processes = []
@@ -391,7 +446,7 @@ if __name__ == "__main__":
         processes.append(remote_server_p)
 
         dispatcher.sched_init_sched_policy(sched_ip, sched_port, args.assignment_policy, args.significance_policy)
-        dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_gpuidentifiers, gpu_update_sleep_time)
+        dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_gpuidentifiers)
                 
         if not args.without_start_load_job:
             dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, dataset_update_timeout)
@@ -413,7 +468,7 @@ if __name__ == "__main__":
         # 主线程的最后一个操作!
         all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
         while not all_finished_label:
-            time.sleep(gpu_update_sleep_time)
+            time.sleep(global_sleep_time)
             all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
         print("logically all stoped!")
         dispatcher.all_finished = True

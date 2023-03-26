@@ -25,6 +25,8 @@ from functools import reduce
 
 import json
 import time
+import fcntl
+
 
 def DL_server_do_jobs(job_id, origin_info, begin_epoch_num, update_sched_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path):
     client = zerorpc.Client()
@@ -39,6 +41,7 @@ class Scheduler_server(object):
         self.workerip_2_ports = init_workerip_2_ports
 
         self.all_finished = False
+        self.all_testbed_thread = None
         self.sched_thread = None
         self.cal_significance_thread = None
         self.placement_thread = None
@@ -46,8 +49,8 @@ class Scheduler_server(object):
 
         self.update_sched_epoch_num = 1
         
-        self.gpuidentifier_2_gpu_status = {}
-        self.gpuidentifier_2_gpu_metadata = {}
+        # self.gpuidentifier_2_gpu_status = {}
+        # self.gpuidentifier_2_gpu_metadata = {}
         self.gpuidentifier_2_jobinstance_oneshot = {}
         
         self.sub_train_datasetidentifier_2_dataset_status = {} # 这里必须是一个可以伸缩的map
@@ -243,18 +246,16 @@ class Scheduler_server(object):
                 self.sub_train_datasetidentifier_2_epsilon_remain[init_dataset_name][identifier] = dataset_identifier_2_capacity_map[identifier]
                 self.sub_train_datasetidentifier_2_submited_time[init_dataset_name][identifier] = time.time()
 
+    '''
     def update_gpu(self, init_gpuidentifiers):
-        """
-        这个函数不能传, 必须时刻读取共享文件系统中的数据情况, 慢操作, 开Thread读取
-        """
+        # 这个函数不能传, 必须时刻读取共享文件系统中的数据情况, 慢操作, 开Thread读取
         def read_gpu_state_from_file(gpu_identifier):
             gpu_config_path = GPU_PATH + "/{}.json".format(gpu_identifier)
             with open(gpu_config_path, "r") as f:
                 try:
                     metadata = json.load(f)
                 except Exception as e:
-                    self.sched_logger.error("read {} exception: {}".format(gpu_config_path, e))
-                    f.close()
+                    self.sched_logger.warning("read {} exception: {}".format(gpu_config_path, e))
                     return 
                 if gpu_identifier not in self.gpuidentifier_2_jobinstance_oneshot:
                     self.gpuidentifier_2_jobinstance_oneshot[gpu_identifier] = None
@@ -263,11 +264,10 @@ class Scheduler_server(object):
                     self.gpuidentifier_2_gpu_status[gpu_identifier] = True
                 else:
                     self.gpuidentifier_2_gpu_status[gpu_identifier] = False
-                f.close()
-
         for gpu_identifier in init_gpuidentifiers:
             threading.Thread(target=read_gpu_state_from_file, args=(gpu_identifier, ), daemon=True).start()
-            
+    '''
+    
     def update_jobs(self, jobs_detail_map): # 每次可以增加一批任务
         count = 0
         for id in jobs_detail_map:
@@ -432,9 +432,16 @@ class Scheduler_server(object):
         # not_selected_datablock_identifiers = [tu[0] for tu in sub_train_sort[target_datablock_select_num:]]
         return job_2_selected_datablock_identifiers, calcu_compare_epsilon
 
-    def worker_failed_job_callback(self, job_id, failed_result_key):
+    def finished_job_to_dispatcher(self, job_id, origin_info):
+        dispatcher_ip = origin_info["dispatcher_ip"]
+        dispatcher_port = origin_info["dispatcher_port"]
+        dispatcher_client = self.get_zerorpc_client(dispatcher_ip, dispatcher_port)
+        dispatcher_client.finished_job_callback(job_id)
+
+    def worker_failed_job_callback(self, job_id, origin_info, failed_result_key):
         self.sched_logger.info("=========  Scheduler: Job Failed! ===========")
         self.sched_logger.info("job_id: {}".format(job_id))
+        self.sched_logger.info("origin_info: {}".format(origin_info))
         self.sched_logger.info("failed_result_key: {}".format(failed_result_key))
         self.sched_logger.info("====================")
 
@@ -447,6 +454,7 @@ class Scheduler_server(object):
         # TODO(xlc): 需要确定这里是否会出bug
         if self.jobid_2_current_epochs[job_id] >= self.jobid_2_max_epochs[job_id]:
             status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "finished")
+            self.finished_job_to_dispatcher(job_id, origin_info)
         else:
             self.global_job_arrival_index += 1
             self.jobid_2_arrival_index[job_id] = self.global_job_arrival_index
@@ -493,11 +501,7 @@ class Scheduler_server(object):
         if self.jobid_2_current_epochs[job_id] >= self.jobid_2_max_epochs[job_id]:
             # 只有任务彻底被完成才会写这些字段?
             status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "finished")
-            
-            dispatcher_ip = origin_info["dispatcher_ip"]
-            dispatcher_port = origin_info["dispatcher_port"]
-            dispatcher_client = self.get_zerorpc_client(dispatcher_ip, dispatcher_port)
-            dispatcher_client.finished_job_callback(job_id)
+            self.finished_job_to_dispatcher(job_id, origin_info)
         else:
             self.global_job_arrival_index += 1
             self.jobid_2_arrival_index[job_id] = self.global_job_arrival_index
@@ -520,6 +524,7 @@ class Scheduler_server(object):
 
     def get_target_job_status_update_path_and_status(self, job_id, operator):
         origin_status = self.jobid_2_status[job_id]
+        self.sched_logger.debug("check origin_status: {}".format(origin_status))
         update_path = None
         new_status = None
         if operator == "dataset":
@@ -547,6 +552,13 @@ class Scheduler_server(object):
             elif origin_status == JOB_STATUS_KEY.RUNNING:
                 update_path = JOB_STATUS_UPDATE_PATH.RUNNING_2_NOSCHED
                 new_status = JOB_STATUS_KEY.NO_SCHE
+            elif origin_status == JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL:
+                update_path = JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_NOSCHED
+                new_status = JOB_STATUS_KEY.NO_SCHE
+            elif origin_status == JOB_STATUS_KEY.NO_SCHE:
+                update_path = JOB_STATUS_UPDATE_PATH.NOSCHED_2_NOSCHED
+                new_status = JOB_STATUS_KEY.NO_SCHE
+                self.sched_logger.warning("NOSCHED_2_NOSCHED")
         elif operator == "finished":
             if origin_status == JOB_STATUS_KEY.NO_SCHE:
                 update_path = JOB_STATUS_UPDATE_PATH.NOSCHED_2_FINISHED
@@ -563,49 +575,56 @@ class Scheduler_server(object):
         return update_path, new_status
 
     def get_job_status_update_origin_target(self, status_update_path):
-        if status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_GPUSCHED:
-            origin_status = JOB_STATUS_KEY.NO_SCHE
-            target_status = JOB_STATUS_KEY.DONE_GPU_SCHED
-        elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_DATASETSCHED:
-            origin_status = JOB_STATUS_KEY.NO_SCHE
-            target_status = JOB_STATUS_KEY.DONE_DATASET_SCHED
+        origin_status = None
+        target_status = None
+        # dataset
+        if status_update_path == JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_ALLSCHED:
+            origin_status = JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL
+            target_status = JOB_STATUS_KEY.DONE_ALL_SCHED
+        # significance
         elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_SIGNIFICANCE:
             origin_status = JOB_STATUS_KEY.NO_SCHE
             target_status = JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL
+        # failed
         elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_FAILED:
             origin_status = JOB_STATUS_KEY.NO_SCHE
             target_status = JOB_STATUS_KEY.FAILED
-        elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_FINISHED:
-            origin_status = JOB_STATUS_KEY.NO_SCHE
-            target_status = JOB_STATUS_KEY.FINISHED
-
-        elif status_update_path == JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_ALLSCHED:
-            origin_status = JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL
-            target_status = JOB_STATUS_KEY.DONE_ALL_SCHED
-        elif status_update_path == JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_FAILED:
-            origin_status = JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL
-            target_status = JOB_STATUS_KEY.FAILED
-        elif status_update_path == JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_FINISHED:
-            origin_status = JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL
-            target_status = JOB_STATUS_KEY.FINISHED
-
         elif status_update_path == JOB_STATUS_UPDATE_PATH.ALLSCHED_2_FAILED:
             origin_status = JOB_STATUS_KEY.DONE_ALL_SCHED
             target_status = JOB_STATUS_KEY.FAILED
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_FAILED:
+            origin_status = JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL
+            target_status = JOB_STATUS_KEY.FAILED
+        # recoming
         elif status_update_path == JOB_STATUS_UPDATE_PATH.ALLSCHED_2_NOSCHED:
             origin_status = JOB_STATUS_KEY.DONE_ALL_SCHED
             target_status = JOB_STATUS_KEY.NO_SCHE
-        elif status_update_path == JOB_STATUS_UPDATE_PATH.ALLSCHED_2_FINISHED:
-            origin_status = JOB_STATUS_KEY.DONE_ALL_SCHED
-            target_status = JOB_STATUS_KEY.FINISHED
-
         elif status_update_path == JOB_STATUS_UPDATE_PATH.RUNNING_2_NOSCHED:
             origin_status = JOB_STATUS_KEY.RUNNING
             target_status = JOB_STATUS_KEY.NO_SCHE
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_NOSCHED:
+            origin_status = JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL
+            target_status = JOB_STATUS_KEY.NO_SCHE
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_NOSCHED:
+            origin_status = JOB_STATUS_KEY.NO_SCHE
+            target_status = JOB_STATUS_KEY.NO_SCHE
+        # finished
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_FINISHED:
+            origin_status = JOB_STATUS_KEY.NO_SCHE
+            target_status = JOB_STATUS_KEY.FINISHED
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_FINISHED:
+            origin_status = JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL
+            target_status = JOB_STATUS_KEY.FINISHED
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.ALLSCHED_2_FINISHED:
+            origin_status = JOB_STATUS_KEY.DONE_ALL_SCHED
+            target_status = JOB_STATUS_KEY.FINISHED        
         elif status_update_path == JOB_STATUS_UPDATE_PATH.RUNNING_2_FINISHED:
             origin_status = JOB_STATUS_KEY.RUNNING
             target_status = JOB_STATUS_KEY.FINISHED
-
+        else:
+            raise ValueError("status_update_path: {} => origin_status: {}; target_status: {}".format(
+                status_update_path, origin_status, target_status
+            ))
         return origin_status, target_status
 
     def get_job_datablock_significance_sync(self, job_id, all_significance_state, is_history):
@@ -626,7 +645,25 @@ class Scheduler_server(object):
             all_significance_state[key]["sub_train_key_id"]: value for key, value in sub_train_index_2_significance.items()
         }
         return sub_train_datasetidentifier_2_significance
-
+    
+    def sched_dispatch_testbed_start(self, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_times):
+        def thread_func_sched_dispatch_testbed(cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_times):
+            while not self.all_finished and self.finished_update_init_history_jobs:
+                self.calculate_significance_for_nosched_jobs()
+                if cal_significance_sleep_time > 0:
+                    time.sleep(cal_significance_sleep_time)
+                self.sched_dataset_for_done_significance_cal_jobs()
+                if scheduler_update_sleep_time > 0:
+                    time.sleep(scheduler_update_sleep_time)
+                self.placement_dispatch_for_allsched_jobs()
+                if placement_sleep_times > 0:
+                    time.sleep(placement_sleep_times)
+            self.sched_logger.info("Thread [thread_func_sched_dispatch_testbed] finished!")
+        p = threading.Thread(target=thread_func_sched_dispatch_testbed, args=(cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_times), daemon=True)
+        self.all_testbed_thread = p
+        p.start()
+        self.sched_logger.info("Thread [thread_func_sched_dispatch_testbed] started!")
+            
     def calculate_significance_for_nosched_jobs(self):
         all_no_sche_jobs_copy = copy.deepcopy(self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE])
         if len(all_no_sche_jobs_copy) <= 0:
@@ -708,6 +745,8 @@ class Scheduler_server(object):
             # TODO(xlc): 这里不应该直接设置为Failed状态, 而是考虑max_time的情况, 决定是否将任务放到NO_SCHED的状态, 同时需要知道模型的最新保存位置?
             if self.jobid_2_current_epochs[temp_job_id] >= self.jobid_2_max_epochs[temp_job_id]:
                 status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "finished")
+                origin_info = self.jobid_2_origininfo[temp_job_id]
+                self.finished_job_to_dispatcher(temp_job_id, origin_info)
             else:
                 self.global_job_arrival_index += 1
                 self.jobid_2_arrival_index[temp_job_id] = self.global_job_arrival_index
@@ -719,7 +758,7 @@ class Scheduler_server(object):
         
         self.report_status("after sched_dataset_for_done_significance_cal_jobs")
 
-    def placement_dispatch(self):
+    def placement_dispatch_for_allsched_jobs(self):
         # 放置任务
         all_done_all_sched_jobs_copy = copy.deepcopy(self.status_2_jobid[JOB_STATUS_KEY.DONE_ALL_SCHED])
         if len(all_done_all_sched_jobs_copy) <= 0:
@@ -736,23 +775,23 @@ class Scheduler_server(object):
             # 直接根据当前的空挡状态获取worker_identifier
             # worker_identifier = self.jobid_2_gputarget[job_id]
             gpuidentifier_enable_status = [k for k, v in self.gpuidentifier_2_jobinstance_oneshot.items() if v == None]
+            self.sched_logger.debug("check gpuidentifier_enable_status: {}".format(gpuidentifier_enable_status))
             if len(gpuidentifier_enable_status) > 0:
                 gpu_identifer = random.choice(gpuidentifier_enable_status)
-                if self.gpuidentifier_2_gpu_status[gpu_identifer] == True:
-                    self.gpuidentifier_2_jobinstance_oneshot[gpu_identifer] = job_id
-                    self.jobid_2_gputarget[job_id] = gpu_identifer
-                    worker_ip, worker_gpu_id = self.get_worker_identifier_detail(gpu_identifer)
-                    worker_port = self.workerip_2_ports[worker_ip]
-                    model_save_path = self.jobid_2_model_save_path[job_id]
-                    logging_file_path = self.jobid_2_logging_file_path[job_id]
-                    summary_writer_path = self.summary_writer_path
-                    summary_writer_key = self.jobid_2_summary_writer_key[job_id]
-                    begin_epoch_num = self.jobid_2_real_sched_epochs[job_id]
-                    args.append([job_id, origin_info, begin_epoch_num, self.update_sched_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path])
-                    if job_id not in self.jobid_2_started_time:
-                        self.jobid_2_started_time[job_id] = []
-                    self.jobid_2_started_time[job_id].append(time.time())
-                    self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.DONE_ALL_SCHED, JOB_STATUS_KEY.RUNNING)
+                self.gpuidentifier_2_jobinstance_oneshot[gpu_identifer] = job_id
+                self.jobid_2_gputarget[job_id] = gpu_identifer
+                worker_ip, worker_gpu_id = self.get_worker_identifier_detail(gpu_identifer)
+                worker_port = self.workerip_2_ports[worker_ip]
+                model_save_path = self.jobid_2_model_save_path[job_id]
+                logging_file_path = self.jobid_2_logging_file_path[job_id]
+                summary_writer_path = self.summary_writer_path
+                summary_writer_key = self.jobid_2_summary_writer_key[job_id]
+                begin_epoch_num = self.jobid_2_real_sched_epochs[job_id]
+                args.append([job_id, origin_info, begin_epoch_num, self.update_sched_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path])
+                if job_id not in self.jobid_2_started_time:
+                    self.jobid_2_started_time[job_id] = []
+                self.jobid_2_started_time[job_id].append(time.time())
+                self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.DONE_ALL_SCHED, JOB_STATUS_KEY.RUNNING)
         if len(args) > 0:
             # 转置
             final_args = [[row[i] for row in args] for i in range(len(args[0]))]
@@ -785,7 +824,7 @@ class Scheduler_server(object):
     def placement_dispatch_start(self, placement_sleep_time):
         def thread_func_timely_placement(placement_sleep_time):
             while not self.all_finished and self.finished_update_init_history_jobs:
-                self.placement_dispatch()
+                self.placement_dispatch_for_allsched_jobs()
                 time.sleep(placement_sleep_time)
             self.sched_logger.info("Thread [thread_func_timely_placement] finished!")
         p = threading.Thread(target=thread_func_timely_placement, args=(placement_sleep_time, ), daemon=True)
@@ -793,14 +832,16 @@ class Scheduler_server(object):
         p.start()
         self.sched_logger.info("Thread [thread_func_timely_placement] started!")
 
-    def schd_end(self):
+    def sched_end(self):
         self.all_finished = True
+        self.all_testbed_thread = None
         self.sched_thread = None
         self.cal_significance_thread = None
         self.placement_thread = None
         self.gpu_thread = None
 
-    def sched_update_gpu_status_start(self, init_gpuidentifiers, sleep_time):
+    def sched_update_gpu_status_start(self, init_gpuidentifiers):
+        '''
         def thread_func_timely_update_gpu(init_gpuidentifiers):
             while not self.all_finished:
                 self.update_gpu(init_gpuidentifiers)
@@ -809,8 +850,13 @@ class Scheduler_server(object):
         p = threading.Thread(target=thread_func_timely_update_gpu, args=(init_gpuidentifiers, ), daemon=True)
         self.gpu_thread = p
         p.start()
+        '''
         self.sched_logger.info("Thread [thread_func_timely_update_gpu] started!")
-
+        for gpu_identifier in init_gpuidentifiers:
+            if gpu_identifier not in self.gpuidentifier_2_jobinstance_oneshot:
+                self.gpuidentifier_2_jobinstance_oneshot[gpu_identifier] = None
+        self.sched_logger.info("Thread [thread_func_timely_update_gpu] success!")
+        
     def sched_update_assignment_policy(self, assignment_policy, assignment_args):
         if assignment_policy == "PBGPolicy":
             comparison_cost_epsilon, comparison_z_threshold, L, U = assignment_args
