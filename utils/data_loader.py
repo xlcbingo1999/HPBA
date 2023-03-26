@@ -927,9 +927,18 @@ def get_concat_dataset(dataset_name, key_ids, DATASET_PATH, DATASET_CONFIG_PATH,
     dataset_name_2_indexes = {}
     with open(DATASET_CONFIG_PATH, 'r+') as f:
         dataset_config = json.load(f)
-        for key in key_ids:
-            dataset_names = dataset_config[dataset_name][key]["name"]
-            dataset_idxes = dataset_config[dataset_name][key]["indexes"]
+        if isinstance(key_ids, list):
+            for key in key_ids:
+                dataset_names = dataset_config[dataset_name][key]["name"]
+                dataset_idxes = dataset_config[dataset_name][key]["indexes"]
+                for name, idxes in zip(dataset_names, dataset_idxes):
+                    if name not in dataset_name_2_indexes:
+                        dataset_name_2_indexes[name] = idxes
+                    else:
+                        dataset_name_2_indexes[name].extend(idxes)
+        elif isinstance(key_ids, str):
+            dataset_names = dataset_config[dataset_name][key_ids]["name"]
+            dataset_idxes = dataset_config[dataset_name][key_ids]["indexes"]
             for name, idxes in zip(dataset_names, dataset_idxes):
                 if name not in dataset_name_2_indexes:
                     dataset_name_2_indexes[name] = idxes

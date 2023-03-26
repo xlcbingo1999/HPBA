@@ -16,6 +16,8 @@ class WaitingJob(object):
         self.job_priority_weight = job_priority_weight
         self.sub_train_datasetidentifier_2_significance = sub_train_datasetidentifier_2_significance
         self.dominant_share = 0.0
+
+        self.only_one = False
         
 
 class DPFHISPolicy(Policy):

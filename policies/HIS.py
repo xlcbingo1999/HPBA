@@ -17,6 +17,7 @@ class HISPolicy(Policy):
         # self.only_small = only_small
         self.logger = logger
         self.waiting_queue_capacity = 1
+        self.only_one = True
 
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
@@ -42,15 +43,15 @@ class HISPolicy(Policy):
             (job_privacy_budget_consume_list @ matrix_X) <= datablock_privacy_budget_capacity_list
         ]
 
-        print("check job_target_datablock_selected_num_list: {}".format(job_target_datablock_selected_num_list))
-        print("check datablock_privacy_budget_capacity_list: {}".format(datablock_privacy_budget_capacity_list))
-        print("check job_privacy_budget_consume_list: {}".format(job_privacy_budget_consume_list))
+        # self.logger.debug("check job_target_datablock_selected_num_list: {}".format(job_target_datablock_selected_num_list))
+        # self.logger.debug("check datablock_privacy_budget_capacity_list: {}".format(datablock_privacy_budget_capacity_list))
+        # self.logger.debug("check job_privacy_budget_consume_list: {}".format(job_privacy_budget_consume_list))
 
         cvxprob = cp.Problem(objective, constraints)
         result = cvxprob.solve(solver)
-        # print(matrix_X.value)
+        # self.logger.debug(matrix_X.value)
         if cvxprob.status != "optimal":
-            print('WARNING: Allocation returned by policy not optimal!')
+            self.logger.info('WARNING: Allocation returned by policy not optimal!')
         return matrix_X.value
 
     def get_sign_matrix(self, current_all_job_priority_weights, current_all_job_significances,
@@ -140,9 +141,9 @@ class HISPolicy(Policy):
         probability_enable_num = sum(p > 0.0 for p in current_job_probability)
         if probability_enable_num < result_select_num:
             result_select_num = probability_enable_num
-        # print("check result_select_num: ", result_select_num)
-        # print("check waiting_select_indexes: ", waiting_select_indexes)
-        # print("check current_job_probability: ", current_job_probability)
+        # self.logger.debug("check result_select_num: ", result_select_num)
+        # self.logger.debug("check waiting_select_indexes: ", waiting_select_indexes)
+        # self.logger.debug("check current_job_probability: ", current_job_probability)
         temp_result = list(np.random.choice(a=waiting_select_indexes, size=result_select_num, replace=False, p=current_job_probability))
         if null_index in temp_result:
             choose_indexes = copy.deepcopy(temp_result)
@@ -193,7 +194,7 @@ class HISPolicy(Policy):
             sample_history_job_target_datablock_selected_nums = [history_job_target_datablock_selected_num[i] for i in sample_indexes]
 
         if job_arrival_index < self.beta * all_job_sequence_num:
-            print("stop due to sample caused by job_arrival_index: {}; self.beta: {}; all_job_sequence_num: {}".format(
+            self.logger.info("stop due to sample caused by job_arrival_index: {}; self.beta: {}; all_job_sequence_num: {}".format(
                 job_arrival_index, self.beta, all_job_sequence_num
             ))
             selected_datablock_identifiers = []

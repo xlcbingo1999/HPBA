@@ -24,6 +24,7 @@ from utils.global_variable import DATASET_PATH, SUB_TRAIN_DATASET_CONFIG_PATH, T
 from utils.data_loader import get_concat_dataset
 
 import string
+import os
 
 
 
@@ -38,18 +39,21 @@ def get_df_config():
     parser.add_argument("--train_dataset_name", type=str, required=True) # : 用这个进行split
     parser.add_argument("--test_dataset_name", type=str, required=True)
     parser.add_argument("--sub_train_key_ids", type=str, required=True) # : 用这个进行split
-    parser.add_argument("--sub_test_key_ids", type=str, required=True)
+    parser.add_argument("--sub_test_key_id", type=str, required=True)
    
     parser.add_argument("--device_index", type=int, required=True)
     parser.add_argument("--logging_file_path", type=str, default="")
     parser.add_argument("--summary_writer_path", type=str, default="")
+    parser.add_argument("--summary_writer_key", type=str, default="")
+    parser.add_argument("--model_save_path", type=str, default="")
     parser.add_argument("--LR", type=float, required=True)
     parser.add_argument("--EPSILON", type=float, required=True)
     parser.add_argument("--DELTA", type=float, required=True)
     parser.add_argument("--MAX_GRAD_NORM", type=float, required=True)
     parser.add_argument("--BATCH_SIZE", type=int, required=True)
     parser.add_argument("--MAX_PHYSICAL_BATCH_SIZE", type=int, required=True)
-    parser.add_argument("--EPOCHS", type=int, required=True)
+    parser.add_argument("--begin_epoch_num", type=int, required=True)
+    parser.add_argument("--run_epoch_num", type=int, required=True)
 
     args = parser.parse_args()
     return args
@@ -88,30 +92,39 @@ class CNN(nn.Module):
 
 def do_calculate_func(job_id, model_name, 
                     train_dataset_name, sub_train_key_ids,
-                    test_dataset_name, sub_test_key_ids,
+                    test_dataset_name, sub_test_key_id,
                     device_index,
-                    summary_writer_path, logging_file_path,
+                    model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
                     LR, EPSILON, DELTA, MAX_GRAD_NORM, 
-                    BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS):
+                    BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
+                    begin_epoch_num, run_epoch_num):
     begin_time = time.time()
     
+    with open(logging_file_path, "a+") as f:
+        print("check train_dataset_name: {}".format(train_dataset_name), file=f)
+        print("check sub_train_key_ids: {}".format(sub_train_key_ids), file=f)
+        print("check test_dataset_name: {}".format(test_dataset_name), file=f)
+        print("check sub_test_key_id: {}".format(sub_test_key_id), file=f)
+        print("check device_index: {}".format(device_index), file=f)
+        
     train_dataset = get_concat_dataset(train_dataset_name, sub_train_key_ids, 
                                     DATASET_PATH, SUB_TRAIN_DATASET_CONFIG_PATH, 
                                     "train")
-    test_dataset = get_concat_dataset(test_dataset_name, sub_test_key_ids,
+    test_dataset = get_concat_dataset(test_dataset_name, sub_test_key_id,
                                     DATASET_PATH, TEST_DATASET_CONFIG_PATH,
                                     "test")
     
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
-    print("check train_loader: {}".format(len(train_loader)))
-    print("check test_loader: {}".format(len(test_loader)))
 
     device = torch.device("cuda:{}".format(device_index) if torch.cuda.is_available() else "cpu")
     if model_name == "CNN":
         model = CNN(output_dim=len(train_dataset.classes))
     elif model_name == "resnet18":
         model = models.resnet18(num_classes=len(train_dataset.classes))
+    if os.path.exists(model_save_path):
+        model.load_state_dict(torch.load(model_save_path))
+    model.train()
 
     if EPSILON > 0.0:
         model = ModuleValidator.fix(model)
@@ -126,13 +139,15 @@ def do_calculate_func(job_id, model_name,
     privacy_engine = PrivacyEngine() if EPSILON > 0.0 else None
     model, optimizer, train_loader = \
         get_privacy_dataloader(privacy_engine, model, optimizer, 
-                                train_loader, EPOCHS, 
+                                train_loader, run_epoch_num, 
                                 EPSILON, DELTA, MAX_GRAD_NORM) 
 
-    print("job [{}] begining ...".format(job_id))
+    with open(logging_file_path, "a+") as f:
+        print("job [{}] - epoch [{} to {}] begining ...".format(job_id, begin_epoch_num, begin_epoch_num + run_epoch_num))
+        print("job [{}] - epoch [{} to {}] begining ...".format(job_id, begin_epoch_num, begin_epoch_num + run_epoch_num), file=f)
         
     summary_writer = SummaryWriter(summary_writer_path)
-    for epoch in range(EPOCHS):
+    for epoch in range(run_epoch_num):
         model.train()
         total_train_loss = []
         total_train_acc = []
@@ -157,9 +172,10 @@ def do_calculate_func(job_id, model_name,
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
-                    if (i + 1) % 10 == 0:
-                        print("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
-                        print("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
+                    if (i + 1) % 100 == 0:
+                        with open(logging_file_path, "a+") as f:
+                            print("epoch[{}]: temp_train_loss: {}".format(begin_epoch_num + epoch, np.mean(total_train_loss)), file=f)
+                            print("epoch[{}]: temp_train_acc: {}".format(begin_epoch_num + epoch, np.mean(total_train_acc)), file=f)
         else:
             for i, (inputs, labels) in enumerate(train_loader):
                 inputs = inputs.to(device)
@@ -176,20 +192,25 @@ def do_calculate_func(job_id, model_name,
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                if (i + 1) % 10 == 0:
-                    print("epoch[{}]: temp_train_loss: {}".format(epoch, np.mean(total_train_loss)))
-                    print("epoch[{}]: temp_train_acc: {}".format(epoch, np.mean(total_train_acc)))
+                if (i + 1) % 100 == 0:
+                    with open(logging_file_path, "a+") as f:
+                        print("epoch[{}]: temp_train_loss: {}".format(begin_epoch_num + epoch, np.mean(total_train_loss)), file=f)
+                        print("epoch[{}]: temp_train_acc: {}".format(begin_epoch_num + epoch, np.mean(total_train_acc)), file=f)
   
         if privacy_engine is not None:
             epsilon = privacy_engine.get_epsilon(DELTA)
         else:
             epsilon = 0.0
-        print("epoch[{}]: total_train_loss: {}".format(epoch, np.mean(total_train_loss)))
-        print("epoch[{}]: total_train_acc: {}".format(epoch, np.mean(total_train_acc)))
-        print("epoch[{}]: epsilon_consume: {}".format(epoch, epsilon))
-        summary_writer.add_scalar('total_train_loss', np.mean(total_train_loss), epoch)
-        summary_writer.add_scalar('total_train_acc', np.mean(total_train_acc), epoch)
-        summary_writer.add_scalar('epsilon_consume', epsilon, epoch)
+        with open(logging_file_path, "a+") as f:
+            print("epoch[{}]: total_train_loss: {}".format(begin_epoch_num + epoch, np.mean(total_train_loss)))
+            print("epoch[{}]: total_train_acc: {}".format(begin_epoch_num + epoch, np.mean(total_train_acc)))
+            print("epoch[{}]: epsilon_consume: {}".format(begin_epoch_num + epoch, epsilon))
+            print("epoch[{}]: total_train_loss: {}".format(begin_epoch_num + epoch, np.mean(total_train_loss)), file=f)
+            print("epoch[{}]: total_train_acc: {}".format(begin_epoch_num + epoch, np.mean(total_train_acc)), file=f)
+            print("epoch[{}]: epsilon_consume: {}".format(begin_epoch_num + epoch, epsilon), file=f)
+        summary_writer.add_scalar('{}/total_train_loss'.format(summary_writer_key), np.mean(total_train_loss), begin_epoch_num + epoch)
+        summary_writer.add_scalar('{}/total_train_acc'.format(summary_writer_key), np.mean(total_train_acc), begin_epoch_num + epoch)
+        summary_writer.add_scalar('{}/epsilon_consume'.format(summary_writer_key), epsilon, begin_epoch_num + epoch)
 
         model.eval()
         total_val_loss = []
@@ -205,16 +226,23 @@ def do_calculate_func(job_id, model_name,
             labels = labels.detach().cpu().numpy()
             acc = accuracy(preds, labels)
             total_val_acc.append(acc)
-            if (i + 1) % 1000 == 0:
-                print("val epoch[{}]: temp_val_loss: {}".format(epoch, np.mean(total_val_loss)))
-                print("val epoch[{}]: temp_val_acc: {}".format(epoch, np.mean(total_val_acc)))
+            if (i + 1) % 10 == 0:
+                with open(logging_file_path, "a+") as f:
+                    print("val epoch[{}]: temp_val_loss: {}".format(begin_epoch_num + epoch, np.mean(total_val_loss)), file=f)
+                    print("val epoch[{}]: temp_val_acc: {}".format(begin_epoch_num + epoch, np.mean(total_val_acc)), file=f)
 
-        print("val epoch[{}]: total_val_loss: {}".format(epoch, np.mean(total_val_loss)))
-        print("val epoch[{}]: total_val_acc: {}".format(epoch, np.mean(total_val_acc)))
-        summary_writer.add_scalar('total_val_loss', np.mean(total_val_loss), epoch)
-        summary_writer.add_scalar('total_val_acc', np.mean(total_val_acc), epoch)
+        with open(logging_file_path, "a+") as f:
+            print("val epoch[{}]: total_val_loss: {}".format(begin_epoch_num + epoch, np.mean(total_val_loss)))
+            print("val epoch[{}]: total_val_acc: {}".format(begin_epoch_num + epoch, np.mean(total_val_acc)))
+            print("val epoch[{}]: total_val_loss: {}".format(begin_epoch_num + epoch, np.mean(total_val_loss)), file=f)
+            print("val epoch[{}]: total_val_acc: {}".format(begin_epoch_num + epoch, np.mean(total_val_acc)), file=f)
+        summary_writer.add_scalar('{}/total_val_loss'.format(summary_writer_key), np.mean(total_val_loss), begin_epoch_num + epoch)
+        summary_writer.add_scalar('{}/total_val_acc'.format(summary_writer_key), np.mean(total_val_acc), begin_epoch_num + epoch)
     
-    print("job [{}] end ...".format(job_id))
+    
+    if not os.path.exists(model_save_path):
+        os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
+    torch.save(model._module.state_dict(), model_save_path)
 
     real_duration_time = time.time() - begin_time
     all_results = {
@@ -223,7 +251,16 @@ def do_calculate_func(job_id, model_name,
         'test_acc': np.mean(total_val_acc),
         'test_loss': np.mean(total_val_loss),
         'epsilon_consume': epsilon,
+        'begin_epoch_num': begin_epoch_num,
+        'run_epoch_num': run_epoch_num
     }
+
+    with open(logging_file_path, "a+") as f:
+        print("job [{}] - epoch [{} to {}] end ".format(job_id, begin_epoch_num, begin_epoch_num + run_epoch_num))
+
+        print("job [{}] saves in {}".format(job_id, model_save_path), file=f)
+        print("job [{}] - epoch [{} to {}] end ".format(job_id, begin_epoch_num, begin_epoch_num + run_epoch_num), file=f)
+
     return job_id, all_results, real_duration_time
 
 if __name__ == "__main__":
@@ -239,13 +276,14 @@ if __name__ == "__main__":
 
     sub_train_key_ids = args.sub_train_key_ids
     sub_train_key_ids = sub_train_key_ids.split(":")
-    sub_test_key_ids = args.sub_test_key_ids
-    sub_test_key_ids = sub_test_key_ids.split(":")
+    sub_test_key_id = args.sub_test_key_id
 
     device_index = args.device_index
 
     summary_writer_path = args.summary_writer_path
+    summary_writer_key = args.summary_writer_key
     logging_file_path = args.logging_file_path
+    model_save_path = args.model_save_path
     
     LR = args.LR 
     EPSILON = args.EPSILON
@@ -253,16 +291,19 @@ if __name__ == "__main__":
     MAX_GRAD_NORM = args.MAX_GRAD_NORM 
     BATCH_SIZE = args.BATCH_SIZE
     MAX_PHYSICAL_BATCH_SIZE = args.MAX_PHYSICAL_BATCH_SIZE
-    EPOCHS = args.EPOCHS
+
+    begin_epoch_num = args.begin_epoch_num
+    run_epoch_num = args.run_epoch_num
 
     job_id, all_results, real_duration_time = do_calculate_func(
         job_id, model_name, 
         train_dataset_name, sub_train_key_ids,
-        test_dataset_name, sub_test_key_ids,
+        test_dataset_name, sub_test_key_id,
         device_index, 
-        summary_writer_path, logging_file_path,
+        model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
         LR, EPSILON, DELTA, MAX_GRAD_NORM, 
-        BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS
+        BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
+        begin_epoch_num, run_epoch_num
     )
     
     tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)

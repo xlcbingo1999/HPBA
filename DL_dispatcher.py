@@ -1,6 +1,6 @@
 import zerorpc
 import time
-from utils.global_variable import SCHE_IP, SCHE_PORT, DISPATCHER_IP, DISPATCHER_PORT, SUB_TRAIN_DATASET_CONFIG_PATH, TEST_DATASET_CONFIG_PATH, INIT_WORKERIDENTIFIERS, TENSORBOARD_PATH
+from utils.global_variable import SCHE_IP, SCHE_PORT, DISPATCHER_IP, DISPATCHER_PORT, INIT_WORKERIDENTIFIERS
 import threading
 from functools import reduce
 import sys
@@ -17,11 +17,11 @@ def get_df_config():
 
     parser.add_argument("--waiting_time", type=int, default=10)
     parser.add_argument("--dataset_update_timeout", type=int, default=120)
-    parser.add_argument("--start_load_job", action="store_true")
-    parser.add_argument("--start_load_history_job", action="store_true")
-    parser.add_argument("--start_load_dataset", action="store_true")
-    parser.add_argument("--finished_clear_job", action="store_true")
-    parser.add_argument("--finished_clear_dataset", action="store_true")
+    parser.add_argument("--without_start_load_job", action="store_true")
+    parser.add_argument("--without_start_load_history_job", action="store_true")
+    parser.add_argument("--without_start_load_dataset", action="store_true")
+    parser.add_argument("--without_finished_clear_job", action="store_true")
+    parser.add_argument("--without_finished_clear_dataset", action="store_true")
 
     parser.add_argument("--assignment_policy", type=str, default="HISPolicy")
     parser.add_argument("--significance_policy", type=str, default="HISOTDDPolicy")
@@ -65,10 +65,6 @@ class Dispatcher(object):
 
         self.all_start_time = time.time()
         self.current_time = 0
-
-        current_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
-        file_log_name = 'schedule-review-%s' % (current_time)
-        self.summary_writer_path = TENSORBOARD_PATH + "/{}".format(file_log_name)
         
     def dispatch_jobs(self, sched_ip, sched_port):
         def thread_func_timely_dispatch_job(sched_ip, sched_port):
@@ -167,7 +163,7 @@ class Dispatcher(object):
         client = self.get_zerorpc_client(ip, port)
         client.cal_significance_dispatch_start(cal_significance_sleep_time)
         client.sched_dispatch_start(scheduler_update_sleep_time)
-        client.placement_dispatch_start(placement_sleep_time, self.summary_writer_path)
+        client.placement_dispatch_start(placement_sleep_time)
     
     def sched_end(self, ip, port):
         client = self.get_zerorpc_client(ip, port)
@@ -243,10 +239,46 @@ if __name__ == "__main__":
             "model_name": "CNN",
             "train_dataset_name": "EMNIST",
             "test_dataset_name": "EMNIST_MNIST-1000_1000", # "EMNIST_iid", "SVHN"
-            "sub_test_key_ids": ["test_sub_0"],
+            "sub_test_key_id": "test_sub_0",
+            "datablock_select_num": 2,
+            "LR": 1e-3,
+            "EPSILON": 0.02,
+            "DELTA": 1e-5,
+            "MAX_GRAD_NORM": 1.2,
+            "BATCH_SIZE": 1024,
+            "MAX_PHYSICAL_BATCH_SIZE": 512,
+            "MAX_EPOCHS": 10,
+            "priority_weight": 1.0,
+            "dispatcher_ip": dispatcher_ip,
+            "dispatcher_port": dispatcher_port,
+        }, {
+            "time": 30,
+            "submited": False,
+            "model_name": "CNN",
+            "train_dataset_name": "EMNIST",
+            "test_dataset_name": "EMNIST-2000", # "EMNIST_iid", "SVHN"
+            "sub_test_key_id": "test_sub_0",
+            "datablock_select_num": 4,
+            "LR": 1e-3,
+            "EPSILON": 0.02,
+            "DELTA": 1e-5,
+            "MAX_GRAD_NORM": 1.2,
+            "BATCH_SIZE": 1024,
+            "MAX_PHYSICAL_BATCH_SIZE": 512,
+            "MAX_EPOCHS": 20,
+            "priority_weight": 1.0,
+            "dispatcher_ip": dispatcher_ip,
+            "dispatcher_port": dispatcher_port,
+        }, {
+            "time": 100,
+            "submited": False,
+            "model_name": "CNN",
+            "train_dataset_name": "EMNIST",
+            "test_dataset_name": "MNIST-2000", # "EMNIST_iid", "SVHN"
+            "sub_test_key_id": "test_sub_0",
             "datablock_select_num": 1,
             "LR": 1e-3,
-            "EPSILON": 0.05,
+            "EPSILON": 0.1,
             "DELTA": 1e-5,
             "MAX_GRAD_NORM": 1.2,
             "BATCH_SIZE": 1024,
@@ -263,10 +295,10 @@ if __name__ == "__main__":
             "model_name": "CNN",
             "train_dataset_name": "EMNIST",
             "test_dataset_name": "EMNIST_MNIST-1000_1000", # "EMNIST_iid", "SVHN"
-            "sub_test_key_ids": ["test_sub_0"],
+            "sub_test_key_id": "test_sub_0",
             "datablock_select_num": 1,
             "LR": 1e-3,
-            "EPSILON": 0.05,
+            "EPSILON": 0.02,
             "DELTA": 1e-5,
             "MAX_GRAD_NORM": 1.2,
             "BATCH_SIZE": 1024,
@@ -280,10 +312,10 @@ if __name__ == "__main__":
             "model_name": "CNN",
             "train_dataset_name": "EMNIST",
             "test_dataset_name": "EMNIST-2000", # "EMNIST_iid", "SVHN"
-            "sub_test_key_ids": ["test_sub_0"],
-            "datablock_select_num": 1,
+            "sub_test_key_id": "test_sub_0",
+            "datablock_select_num": 2,
             "LR": 1e-3,
-            "EPSILON": 0.05,
+            "EPSILON": 0.02,
             "DELTA": 1e-5,
             "MAX_GRAD_NORM": 1.2,
             "BATCH_SIZE": 1024,
@@ -297,10 +329,10 @@ if __name__ == "__main__":
             "model_name": "CNN",
             "train_dataset_name": "EMNIST",
             "test_dataset_name": "MNIST-2000", # "EMNIST_iid", "SVHN"
-            "sub_test_key_ids": ["test_sub_0"],
-            "datablock_select_num": 1,
+            "sub_test_key_id": "test_sub_0",
+            "datablock_select_num": 4,
             "LR": 1e-3,
-            "EPSILON": 0.05,
+            "EPSILON": 0.1,
             "DELTA": 1e-5,
             "MAX_GRAD_NORM": 1.2,
             "BATCH_SIZE": 1024,
@@ -361,12 +393,13 @@ if __name__ == "__main__":
         dispatcher.sched_init_sched_policy(sched_ip, sched_port, args.assignment_policy, args.significance_policy)
         dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_gpuidentifiers, gpu_update_sleep_time)
                 
-        if args.start_load_dataset:
+        if not args.without_start_load_job:
             dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, dataset_update_timeout)
             processes.append(dataset_p)
-        if args.start_load_history_job:
+        time.sleep(waiting_time)
+        if not args.without_start_load_history_job:
             history_job_p = dispatcher.dispatch_history_jobs(sched_ip, sched_port)
-        if args.start_load_job:
+        if not args.without_start_load_job:
             job_p = dispatcher.dispatch_jobs(sched_ip, sched_port)
             processes.append(job_p)
 
@@ -385,9 +418,9 @@ if __name__ == "__main__":
         print("logically all stoped!")
         dispatcher.all_finished = True
         dispatcher.sched_end(sched_ip, sched_port)
-        if args.finished_clear_job:
+        if not args.without_finished_clear_job:
             dispatcher.sched_clear_all_jobs(sched_ip, sched_port)
-        if args.finished_clear_dataset:
+        if not args.without_finished_clear_dataset:
             dispatcher.sched_clear_all_datasets(sched_ip, sched_port)
         
         print("Waiting for stop threads {} s".format(waiting_time))

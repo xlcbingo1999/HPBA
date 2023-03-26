@@ -17,6 +17,8 @@ class WaitingJob(object):
         self.sub_train_datasetidentifier_2_significance = sub_train_datasetidentifier_2_significance
         self.dominant_share = 0.0
 
+        self.only_one = False
+
 class OfflinePolicy(Policy):
     def __init__(self, waiting_queue_capacity, logger):
         super().__init__()

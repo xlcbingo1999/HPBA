@@ -2,11 +2,12 @@ from significance_policies.BaseSigPolicy import SigPolicy
 import json
 
 class TempPolicy(SigPolicy):
-    def __init__(self):
+    def __init__(self, logger):
         super().__init__()
         self._name = "TempPolicy"
 
         self.significance_trace_path = "/home/netlab/DL_lab/opacus_simulation/traces/significance_{}.json".format(self.name)
+        self.logger = logger
         with open(self.significance_trace_path, "r+") as f:
             self.significance_trace = json.load(f)
 

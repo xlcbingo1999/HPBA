@@ -25,11 +25,12 @@ def get_df_config():
 def do_system_calculate_func(worker_ip, worker_port, 
                             job_id, model_name, 
                             train_dataset_name, test_dataset_name,
-                            sub_train_key_ids, sub_test_key_ids, 
+                            sub_train_key_ids, sub_test_key_id, 
                             device_index, 
-                            summary_writer_path, logging_file_path,
+                            model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
                             LR, EPSILON, DELTA, MAX_GRAD_NORM, 
-                            BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS):
+                            BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
+                            begin_epoch_num, run_epoch_num):
     execute_cmds = []
     # execute_cmds.append("conda run -n py39torch113") # 会卡住, 没有任何log, 这个时候最好做重定向!
     execute_cmds.append("python -u DL_do_calculate.py")
@@ -41,15 +42,17 @@ def do_system_calculate_func(worker_ip, worker_port,
     execute_cmds.append("--train_dataset_name {}".format(train_dataset_name))
     execute_cmds.append("--test_dataset_name {}".format(test_dataset_name))
     sub_train_key_ids = ":".join(sub_train_key_ids)
-    sub_test_key_ids = ":".join(sub_test_key_ids)
     execute_cmds.append("--sub_train_key_ids {}".format(sub_train_key_ids))
-    execute_cmds.append("--sub_test_key_ids {}".format(sub_test_key_ids))
+    execute_cmds.append("--sub_test_key_id {}".format(sub_test_key_id))
 
     execute_cmds.append("--device_index {}".format(device_index))
-    if len(summary_writer_path) > 0:
+    if len(summary_writer_path) > 0 and len(summary_writer_key) > 0:
         execute_cmds.append("--summary_writer_path {}".format(summary_writer_path))
+        execute_cmds.append("--summary_writer_key {}".format(summary_writer_key))
     if len(logging_file_path) > 0:
         execute_cmds.append("--logging_file_path {}".format(logging_file_path))
+    if len(model_save_path) > 0:
+        execute_cmds.append("--model_save_path {}".format(model_save_path))
     execute_cmds.append("--LR {}".format(LR))
     execute_cmds.append("--EPSILON {}".format(EPSILON))
     execute_cmds.append("--DELTA {}".format(DELTA))
@@ -57,10 +60,11 @@ def do_system_calculate_func(worker_ip, worker_port,
 
     execute_cmds.append("--BATCH_SIZE {}".format(BATCH_SIZE))
     execute_cmds.append("--MAX_PHYSICAL_BATCH_SIZE {}".format(MAX_PHYSICAL_BATCH_SIZE))
-    execute_cmds.append("--EPOCHS {}".format(EPOCHS))
+    execute_cmds.append("--begin_epoch_num {}".format(begin_epoch_num))
+    execute_cmds.append("--run_epoch_num {}".format(run_epoch_num))
 
     finally_execute_cmd = " ".join(execute_cmds)
-    print(finally_execute_cmd)
+    # print(finally_execute_cmd)
     print("Job {} start!".format(job_id))
     os.system(finally_execute_cmd)
 
@@ -120,7 +124,9 @@ class Worker_server(object):
             client.worker_gpu_status_callback(worker_gpu_identifier, new_status_map[gpu_id])
     """
 
-    def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info, summary_writer_path, logging_file_path):
+    def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info, 
+                  begin_epoch_num, update_sched_epoch_num, 
+                  model_save_path, summary_writer_path, summary_writer_key, logging_file_path):
         # print("[bugxlc] job_id: {} call caculate => info: {}".format(job_id, origin_info))
         self.jobid_2_origininfo[job_id] = origin_info
         try:
@@ -131,7 +137,7 @@ class Worker_server(object):
             train_dataset_name = worker_dataset_config["train_dataset_name"]
             test_dataset_name = worker_dataset_config["test_dataset_name"]
             sub_train_key_ids = worker_dataset_config["sub_train_key_ids"]
-            sub_test_key_ids = worker_dataset_config["sub_test_key_ids"]
+            sub_test_key_id = worker_dataset_config["sub_test_key_id"]
 
             model_name = origin_info["model_name"]
             
@@ -141,7 +147,6 @@ class Worker_server(object):
             MAX_GRAD_NORM = origin_info["MAX_GRAD_NORM"]
             BATCH_SIZE = origin_info["BATCH_SIZE"]
             MAX_PHYSICAL_BATCH_SIZE = origin_info["MAX_PHYSICAL_BATCH_SIZE"]
-            EPOCHS = origin_info["EPOCHS"]
 
             worker_ip = self.local_ip
             worker_port = self.local_port
@@ -149,11 +154,11 @@ class Worker_server(object):
             p = threading.Thread(target=do_system_calculate_func, args=(worker_ip, worker_port, 
                 job_id, model_name, 
                 train_dataset_name, test_dataset_name,
-                sub_train_key_ids, sub_test_key_ids, 
+                sub_train_key_ids, sub_test_key_id, 
                 device_index, 
-                summary_writer_path, logging_file_path,
+                model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
                 LR, EPSILON, DELTA, MAX_GRAD_NORM, 
-                BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPOCHS), daemon=True)
+                BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, begin_epoch_num, update_sched_epoch_num), daemon=True)
             self.jobid_2_thread[job_id] = p
             p.start()
         except Exception as e:

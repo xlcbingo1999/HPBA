@@ -16,6 +16,7 @@ python DL_do_calculate.py \
     --MAX_PHYSICAL_BATCH_SIZE 512 \
     --EPOCHS 1
 
+python DL_dispatcher.py --start_load_job --start_load_history_job --start_load_dataset --finished_clear_job --finished_clear_dataset
 
 6
 python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_0 --sub_test_key_ids test_sub_0 --device_index 0

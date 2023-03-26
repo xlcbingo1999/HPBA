@@ -16,6 +16,8 @@ class PBGPolicy(Policy):
         self.logger = logger
         self.waiting_queue_capacity = 1
 
+        self.only_one = True
+
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
         self.logger.info("policy args: comparison_cost_epsilon: {}".format(self.comparison_cost_epsilon))

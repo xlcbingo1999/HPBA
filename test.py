@@ -1,3 +1,4 @@
+'''
 import argparse
 from utils.global_variable import WORKER_LOCAL_IP, WORKER_LOCAL_PORT
 from significance_policies.OTDD import OTDDPolicy
@@ -23,3 +24,16 @@ signficance_state = {
     "sub_test_key_ids": [args.sub_test_key_ids],
 }
 ot.get_job_datablock_significance_async(signficance_state, args.device_index)
+'''
+
+import os
+path = '/mnt/linuxidc_client/models_save'
+subpath = path + '/d20230324'
+file = subpath + '/d.txt'
+
+if not os.path.exists(file):
+    os.makedirs(os.path.dirname(file), exist_ok=True)
+    with open(file, 'w') as f:
+        f.write("File created successfully!")
+else:
+    print("File already exists!")
