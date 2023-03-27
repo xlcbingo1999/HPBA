@@ -43,8 +43,8 @@ class HISPolicy(Policy):
             (job_privacy_budget_consume_list @ matrix_X) <= datablock_privacy_budget_capacity_list
         ]
 
-        self.logger.debug("check sign_matrix: {}".format(sign_matrix))
-        self.logger.debug("check job_target_datablock_selected_num_list: {}".format(job_target_datablock_selected_num_list))
+        # self.logger.debug("check sign_matrix: {}".format(sign_matrix))
+        # self.logger.debug("check job_target_datablock_selected_num_list: {}".format(job_target_datablock_selected_num_list))
         # self.logger.debug("check datablock_privacy_budget_capacity_list: {}".format(datablock_privacy_budget_capacity_list))
         # self.logger.debug("check job_privacy_budget_consume_list: {}".format(job_privacy_budget_consume_list))
 

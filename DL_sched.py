@@ -46,8 +46,6 @@ class Scheduler_server(object):
         self.cal_significance_thread = None
         self.placement_thread = None
         self.gpu_thread = None
-
-        self.update_sched_epoch_num = 1
         
         # self.gpuidentifier_2_gpu_status = {}
         # self.gpuidentifier_2_gpu_metadata = {}
@@ -95,10 +93,12 @@ class Scheduler_server(object):
         self.jobid_2_significance = {}
         self.jobid_2_arrival_index = {}
 
-        self.jobid_2_max_epochs = {}
+        self.jobid_2_target_epochs = {}
         self.jobid_2_real_sched_epochs = {}
         self.jobid_2_failed_epochs = {}
         self.jobid_2_current_epochs = {}
+        self.update_sched_epoch_num = 1
+        self.max_sched_epoch_num = 500
 
         self.jobid_2_model_save_path = {}
         self.jobid_2_logging_file_path = {}
@@ -170,7 +170,7 @@ class Scheduler_server(object):
         self.jobid_2_significance = {}
         self.jobid_2_arrival_index = {}
 
-        self.jobid_2_max_epochs = {}
+        self.jobid_2_target_epochs = {}
         self.jobid_2_real_sched_epochs = {}
         self.jobid_2_failed_epochs = {}
         self.jobid_2_current_epochs = {}
@@ -298,7 +298,7 @@ class Scheduler_server(object):
                 self.jobid_2_arrival_index[id] = self.global_job_arrival_index
                 self.global_job_arrival_index += 1
 
-                self.jobid_2_max_epochs[id] = origin_info["MAX_EPOCHS"]
+                self.jobid_2_target_epochs[id] = origin_info["TARGET_EPOCHS"]
                 self.jobid_2_current_epochs[id] = 0
                 self.jobid_2_real_sched_epochs[id] = 0
                 self.jobid_2_failed_epochs[id] = 0
@@ -307,14 +307,14 @@ class Scheduler_server(object):
                 self.jobid_2_logging_file_path[id] = self.all_logger_path + "/{}.log".format(id)
                 self.jobid_2_summary_writer_key[id] = "{}".format(id)
 
-                count += int(math.ceil(self.jobid_2_max_epochs[id] / self.update_sched_epoch_num))
+                count += int(math.ceil(self.jobid_2_target_epochs[id] / self.update_sched_epoch_num))
         self.job_sequence_all_num = count
         self.sched_logger.info("success add new jobs number: {}".format(self.job_sequence_all_num))
 
     def update_history_jobs(self, history_jobs_map):
         for id in sorted(history_jobs_map):
             count = 0
-            max_job_epoch_num = history_jobs_map[id]["MAX_EPOCHS"]
+            max_job_epoch_num = history_jobs_map[id]["TARGET_EPOCHS"]
             while count < max_job_epoch_num:
                 self.history_job_priority_weights.append(history_jobs_map[id]["priority_weight"])
                 target_epsilon_consume = history_jobs_map[id]["EPSILON"]
@@ -376,8 +376,8 @@ class Scheduler_server(object):
             for datasetidentifier in self.sub_train_datasetidentifier_2_epsilon_remain[datasetname]:
                 self.sched_logger.debug("sub_train_datasetidentifier_2_epsilon_remain[{}][{}]: {}".format(datasetname, datasetidentifier, self.sub_train_datasetidentifier_2_epsilon_remain[datasetname][datasetidentifier]))
         self.sched_logger.debug("======== job duration status =========")
-        for job_id in self.jobid_2_max_epochs:
-            self.sched_logger.debug("job [{}] max epoch num: {}".format(job_id, self.jobid_2_max_epochs[job_id]))
+        for job_id in self.jobid_2_target_epochs:
+            self.sched_logger.debug("job [{}] max epoch num: {}".format(job_id, self.jobid_2_target_epochs[job_id]))
             self.sched_logger.debug("job [{}] real sched epoch num: {}".format(job_id, self.jobid_2_real_sched_epochs[job_id]))
             self.sched_logger.debug("job [{}] failed epoch num: {}".format(job_id, self.jobid_2_failed_epochs[job_id]))
             self.sched_logger.debug("job [{}] current epoch num: {}".format(job_id, self.jobid_2_current_epochs[job_id]))
@@ -438,6 +438,12 @@ class Scheduler_server(object):
         dispatcher_client = self.get_zerorpc_client(dispatcher_ip, dispatcher_port)
         dispatcher_client.finished_job_callback(job_id)
 
+    def failed_job_to_dispatcher(self, job_id, origin_info):
+        dispatcher_ip = origin_info["dispatcher_ip"]
+        dispatcher_port = origin_info["dispatcher_port"]
+        dispatcher_client = self.get_zerorpc_client(dispatcher_ip, dispatcher_port)
+        dispatcher_client.failed_job_callback(job_id)
+
     def worker_failed_job_callback(self, job_id, origin_info, failed_result_key):
         self.sched_logger.info("=========  Scheduler: Job Failed! ===========")
         self.sched_logger.info("job_id: {}".format(job_id))
@@ -452,9 +458,12 @@ class Scheduler_server(object):
         del self.jobid_2_sub_train_key_ids[job_id]
         
         # TODO(xlc): 需要确定这里是否会出bug
-        if self.jobid_2_real_sched_epochs[job_id] >= self.jobid_2_max_epochs[job_id]:
+        if self.jobid_2_real_sched_epochs[job_id] >= self.jobid_2_target_epochs[job_id]:
             status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "finished")
             self.finished_job_to_dispatcher(job_id, origin_info)
+        elif self.jobid_2_current_epochs[job_id] >= self.max_sched_epoch_num:
+            status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "failed")
+            self.failed_job_to_dispatcher(job_id, origin_info)
         else:
             self.global_job_arrival_index += 1
             self.jobid_2_arrival_index[job_id] = self.global_job_arrival_index
@@ -498,10 +507,13 @@ class Scheduler_server(object):
         del self.jobid_2_significance[job_id] 
         del self.jobid_2_sub_train_key_ids[job_id]
 
-        if self.jobid_2_real_sched_epochs[job_id] >= self.jobid_2_max_epochs[job_id]:
+        if self.jobid_2_real_sched_epochs[job_id] >= self.jobid_2_target_epochs[job_id]:
             # 只有任务彻底被完成才会写这些字段?
             status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "finished")
             self.finished_job_to_dispatcher(job_id, origin_info)
+        elif self.jobid_2_current_epochs[job_id] >= self.max_sched_epoch_num:
+            status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "failed")
+            self.failed_job_to_dispatcher(job_id, origin_info)
         else:
             self.global_job_arrival_index += 1
             self.jobid_2_arrival_index[job_id] = self.global_job_arrival_index
@@ -543,7 +555,10 @@ class Scheduler_server(object):
                 update_path = JOB_STATUS_UPDATE_PATH.ALLSCHED_2_FAILED
                 new_status = JOB_STATUS_KEY.FAILED
             elif origin_status == JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL:
-                update_path =JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_FAILED
+                update_path = JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_FAILED
+                new_status = JOB_STATUS_KEY.FAILED
+            elif origin_status == JOB_STATUS_KEY.RUNNING:
+                update_path = JOB_STATUS_UPDATE_PATH.RUNNING_2_FAILED
                 new_status = JOB_STATUS_KEY.FAILED
         elif operator == "recoming":
             if origin_status == JOB_STATUS_KEY.DONE_ALL_SCHED:
@@ -594,6 +609,9 @@ class Scheduler_server(object):
             target_status = JOB_STATUS_KEY.FAILED
         elif status_update_path == JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_FAILED:
             origin_status = JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL
+            target_status = JOB_STATUS_KEY.FAILED
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.RUNNING_2_FAILED:
+            origin_status = JOB_STATUS_KEY.RUNNING
             target_status = JOB_STATUS_KEY.FAILED
         # recoming
         elif status_update_path == JOB_STATUS_UPDATE_PATH.ALLSCHED_2_NOSCHED:
@@ -754,10 +772,14 @@ class Scheduler_server(object):
         for temp_job_id in need_failed_job:
             self.sched_logger.info("failed job scheduling [{}]".format(temp_job_id))
             # TODO(xlc): 这里不应该直接设置为Failed状态, 而是考虑max_time的情况, 决定是否将任务放到NO_SCHED的状态, 同时需要知道模型的最新保存位置?
-            if self.jobid_2_real_sched_epochs[temp_job_id] >= self.jobid_2_max_epochs[temp_job_id]:
+            if self.jobid_2_real_sched_epochs[temp_job_id] >= self.jobid_2_target_epochs[temp_job_id]:
                 status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "finished")
                 origin_info = self.jobid_2_origininfo[temp_job_id]
                 self.finished_job_to_dispatcher(temp_job_id, origin_info)
+            elif self.jobid_2_current_epochs[temp_job_id] >= self.max_sched_epoch_num:
+                status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "failed")
+                origin_info = self.jobid_2_origininfo[temp_job_id]
+                self.failed_job_to_dispatcher(temp_job_id, origin_info)
             else:
                 self.global_job_arrival_index += 1
                 self.jobid_2_arrival_index[temp_job_id] = self.global_job_arrival_index
