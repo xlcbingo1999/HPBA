@@ -8,6 +8,7 @@ from utils.profier import timely_update_gpu_status
 import torch
 import json
 import os
+import sys
 
 def get_df_config():
     parser = argparse.ArgumentParser(
@@ -88,6 +89,10 @@ class Worker_server(object):
         self.jobid_2_origininfo = {}
         self.jobid_2_thread = {}
         print("success clear all jobs in worker!")
+
+    def stop_all(self):
+        self.clear_all_jobs()
+        sys.exit(0)
 
     def get_scheduler_zerorpc_client(self):
         tcp_ip_port = "tcp://{}:{}".format(self.sched_ip, self.sche_port)

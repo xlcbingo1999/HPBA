@@ -26,6 +26,7 @@ from functools import reduce
 import json
 import time
 import fcntl
+import sys
 
 
 def DL_server_do_jobs(job_id, origin_info, begin_epoch_num, update_sched_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path):
@@ -97,8 +98,8 @@ class Scheduler_server(object):
         self.jobid_2_real_sched_epochs = {}
         self.jobid_2_failed_epochs = {}
         self.jobid_2_current_epochs = {}
-        self.update_sched_epoch_num = 1
-        self.max_sched_epoch_num = 500
+        self.jobid_2_update_sched_epoch_num = {}
+        self.jobid_2_max_sched_epoch_num = {}
 
         self.jobid_2_model_save_path = {}
         self.jobid_2_logging_file_path = {}
@@ -174,7 +175,12 @@ class Scheduler_server(object):
         self.jobid_2_real_sched_epochs = {}
         self.jobid_2_failed_epochs = {}
         self.jobid_2_current_epochs = {}
+        self.jobid_2_update_sched_epoch_num = {}
+        self.jobid_2_max_sched_epoch_num = {}
+
         self.jobid_2_model_save_path = {}
+        self.jobid_2_logging_file_path = {}
+        self.jobid_2_summary_writer_key = {}
 
         self.jobid_2_submited_time = {}
         self.jobid_2_started_time = {}
@@ -189,6 +195,9 @@ class Scheduler_server(object):
         self.history_job_sub_test_key_id = []
         self.history_job_significance = []
 
+        for worker_ip, worker_port in self.workerip_2_ports.items():
+            client = self.get_zerorpc_client(worker_ip, worker_port)
+            client.clear_all_jobs()
         self.sched_logger.info("success clear all jobs")
 
     def clear_all_datasets(self):
@@ -202,6 +211,14 @@ class Scheduler_server(object):
         self.test_datasetname_2_metadata = {}
 
         self.sched_logger.info("success clear all datasets")
+
+    def stop_all(self):
+        self.sched_logger.info("stop_all!!")
+        for worker_ip, worker_port in self.workerip_2_ports.items():
+            client = self.get_zerorpc_client(worker_ip, worker_port)
+            client.stop_all()
+        time.sleep(5)
+        sys.exit(0)
 
     def get_zerorpc_client(self, ip, port):
         tcp_ip_port = "tcp://{}:{}".format(ip, port)
@@ -302,20 +319,22 @@ class Scheduler_server(object):
                 self.jobid_2_current_epochs[id] = 0
                 self.jobid_2_real_sched_epochs[id] = 0
                 self.jobid_2_failed_epochs[id] = 0
+                self.jobid_2_update_sched_epoch_num[id] = origin_info["update_sched_epoch_num"]
+                self.jobid_2_max_sched_epoch_num[id] = origin_info["MAX_EPOCHS"]
 
                 self.jobid_2_model_save_path[id] = self.model_save_path + "/{}.pt".format(id)
                 self.jobid_2_logging_file_path[id] = self.all_logger_path + "/{}.log".format(id)
                 self.jobid_2_summary_writer_key[id] = "{}".format(id)
 
-                count += int(math.ceil(self.jobid_2_target_epochs[id] / self.update_sched_epoch_num))
+                count += int(math.ceil(self.jobid_2_target_epochs[id] / self.jobid_2_update_sched_epoch_num[id]))
         self.job_sequence_all_num = count
         self.sched_logger.info("success add new jobs number: {}".format(self.job_sequence_all_num))
 
     def update_history_jobs(self, history_jobs_map):
         for id in sorted(history_jobs_map):
             count = 0
-            max_job_epoch_num = history_jobs_map[id]["TARGET_EPOCHS"]
-            while count < max_job_epoch_num:
+            target_job_epoch_num = history_jobs_map[id]["TARGET_EPOCHS"]
+            while count < target_job_epoch_num:
                 self.history_job_priority_weights.append(history_jobs_map[id]["priority_weight"])
                 target_epsilon_consume = history_jobs_map[id]["EPSILON"]
                 self.history_job_budget_consumes.append(target_epsilon_consume)
@@ -340,7 +359,7 @@ class Scheduler_server(object):
                 result_d_map = self.get_job_datablock_significance_sync(id, all_significance_state, is_history=True)
                 self.history_job_significance.append(result_d_map)
                 
-                count += self.update_sched_epoch_num
+                count += history_jobs_map[id]["update_sched_epoch_num"]
         self.sched_logger.info("success add new history jobs number: {}".format(len(self.history_job_priority_weights)))
         self.finished_update_init_history_jobs = True
 
@@ -461,7 +480,7 @@ class Scheduler_server(object):
         if self.jobid_2_real_sched_epochs[job_id] >= self.jobid_2_target_epochs[job_id]:
             status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "finished")
             self.finished_job_to_dispatcher(job_id, origin_info)
-        elif self.jobid_2_current_epochs[job_id] >= self.max_sched_epoch_num:
+        elif self.jobid_2_current_epochs[job_id] >= self.jobid_2_max_sched_epoch_num[job_id]:
             status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "failed")
             self.failed_job_to_dispatcher(job_id, origin_info)
         else:
@@ -511,7 +530,7 @@ class Scheduler_server(object):
             # 只有任务彻底被完成才会写这些字段?
             status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "finished")
             self.finished_job_to_dispatcher(job_id, origin_info)
-        elif self.jobid_2_current_epochs[job_id] >= self.max_sched_epoch_num:
+        elif self.jobid_2_current_epochs[job_id] >= self.jobid_2_max_sched_epoch_num[job_id]:
             status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "failed")
             self.failed_job_to_dispatcher(job_id, origin_info)
         else:
@@ -757,7 +776,7 @@ class Scheduler_server(object):
         
         # 不管是否进行数据块的分配, 都应该增加
         for temp_job_id in all_done_sig_cal_jobs_copy:
-            self.jobid_2_current_epochs[temp_job_id] += self.update_sched_epoch_num
+            self.jobid_2_current_epochs[temp_job_id] += self.jobid_2_update_sched_epoch_num[temp_job_id]
             self.job_add_to_history(temp_job_id)
 
         need_failed_job = copy.deepcopy(all_done_sig_cal_jobs_copy)
@@ -767,7 +786,7 @@ class Scheduler_server(object):
             self.sche_reflash_job_status(temp_job_id, origin_status_success, target_status_success)
             need_failed_job.remove(temp_job_id)
             
-            self.jobid_2_real_sched_epochs[temp_job_id] += self.update_sched_epoch_num
+            self.jobid_2_real_sched_epochs[temp_job_id] += self.jobid_2_update_sched_epoch_num[temp_job_id]
 
         for temp_job_id in need_failed_job:
             self.sched_logger.info("failed job scheduling [{}]".format(temp_job_id))
@@ -776,7 +795,7 @@ class Scheduler_server(object):
                 status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "finished")
                 origin_info = self.jobid_2_origininfo[temp_job_id]
                 self.finished_job_to_dispatcher(temp_job_id, origin_info)
-            elif self.jobid_2_current_epochs[temp_job_id] >= self.max_sched_epoch_num:
+            elif self.jobid_2_current_epochs[temp_job_id] >= self.jobid_2_max_sched_epoch_num[temp_job_id]:
                 status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "failed")
                 origin_info = self.jobid_2_origininfo[temp_job_id]
                 self.failed_job_to_dispatcher(temp_job_id, origin_info)
@@ -787,7 +806,7 @@ class Scheduler_server(object):
             origin_status_failed, target_status_failed = self.get_job_status_update_origin_target(status_update_path)
             self.sche_reflash_job_status(temp_job_id, origin_status_failed, target_status_failed)
 
-            self.jobid_2_failed_epochs[temp_job_id] += self.update_sched_epoch_num
+            self.jobid_2_failed_epochs[temp_job_id] += self.jobid_2_update_sched_epoch_num[temp_job_id]
         
         self.report_status("after sched_dataset_for_done_significance_cal_jobs")
 
@@ -819,7 +838,8 @@ class Scheduler_server(object):
                 summary_writer_path = self.summary_writer_path
                 summary_writer_key = self.jobid_2_summary_writer_key[job_id]
                 begin_epoch_num = self.jobid_2_real_sched_epochs[job_id]
-                args.append([job_id, origin_info, begin_epoch_num, self.update_sched_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path])
+                update_sched_epoch_num = self.jobid_2_update_sched_epoch_num[job_id]
+                args.append([job_id, origin_info, begin_epoch_num, update_sched_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path])
                 if job_id not in self.jobid_2_started_time:
                     self.jobid_2_started_time[job_id] = []
                 self.jobid_2_started_time[job_id].append(time.time())
