@@ -97,7 +97,7 @@ class Scheduler_server(object):
         self.jobid_2_significance = {}
         self.jobid_2_arrival_index = {}
         self.jobid_2_recoming_min_time = {}
-        self.recoming_time_interval = 10
+        self.recoming_time_interval = 5
 
         self.jobid_2_target_epochs = {}
         self.jobid_2_real_sched_epochs = {}
@@ -132,6 +132,8 @@ class Scheduler_server(object):
         sched_logger_path = '{}/DL_sched.log'.format(self.all_logger_path)
         self.summary_writer_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
         self.sched_logger = get_logger(sched_logger_path, enable_multiprocess=True)
+
+        self.sched_logger.info("recoming_time_interval: {}".format(self.recoming_time_interval))
 
     def initialize_seeds(self, seed):
         np.random.seed(seed)

@@ -14,7 +14,7 @@ def get_df_config():
     parser.add_argument("--scheduler_update_sleep_time", type=float, default=0.0)
     parser.add_argument("--cal_significance_sleep_time", type=float, default=0.0)
     parser.add_argument("--placement_sleep_time", type=float, default=1.0)
-    parser.add_argument("--real_coming_sleep_time", type=float, default=10.0)
+    parser.add_argument("--real_coming_sleep_time", type=float, default=1.0)
 
     parser.add_argument("--waiting_time", type=int, default=10)
     parser.add_argument("--dataset_update_timeout", type=int, default=120)
