@@ -43,7 +43,8 @@ class HISPolicy(Policy):
             (job_privacy_budget_consume_list @ matrix_X) <= datablock_privacy_budget_capacity_list
         ]
 
-        # self.logger.debug("check job_target_datablock_selected_num_list: {}".format(job_target_datablock_selected_num_list))
+        self.logger.debug("check sign_matrix: {}".format(sign_matrix))
+        self.logger.debug("check job_target_datablock_selected_num_list: {}".format(job_target_datablock_selected_num_list))
         # self.logger.debug("check datablock_privacy_budget_capacity_list: {}".format(datablock_privacy_budget_capacity_list))
         # self.logger.debug("check job_privacy_budget_consume_list: {}".format(job_privacy_budget_consume_list))
 
@@ -143,7 +144,7 @@ class HISPolicy(Policy):
             result_select_num = probability_enable_num
         # self.logger.debug("check result_select_num: ", result_select_num)
         # self.logger.debug("check waiting_select_indexes: ", waiting_select_indexes)
-        # self.logger.debug("check current_job_probability: ", current_job_probability)
+        self.logger.debug("check current_job_probability: {}".format(current_job_probability))
         temp_result = list(np.random.choice(a=waiting_select_indexes, size=result_select_num, replace=False, p=current_job_probability))
         if null_index in temp_result:
             choose_indexes = copy.deepcopy(temp_result)

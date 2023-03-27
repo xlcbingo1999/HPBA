@@ -452,7 +452,7 @@ class Scheduler_server(object):
         del self.jobid_2_sub_train_key_ids[job_id]
         
         # TODO(xlc): 需要确定这里是否会出bug
-        if self.jobid_2_current_epochs[job_id] >= self.jobid_2_max_epochs[job_id]:
+        if self.jobid_2_real_sched_epochs[job_id] >= self.jobid_2_max_epochs[job_id]:
             status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "finished")
             self.finished_job_to_dispatcher(job_id, origin_info)
         else:
@@ -472,13 +472,13 @@ class Scheduler_server(object):
         if job_id not in self.jobid_2_finished_time:
             self.jobid_2_finished_time[job_id] = []
         self.jobid_2_finished_time[job_id].append({
-            self.jobid_2_current_epochs[job_id]: time.time()
+            self.jobid_2_real_sched_epochs[job_id]: time.time()
         })
 
         if job_id not in self.jobid_2_results:
             self.jobid_2_results[job_id] = []
         self.jobid_2_results[job_id].append({
-            self.jobid_2_current_epochs[job_id]: result
+            self.jobid_2_real_sched_epochs[job_id]: result
         })
 
         self.jobid_2_real_epsilon[job_id] = result["epsilon_consume"]
@@ -498,7 +498,7 @@ class Scheduler_server(object):
         del self.jobid_2_significance[job_id] 
         del self.jobid_2_sub_train_key_ids[job_id]
 
-        if self.jobid_2_current_epochs[job_id] >= self.jobid_2_max_epochs[job_id]:
+        if self.jobid_2_real_sched_epochs[job_id] >= self.jobid_2_max_epochs[job_id]:
             # 只有任务彻底被完成才会写这些字段?
             status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "finished")
             self.finished_job_to_dispatcher(job_id, origin_info)
@@ -628,22 +628,33 @@ class Scheduler_server(object):
         return origin_status, target_status
 
     def get_job_datablock_significance_sync(self, job_id, all_significance_state, is_history):
-        device_index = 0
-        sub_train_index_2_significance = {
-            index: None for index, _ in enumerate(all_significance_state)
-        }
-        for index, state in enumerate(all_significance_state):
-            result_d = self.significance_policy.get_job_datablock_significance_sync(job_id, state, is_history)
-            sub_train_index_2_significance[index] = result_d
-        # 将所有为None的提取出来, 异步请求一下
-        async_indexes = [k for k, v in sub_train_index_2_significance.items() if v is None]
-        for index in async_indexes:
-            self.sched_logger.warning("[WARNING] enter into get_job_datablock_significance_async!")
-            result_d = self.significance_policy.get_job_datablock_significance_async(job_id, all_significance_state[index], device_index, is_history)
-            sub_train_index_2_significance[index] = result_d
-        sub_train_datasetidentifier_2_significance = {
-            all_significance_state[key]["sub_train_key_id"]: value for key, value in sub_train_index_2_significance.items()
-        }
+        if is_history:
+            sub_train_index_2_significance = {
+                index: None for index, _ in enumerate(all_significance_state)
+            }
+            history_significance_list = self.significance_policy.get_job_significance_result_for_history_jobs_for_all_datablocks(job_id, all_significance_state)
+            for index, signi in enumerate(history_significance_list):
+                sub_train_index_2_significance[index] = signi
+            sub_train_datasetidentifier_2_significance = {
+                all_significance_state[key]["sub_train_key_id"]: value for key, value in sub_train_index_2_significance.items()
+            }
+        else:
+            device_index = 0
+            sub_train_index_2_significance = {
+                index: None for index, _ in enumerate(all_significance_state)
+            }
+            significance_list = self.significance_policy.get_job_significance_result_for_all_datablocks(job_id, all_significance_state)
+            for index, signi in enumerate(significance_list):
+                sub_train_index_2_significance[index] = signi
+            # 将所有为None的提取出来, 异步请求一下
+            async_indexes = [k for k, v in sub_train_index_2_significance.items() if v is None]
+            for index in async_indexes:
+                self.sched_logger.warning("[WARNING] enter into get_job_datablock_significance_async!")
+                result_d = self.significance_policy.get_job_datablock_significance_async(job_id, all_significance_state[index], device_index, is_history)
+                sub_train_index_2_significance[index] = result_d
+            sub_train_datasetidentifier_2_significance = {
+                all_significance_state[key]["sub_train_key_id"]: value for key, value in sub_train_index_2_significance.items()
+            }
         return sub_train_datasetidentifier_2_significance
     
     def sched_dispatch_testbed_start(self, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_times):
@@ -743,7 +754,7 @@ class Scheduler_server(object):
         for temp_job_id in need_failed_job:
             self.sched_logger.info("failed job scheduling [{}]".format(temp_job_id))
             # TODO(xlc): 这里不应该直接设置为Failed状态, 而是考虑max_time的情况, 决定是否将任务放到NO_SCHED的状态, 同时需要知道模型的最新保存位置?
-            if self.jobid_2_current_epochs[temp_job_id] >= self.jobid_2_max_epochs[temp_job_id]:
+            if self.jobid_2_real_sched_epochs[temp_job_id] >= self.jobid_2_max_epochs[temp_job_id]:
                 status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "finished")
                 origin_info = self.jobid_2_origininfo[temp_job_id]
                 self.finished_job_to_dispatcher(temp_job_id, origin_info)
@@ -775,7 +786,6 @@ class Scheduler_server(object):
             # 直接根据当前的空挡状态获取worker_identifier
             # worker_identifier = self.jobid_2_gputarget[job_id]
             gpuidentifier_enable_status = [k for k, v in self.gpuidentifier_2_jobinstance_oneshot.items() if v == None]
-            self.sched_logger.debug("check gpuidentifier_enable_status: {}".format(gpuidentifier_enable_status))
             if len(gpuidentifier_enable_status) > 0:
                 gpu_identifer = random.choice(gpuidentifier_enable_status)
                 self.gpuidentifier_2_jobinstance_oneshot[gpu_identifer] = job_id
