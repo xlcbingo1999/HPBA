@@ -41,11 +41,13 @@ class Scheduler_server(object):
         self.sched_port = sched_port
         self.workerip_2_ports = init_workerip_2_ports
 
+        self.all_stop = False
         self.all_finished = False
         self.all_testbed_thread = None
         self.sched_thread = None
         self.cal_significance_thread = None
         self.placement_thread = None
+        self.real_recoming_thread = None
         self.gpu_thread = None
         
         # self.gpuidentifier_2_gpu_status = {}
@@ -64,6 +66,7 @@ class Scheduler_server(object):
         self.jobid_2_status = {} # 0: no sche; 1: sched target decide; 2: runnning; 3: success finished; 4: failed;
         self.status_2_jobid = {
             JOB_STATUS_KEY.NO_SCHE: [], 
+            JOB_STATUS_KEY.RECOMING: [],
             JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL: [],
             JOB_STATUS_KEY.DONE_ALL_SCHED: [],
             JOB_STATUS_KEY.RUNNING: [], 
@@ -93,6 +96,8 @@ class Scheduler_server(object):
         self.jobid_2_sub_test_key_id = {}
         self.jobid_2_significance = {}
         self.jobid_2_arrival_index = {}
+        self.jobid_2_recoming_min_time = {}
+        self.recoming_time_interval = 10
 
         self.jobid_2_target_epochs = {}
         self.jobid_2_real_sched_epochs = {}
@@ -137,6 +142,7 @@ class Scheduler_server(object):
 
     def check_all_finished_or_failed(self):
         return (len(self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE]) <= 0 
+            and len(self.status_2_jobid[JOB_STATUS_KEY.RECOMING]) <= 0
             and len(self.status_2_jobid[JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL]) <= 0
             and len(self.status_2_jobid[JOB_STATUS_KEY.DONE_ALL_SCHED]) <= 0
             and len(self.status_2_jobid[JOB_STATUS_KEY.RUNNING]) <= 0
@@ -146,6 +152,7 @@ class Scheduler_server(object):
         self.jobid_2_status = {} # 0: no sche; 1: sched target decide; 2: runnning; 3: success finished; 4: failed;
         self.status_2_jobid = {
             JOB_STATUS_KEY.NO_SCHE: [], 
+            JOB_STATUS_KEY.RECOMING: [],
             JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL: [],
             JOB_STATUS_KEY.DONE_ALL_SCHED: [],
             JOB_STATUS_KEY.RUNNING: [], 
@@ -170,6 +177,7 @@ class Scheduler_server(object):
         self.jobid_2_sub_test_key_id = {}
         self.jobid_2_significance = {}
         self.jobid_2_arrival_index = {}
+        self.jobid_2_recoming_min_time = {}
 
         self.jobid_2_target_epochs = {}
         self.jobid_2_real_sched_epochs = {}
@@ -213,12 +221,10 @@ class Scheduler_server(object):
         self.sched_logger.info("success clear all datasets")
 
     def stop_all(self):
-        self.sched_logger.info("stop_all!!")
         for worker_ip, worker_port in self.workerip_2_ports.items():
             client = self.get_zerorpc_client(worker_ip, worker_port)
             client.stop_all()
-        time.sleep(5)
-        sys.exit(0)
+        self.all_stop = True
 
     def get_zerorpc_client(self, ip, port):
         tcp_ip_port = "tcp://{}:{}".format(ip, port)
@@ -486,7 +492,8 @@ class Scheduler_server(object):
         else:
             self.global_job_arrival_index += 1
             self.jobid_2_arrival_index[job_id] = self.global_job_arrival_index
-            status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "recoming")
+            self.jobid_2_recoming_min_time[job_id] = time.time() + self.recoming_time_interval
+            status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "wait_recoming")
         origin_status, target_status = self.get_job_status_update_origin_target(status_update_path)
         self.sche_reflash_job_status(job_id, origin_status, target_status)
 
@@ -536,7 +543,8 @@ class Scheduler_server(object):
         else:
             self.global_job_arrival_index += 1
             self.jobid_2_arrival_index[job_id] = self.global_job_arrival_index
-            status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "recoming")
+            self.jobid_2_recoming_min_time[job_id] = time.time() + self.recoming_time_interval
+            status_update_path, target_status = self.get_target_job_status_update_path_and_status(job_id, "wait_recoming")
         origin_status, target_status = self.get_job_status_update_origin_target(status_update_path)
         self.sche_reflash_job_status(job_id, origin_status, target_status)
 
@@ -579,20 +587,23 @@ class Scheduler_server(object):
             elif origin_status == JOB_STATUS_KEY.RUNNING:
                 update_path = JOB_STATUS_UPDATE_PATH.RUNNING_2_FAILED
                 new_status = JOB_STATUS_KEY.FAILED
-        elif operator == "recoming":
+        elif operator == "wait_recoming":
             if origin_status == JOB_STATUS_KEY.DONE_ALL_SCHED:
-                update_path = JOB_STATUS_UPDATE_PATH.ALLSCHED_2_NOSCHED
-                new_status = JOB_STATUS_KEY.NO_SCHE
+                update_path = JOB_STATUS_UPDATE_PATH.ALLSCHED_2_RECOMING
+                new_status = JOB_STATUS_KEY.RECOMING
             elif origin_status == JOB_STATUS_KEY.RUNNING:
-                update_path = JOB_STATUS_UPDATE_PATH.RUNNING_2_NOSCHED
-                new_status = JOB_STATUS_KEY.NO_SCHE
+                update_path = JOB_STATUS_UPDATE_PATH.RUNNING_2_RECOMING
+                new_status = JOB_STATUS_KEY.RECOMING
             elif origin_status == JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL:
-                update_path = JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_NOSCHED
-                new_status = JOB_STATUS_KEY.NO_SCHE
+                update_path = JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_RECOMING
+                new_status = JOB_STATUS_KEY.RECOMING
             elif origin_status == JOB_STATUS_KEY.NO_SCHE:
-                update_path = JOB_STATUS_UPDATE_PATH.NOSCHED_2_NOSCHED
+                update_path = JOB_STATUS_UPDATE_PATH.NOSCHED_2_RECOMING
+                new_status = JOB_STATUS_KEY.RECOMING
+        elif operator == "real_recoming":
+            if origin_status == JOB_STATUS_KEY.RECOMING:
+                update_path = JOB_STATUS_UPDATE_PATH.RECOMING_2_NOSCHED
                 new_status = JOB_STATUS_KEY.NO_SCHE
-                self.sched_logger.warning("NOSCHED_2_NOSCHED")
         elif operator == "finished":
             if origin_status == JOB_STATUS_KEY.NO_SCHE:
                 update_path = JOB_STATUS_UPDATE_PATH.NOSCHED_2_FINISHED
@@ -632,18 +643,22 @@ class Scheduler_server(object):
         elif status_update_path == JOB_STATUS_UPDATE_PATH.RUNNING_2_FAILED:
             origin_status = JOB_STATUS_KEY.RUNNING
             target_status = JOB_STATUS_KEY.FAILED
-        # recoming
-        elif status_update_path == JOB_STATUS_UPDATE_PATH.ALLSCHED_2_NOSCHED:
+        # wait_recoming
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.ALLSCHED_2_RECOMING:
             origin_status = JOB_STATUS_KEY.DONE_ALL_SCHED
-            target_status = JOB_STATUS_KEY.NO_SCHE
-        elif status_update_path == JOB_STATUS_UPDATE_PATH.RUNNING_2_NOSCHED:
+            target_status = JOB_STATUS_KEY.RECOMING
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.RUNNING_2_RECOMING:
             origin_status = JOB_STATUS_KEY.RUNNING
-            target_status = JOB_STATUS_KEY.NO_SCHE
-        elif status_update_path == JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_NOSCHED:
+            target_status = JOB_STATUS_KEY.RECOMING
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_RECOMING:
             origin_status = JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL
-            target_status = JOB_STATUS_KEY.NO_SCHE
-        elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_NOSCHED:
+            target_status = JOB_STATUS_KEY.RECOMING
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_RECOMING:
             origin_status = JOB_STATUS_KEY.NO_SCHE
+            target_status = JOB_STATUS_KEY.RECOMING
+        # real_recoming
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.RECOMING_2_NOSCHED:
+            origin_status = JOB_STATUS_KEY.RECOMING
             target_status = JOB_STATUS_KEY.NO_SCHE
         # finished
         elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_FINISHED:
@@ -694,7 +709,9 @@ class Scheduler_server(object):
             }
         return sub_train_datasetidentifier_2_significance
     
+    '''
     def sched_dispatch_testbed_start(self, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_times):
+        self.sched_logger.info("")
         def thread_func_sched_dispatch_testbed(cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_times):
             while not self.all_finished and self.finished_update_init_history_jobs:
                 self.calculate_significance_for_nosched_jobs()
@@ -711,7 +728,24 @@ class Scheduler_server(object):
         self.all_testbed_thread = p
         p.start()
         self.sched_logger.info("Thread [thread_func_sched_dispatch_testbed] started!")
-            
+    '''
+                
+    def real_recoming_jobs(self):
+        all_recoming_jobs_copy = copy.deepcopy(self.status_2_jobid[JOB_STATUS_KEY.RECOMING])
+        if len(all_recoming_jobs_copy) <= 0:
+            return 
+        for job_id in all_recoming_jobs_copy:
+            current_time = time.time()
+            if job_id not in self.jobid_2_recoming_min_time:
+                self.sched_logger.warning("job_id [{}] not in self.jobid_2_recoming_min_time".format(job_id))
+                self.jobid_2_recoming_min_time[job_id] = current_time + self.recoming_time_interval
+                continue
+            if self.jobid_2_recoming_min_time[job_id] <= current_time:
+                status_update_path, _ = self.get_target_job_status_update_path_and_status(job_id, "real_recoming")
+                origin_status_success, target_status_success = self.get_job_status_update_origin_target(status_update_path)
+                self.sche_reflash_job_status(job_id, origin_status_success, target_status_success)
+                self.sched_logger.info("job_id [{}] recoming".format(job_id))
+
     def calculate_significance_for_nosched_jobs(self):
         all_no_sche_jobs_copy = copy.deepcopy(self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE])
         if len(all_no_sche_jobs_copy) <= 0:
@@ -802,7 +836,8 @@ class Scheduler_server(object):
             else:
                 self.global_job_arrival_index += 1
                 self.jobid_2_arrival_index[temp_job_id] = self.global_job_arrival_index
-                status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "recoming")
+                self.jobid_2_recoming_min_time[temp_job_id] = time.time() + self.recoming_time_interval
+                status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "wait_recoming")
             origin_status_failed, target_status_failed = self.get_job_status_update_origin_target(status_update_path)
             self.sche_reflash_job_status(temp_job_id, origin_status_failed, target_status_failed)
 
@@ -884,12 +919,24 @@ class Scheduler_server(object):
         p.start()
         self.sched_logger.info("Thread [thread_func_timely_placement] started!")
 
+    def recoming_jobs_start(self, real_coming_sleep_time):
+        def thread_func_real_for_recoming_jobs(real_coming_sleep_time):
+            while not self.all_finished and self.finished_update_init_history_jobs:
+                self.real_recoming_jobs()
+                time.sleep(real_coming_sleep_time)
+            self.sched_logger.info("Thread [thread_func_real_for_recoming_jobs] finished!")
+        p = threading.Thread(target=thread_func_real_for_recoming_jobs, args=(real_coming_sleep_time, ), daemon=True)
+        self.real_recoming_thread = p
+        p.start()
+        self.sched_logger.info("Thread [thread_func_real_for_recoming_jobs] started!")
+
     def sched_end(self):
         self.all_finished = True
         self.all_testbed_thread = None
         self.sched_thread = None
         self.cal_significance_thread = None
         self.placement_thread = None
+        self.real_recoming_thread = None
         self.gpu_thread = None
 
     def sched_update_gpu_status_start(self, init_gpuidentifiers):
@@ -934,12 +981,16 @@ class Scheduler_server(object):
         self.sched_logger.info("significance_policy: {}".format(self.significance_policy.name))
         
 def scheduler_listener_func(scheduler_server_item):
-    s = zerorpc.Server(scheduler_server_item)
-    ip_port = "tcp://0.0.0.0:{}".format(scheduler_server_item.sched_port)
-    s.bind(ip_port)
-    print("DL_server running in {}".format(ip_port))
-    s.run()
-    print("self.sched_logger.info sth...")
+    def sched_func_timely(scheduler_server_item):
+        s = zerorpc.Server(scheduler_server_item)
+        ip_port = "tcp://0.0.0.0:{}".format(scheduler_server_item.sched_port)
+        s.bind(ip_port)
+        print("DL_server running in {}".format(ip_port))
+        s.run()
+        print("self.sched_logger.info sth...")
+    p = threading.Thread(target=sched_func_timely, args=(scheduler_server_item, ), daemon=True)
+    p.start()
+    return p
 
 if __name__ == "__main__":
     sched_ip = SCHE_IP
@@ -948,4 +999,10 @@ if __name__ == "__main__":
     init_workerip_2_ports = INIT_WORKERIP_2_PORTS
 
     scheduler_server_item = Scheduler_server(sched_ip, sched_port, init_workerip_2_ports)
-    scheduler_listener_func(scheduler_server_item)
+    sched_p = scheduler_listener_func(scheduler_server_item)
+
+    while not scheduler_server_item.all_stop:
+        time.sleep(10)
+    print("DL sched finished!!")
+    
+    sys.exit(0)

@@ -11,9 +11,10 @@ def get_df_config():
                 description="Sweep through lambda values")
     parser.add_argument("--global_sleep_time", type=int, default=5)
 
-    parser.add_argument("--scheduler_update_sleep_time", type=float, default=0.1)
+    parser.add_argument("--scheduler_update_sleep_time", type=float, default=0.0)
     parser.add_argument("--cal_significance_sleep_time", type=float, default=0.0)
     parser.add_argument("--placement_sleep_time", type=float, default=1.0)
+    parser.add_argument("--real_coming_sleep_time", type=float, default=10.0)
 
     parser.add_argument("--waiting_time", type=int, default=10)
     parser.add_argument("--dataset_update_timeout", type=int, default=120)
@@ -168,12 +169,13 @@ class Dispatcher(object):
         client = self.get_zerorpc_client(ip, port)
         client.stop_all()
 
-    def sched_dispatch_start(self, ip, port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time):
+    def sched_dispatch_start(self, ip, port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time, real_coming_sleep_time):
         client = self.get_zerorpc_client(ip, port)
         # client.sched_dispatch_testbed_start(cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time)
         client.cal_significance_dispatch_start(cal_significance_sleep_time)
         client.sched_dispatch_start(scheduler_update_sleep_time)
         client.placement_dispatch_start(placement_sleep_time)
+        client.recoming_jobs_start(real_coming_sleep_time)
     
     def sched_end(self, ip, port):
         client = self.get_zerorpc_client(ip, port)
@@ -238,6 +240,7 @@ if __name__ == "__main__":
     dataset_update_timeout = args.dataset_update_timeout
     scheduler_update_sleep_time = args.scheduler_update_sleep_time
     cal_significance_sleep_time = args.cal_significance_sleep_time
+    real_coming_sleep_time = args.real_coming_sleep_time
     placement_sleep_time = args.placement_sleep_time
 
     waiting_time = args.waiting_time
@@ -640,7 +643,7 @@ if __name__ == "__main__":
 
         print("Waiting for load datasets and jobs {} s".format(waiting_time))
         time.sleep(waiting_time)
-        dispatcher.sched_dispatch_start(sched_ip, sched_port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time)
+        dispatcher.sched_dispatch_start(sched_ip, sched_port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time, real_coming_sleep_time)
 
         time_p = dispatcher.sched_update_current_time()
         processes.append(time_p)

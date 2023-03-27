@@ -82,6 +82,8 @@ class Worker_server(object):
 
         self.jobid_2_origininfo = {}
         self.jobid_2_thread = {}
+
+        self.all_finished = False
         # gpu_device_count = torch.cuda.device_count()
         # self.worker_gpus_ready = {index:True for index in range(gpu_device_count)} # 直接允许即可
 
@@ -91,8 +93,7 @@ class Worker_server(object):
         print("success clear all jobs in worker!")
 
     def stop_all(self):
-        self.clear_all_jobs()
-        sys.exit(0)
+        self.all_finished = True
 
     def get_scheduler_zerorpc_client(self):
         tcp_ip_port = "tcp://{}:{}".format(self.sched_ip, self.sche_port)
@@ -182,15 +183,25 @@ class Worker_server(object):
 
 
 def worker_listener_func(worker_server_item):
-    s = zerorpc.Server(worker_server_item)
-    ip_port = "tcp://0.0.0.0:{}".format(worker_server_item.local_port)
-    s.bind(ip_port)
-    print("DL_server running in {}".format(ip_port))
-    s.run()
+    def work_func_timely(worker_server_item):
+        s = zerorpc.Server(worker_server_item)
+        ip_port = "tcp://0.0.0.0:{}".format(worker_server_item.local_port)
+        s.bind(ip_port)
+        print("DL_server running in {}".format(ip_port))
+        s.run()
+    p = threading.Thread(target=work_func_timely, args=(worker_server_item, ), daemon=True)
+    p.start()
+    return p
 
 if __name__ == "__main__":
     args = get_df_config()
     local_ip, local_port, sched_ip, sche_port, gpu_update_time = args.local_ip, args.local_port, args.sched_ip, args.sche_port, args.gpu_update_time
     worker_server_item = Worker_server(local_ip, local_port, sched_ip, sche_port, gpu_update_time)
-    worker_server_item.timely_update_gpu_status()
-    worker_listener_func(worker_server_item)
+    # worker_server_item.timely_update_gpu_status()
+    worker_p = worker_listener_func(worker_server_item)
+
+    while not worker_server_item.all_finished:
+        time.sleep(10)
+    print("DL sched finished!!")
+    
+    sys.exit(0)
