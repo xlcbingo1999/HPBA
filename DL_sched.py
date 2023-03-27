@@ -924,12 +924,14 @@ class Scheduler_server(object):
         elif assignment_policy == "OfflinePolicy":
             policy_item = OfflinePolicy(self.sched_logger)
         self.assignment_policy = policy_item
+        self.assignment_policy.report_state()
 
     def sched_update_significance_policy(self, significance_policy):
         if significance_policy == "HISOTDDPolicy":
             self.significance_policy = HISOTDDPolicy(self.sched_logger)
         elif significance_policy == "TempPolicy":
             self.significance_policy = TempPolicy(self.sched_logger)
+        self.sched_logger.info("significance_policy: {}".format(self.significance_policy.name))
         
 def scheduler_listener_func(scheduler_server_item):
     s = zerorpc.Server(scheduler_server_item)
