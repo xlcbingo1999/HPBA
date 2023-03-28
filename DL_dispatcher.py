@@ -247,7 +247,7 @@ if __name__ == "__main__":
 
     jobs_list = [
         {
-            "time": 1,
+            "time": 10,
             "submited": False,
             "model_name": "CNN",
             "train_dataset_name": "EMNIST",
@@ -267,7 +267,7 @@ if __name__ == "__main__":
             "dispatcher_ip": dispatcher_ip,
             "dispatcher_port": dispatcher_port,
         }, {
-            "time": 30,
+            "time": 50,
             "submited": False,
             "model_name": "CNN",
             "train_dataset_name": "EMNIST",
@@ -287,7 +287,7 @@ if __name__ == "__main__":
             "dispatcher_ip": dispatcher_ip,
             "dispatcher_port": dispatcher_port,
         }, {
-            "time": 50,
+            "time": 300,
             "submited": False,
             "model_name": "CNN",
             "train_dataset_name": "EMNIST",
@@ -307,7 +307,7 @@ if __name__ == "__main__":
             "dispatcher_ip": dispatcher_ip,
             "dispatcher_port": dispatcher_port,
         }, {
-            "time": 80,
+            "time": 500,
             "submited": False,
             "model_name": "CNN",
             "train_dataset_name": "EMNIST",
@@ -327,7 +327,7 @@ if __name__ == "__main__":
             "dispatcher_ip": dispatcher_ip,
             "dispatcher_port": dispatcher_port,
         }, {
-            "time": 100,
+            "time": 800,
             "submited": False,
             "model_name": "CNN",
             "train_dataset_name": "EMNIST",
@@ -347,7 +347,7 @@ if __name__ == "__main__":
             "dispatcher_ip": dispatcher_ip,
             "dispatcher_port": dispatcher_port,
         }, {
-            "time": 120,
+            "time": 1000,
             "submited": False,
             "model_name": "CNN",
             "train_dataset_name": "EMNIST",
@@ -367,7 +367,7 @@ if __name__ == "__main__":
             "dispatcher_ip": dispatcher_ip,
             "dispatcher_port": dispatcher_port,
         }, {
-            "time": 150,
+            "time": 1200,
             "submited": False,
             "model_name": "CNN",
             "train_dataset_name": "EMNIST",
@@ -387,7 +387,7 @@ if __name__ == "__main__":
             "dispatcher_ip": dispatcher_ip,
             "dispatcher_port": dispatcher_port,
         }, {
-            "time": 180,
+            "time": 1500,
             "submited": False,
             "model_name": "CNN",
             "train_dataset_name": "EMNIST",
