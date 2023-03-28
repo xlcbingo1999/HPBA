@@ -4,11 +4,11 @@ import multiprocessing
 import threading
 import os
 
-def get_logger(logging_file, enable_multiprocess, showing_stdout_level=logging.INFO):
+def get_logger(name, logging_file, enable_multiprocess, showing_stdout_level=logging.INFO):
     if not os.path.exists(logging_file):
         os.makedirs(os.path.dirname(logging_file), exist_ok=True)
     
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
     
     file_ch = logging.FileHandler(logging_file)

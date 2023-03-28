@@ -125,13 +125,14 @@ class Scheduler_server(object):
 
         self.initialize_seeds(1234)
 
-        current_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
-        self.current_test_all_dir = 'schedule-review-%s' % (current_time)
-        self.model_save_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
-        self.all_logger_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
+    def initialize_logging_path(self, current_test_all_dir):
+        # current_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
+        # self.current_test_all_dir = 'schedule-review-%s' % (current_time)
+        self.model_save_path = '{}/{}'.format(RESULT_PATH, current_test_all_dir)
+        self.all_logger_path = '{}/{}'.format(RESULT_PATH, current_test_all_dir)
         sched_logger_path = '{}/DL_sched.log'.format(self.all_logger_path)
-        self.summary_writer_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
-        self.sched_logger = get_logger(sched_logger_path, enable_multiprocess=True)
+        self.summary_writer_path = '{}/{}'.format(RESULT_PATH, current_test_all_dir)
+        self.sched_logger = get_logger(sched_logger_path, sched_logger_path, enable_multiprocess=True)
 
         self.sched_logger.info("recoming_time_interval: {}".format(self.recoming_time_interval))
 

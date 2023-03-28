@@ -1,10 +1,12 @@
 import zerorpc
 import time
-from utils.global_variable import SCHE_IP, SCHE_PORT, DISPATCHER_IP, DISPATCHER_PORT, INIT_WORKERIDENTIFIERS
+from utils.global_variable import SCHE_IP, SCHE_PORT, DISPATCHER_IP, DISPATCHER_PORT, INIT_WORKERIDENTIFIERS, RESULT_PATH
 import threading
 from functools import reduce
 import sys
 import argparse
+from utils.logging_tools import get_logger
+
 
 def get_df_config():
     parser = argparse.ArgumentParser(
@@ -67,6 +69,12 @@ class Dispatcher(object):
 
         self.all_start_time = time.time()
         self.current_time = 0
+
+        logging_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
+        self.current_test_all_dir = 'schedule-review-%s' % (logging_time)
+        all_logger_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
+        dispatcher_logger_path = '{}/DL_dispatcher.log'.format(all_logger_path)
+        self.dispatcher_logger = get_logger(dispatcher_logger_path, dispatcher_logger_path, enable_multiprocess=True)
         
     def dispatch_jobs(self, sched_ip, sched_port):
         def thread_func_timely_dispatch_job(sched_ip, sched_port):
@@ -78,7 +86,8 @@ class Dispatcher(object):
                     
                     need_submit_time = info["time"]
                     has_submited_flag = info["submited"]
-                    if not has_submited_flag and need_submit_time >= self.current_time:
+                    if not has_submited_flag and need_submit_time <= self.current_time:
+                        self.dispatcher_logger.debug("[add job start!] need_submit_time: {}; self.current_time: {}".format(need_submit_time, self.current_time))
                         self.jobs_detail[index][1]["submited"] = True
                         count += 1
                         dispatch_jobs_detail[job_id] = info
@@ -87,10 +96,10 @@ class Dispatcher(object):
                     client = self.get_zerorpc_client(sched_ip, sched_port)
                     client.update_jobs(dispatch_jobs_detail) # 提交上去后, 任务即进入NO_SCHED状态, 之后就是调度器自身会启动一个不断循环的获取计算Siginificane策略和调度策略
                 if self.dispatch_datasets_count == len(self.jobs_detail):
-                    print("Finished Job Dispatch!")
+                    self.dispatcher_logger.info("Finished Job Dispatch!")
                     break
                 time.sleep(1)
-            print("Thread [thread_func_timely_dispatch_job] finished!")
+            self.dispatcher_logger.info("Thread [thread_func_timely_dispatch_job] finished!")
         p = threading.Thread(target=thread_func_timely_dispatch_job, args=(sched_ip, sched_port), daemon=True)
         p.start()
         return p
@@ -101,11 +110,11 @@ class Dispatcher(object):
 
     
     def finished_job_callback(self, job_id):
-        print("finished: {}".format(job_id))
+        self.dispatcher_logger.info("finished: {}".format(job_id))
         self.finished_labels[job_id] = True   
 
     def failed_job_callback(self, job_id):
-        print("failed: {}".format(job_id))
+        self.dispatcher_logger.info("failed: {}".format(job_id))
         self.finished_labels[job_id] = True
 
     def sched_update_dataset(self, sched_ip, sched_port, dataset_update_timeout):
@@ -119,7 +128,8 @@ class Dispatcher(object):
                         epsilon_capacity = self.datasets_map[dataset_name][sub_train_dataset_identifier]["epsilon_capacity"]
                         delta_capacity = self.datasets_map[dataset_name][sub_train_dataset_identifier]["delta_capacity"]
                         has_submited_flag = self.datasets_map[dataset_name][sub_train_dataset_identifier]["submited"]
-                        if not has_submited_flag and need_submit_time >= self.current_time:
+                        if not has_submited_flag and need_submit_time <= self.current_time:
+                            self.dispatcher_logger.debug("[add dataset start!] need_submit_time: {}; self.current_time: {}".format(need_submit_time, self.current_time))
                             self.datasets_map[dataset_name][sub_train_dataset_identifier]["submited"] = True
                             count += 1
                             if dataset_name not in subtrain_datasetidentifier_info:
@@ -133,10 +143,10 @@ class Dispatcher(object):
                     client = self.get_zerorpc_client(sched_ip, sched_port, timeout=dataset_update_timeout)
                     client.update_dataset(subtrain_datasetidentifier_info)
                 if self.dispatch_datasets_count == self.all_datasets_count:
-                    print("Finished Dataset Dispatch!")
+                    self.dispatcher_logger.info("Finished Dataset Dispatch!")
                     break
                 time.sleep(1)
-            print("Thread [thread_func_timely_dispatch_dataset] finished!")
+            self.dispatcher_logger.info("Thread [thread_func_timely_dispatch_dataset] finished!")
         p = threading.Thread(target=thread_func_timely_dispatch_dataset, args=(sched_ip, sched_port, dataset_update_timeout), daemon=True)
         p.start()
         return p
@@ -146,7 +156,7 @@ class Dispatcher(object):
             while not self.all_finished:
                 self.current_time = time.time() - self.all_start_time
                 time.sleep(1)
-            print("Thread [thread_func_timely_update_time] finished!")
+            self.dispatcher_logger.info("Thread [thread_func_timely_update_time] finished!")
         p = threading.Thread(target=thread_func_timely_update_time, daemon=True)
         p.start()
         return p
@@ -185,8 +195,9 @@ class Dispatcher(object):
         client = self.get_zerorpc_client(ip, port)
         client.sched_update_gpu_status_start(init_gpuidentifiers)
 
-    def sched_init_sched_policy(self, ip, port, assignment_policy, significance_policy):
+    def sched_init_sched_register(self, ip, port, assignment_policy, significance_policy):
         client = self.get_zerorpc_client(ip, port)
+        client.initialize_logging_path(self.current_test_all_dir)
         if assignment_policy == "PBGPolicy":
             comparison_cost_epsilon_list = args.pbg_comparison_cost_epsilons
             comparison_z_threshold_list = args.pbg_comparison_z_thresholds
@@ -628,13 +639,16 @@ if __name__ == "__main__":
         remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
         processes.append(remote_server_p)
 
-        dispatcher.sched_init_sched_policy(sched_ip, sched_port, args.assignment_policy, args.significance_policy)
+        dispatcher.sched_init_sched_register(sched_ip, sched_port, args.assignment_policy, args.significance_policy)
         dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_gpuidentifiers)
-                
         if not args.without_start_load_job:
             dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, dataset_update_timeout)
             processes.append(dataset_p)
+        
         time.sleep(waiting_time)
+        time_p = dispatcher.sched_update_current_time()
+        processes.append(time_p)
+
         if not args.without_start_load_history_job:
             history_job_p = dispatcher.dispatch_history_jobs(sched_ip, sched_port)
         if not args.without_start_load_job:
@@ -644,9 +658,6 @@ if __name__ == "__main__":
         print("Waiting for load datasets and jobs {} s".format(waiting_time))
         time.sleep(waiting_time)
         dispatcher.sched_dispatch_start(sched_ip, sched_port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time, real_coming_sleep_time)
-
-        time_p = dispatcher.sched_update_current_time()
-        processes.append(time_p)
         
         # 主线程的最后一个操作!
         all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
