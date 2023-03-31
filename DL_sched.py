@@ -272,6 +272,8 @@ class Scheduler_server(object):
                 self.sub_train_datasetidentifier_2_epsilon_remain[init_dataset_name][identifier] = dataset_identifier_2_capacity_map[identifier]
                 self.sub_train_datasetidentifier_2_submited_time[init_dataset_name][identifier] = time.time()
 
+        self.sched_logger.info("success add new datasets: {}".format(init_subtrain_datasets_map))
+
     '''
     def update_gpu(self, init_gpuidentifiers):
         # 这个函数不能传, 必须时刻读取共享文件系统中的数据情况, 慢操作, 开Thread读取
@@ -349,7 +351,6 @@ class Scheduler_server(object):
                 self.history_job_budget_consumes.append(target_epsilon_consume)
                 train_dataset_name = history_jobs_map[id]["train_dataset_name"]
                 self.history_job_train_dataset_name.append(train_dataset_name)
-                print("train_dataset_name: ", train_dataset_name)
                 target_selected_num = history_jobs_map[id]["datablock_select_num"]
                 self.history_job_target_selected_num.append(target_selected_num)
                 test_dataset_name = history_jobs_map[id]["test_dataset_name"]
@@ -370,7 +371,7 @@ class Scheduler_server(object):
                 self.history_job_significance.append(result_d_map)
                 
                 count += history_jobs_map[id]["update_sched_epoch_num"]
-        self.sched_logger.info("success add new history jobs number: {}".format(len(self.history_job_priority_weights)))
+        self.sched_logger.info("success add new history jobs: {}".format(history_jobs_map))
         self.finished_update_init_history_jobs = True
 
     def sche_timely_update_history_job(self, priority_weight, EPSILON, train_dataset_name, datablock_selected_num, test_dataset_name, sub_test_key_id, significance):

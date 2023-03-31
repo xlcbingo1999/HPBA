@@ -22,9 +22,8 @@ from utils.global_variable import SIGNIFICANCE_TRACE_PREFIX_PATH
         
 
 class JobItem(object):
-    def __init__(self, job_id, alpha, train_dataset_name, test_dataset_name, sub_test_key_id):
+    def __init__(self, job_id, train_dataset_name, test_dataset_name, sub_test_key_id):
         self.job_id = job_id
-        self.alpha = alpha
         self.job_train_dataset_name = train_dataset_name
         self.job_test_dataset_name = test_dataset_name
         self.job_sub_test_key_id = sub_test_key_id
@@ -124,9 +123,9 @@ class HISOTDDPolicy(SigPolicy):
         self.logger.info("history_job_id [{}] to datablocks significance: {}, time: {}".format(history_job_id, result, end-begin))
         return result
 
-    def get_job_significance_result_for_all_datablocks(self, job_id, all_significance_state, alpha):
+    def get_job_significance_result_for_all_datablocks(self, job_id, all_significance_state, alpha=0.5):
         begin = time.time()
-        remain_epsilons = []
+        # remain_epsilons = []
         origin_OTDDs = []
         norm_OTDDs = []
         origin_history_accs = []
@@ -136,12 +135,12 @@ class HISOTDDPolicy(SigPolicy):
         for index, signficance_state in enumerate(all_significance_state):
             train_dataset_name = signficance_state["train_dataset_name"]
             sub_train_key_id = signficance_state["sub_train_key_id"]
-            sub_train_key_remain_epsilon = signficance_state["sub_train_key_remain_epsilon"]
+            # sub_train_key_remain_epsilon = signficance_state["sub_train_key_remain_epsilon"]
             test_dataset_name = signficance_state["test_dataset_name"]
             sub_test_key_id = signficance_state["sub_test_key_id"]
 
             # 获取epsilon的剩余值
-            remain_epsilons.append(sub_train_key_remain_epsilon)
+            # remain_epsilons.append(sub_train_key_remain_epsilon)
 
             # 获取原始的OTDD
             origin_otdd_d = self.get_job_datablock_origin_OTDD_sync(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id)
@@ -171,7 +170,8 @@ class HISOTDDPolicy(SigPolicy):
             norm_otdd = 1.0 / origin_otdd # TODO(xlc): 因为在线场景中的区分度实在不高, 因此为了避免引入新的argue点, 还是选择了直接做除法
             norm_OTDDs.append(norm_otdd)
         # 局部量
-        '''
+        
+        norm_history_accs = []
         temp_max_history_acc = max(origin_history_accs)
         temp_min_history_acc = min(origin_history_accs)
         if temp_max_history_acc != temp_min_history_acc:
@@ -182,14 +182,14 @@ class HISOTDDPolicy(SigPolicy):
             for origin_acc in origin_history_accs:
                 norm_acc = 1.0
                 norm_history_accs.append(norm_acc)
-        '''
+        
             
         # 全局量 * (局部量 + UCB), 对量纲的影响是最小的
         # 不能把当前时刻的remain_epsilon传进来, 会导致历史任务的价值偏高, 当前任务的价值不断下降
         # 太久没选的任务是否要将探索价值提高呢? 如果在世界时间中, 当最后的任务价值不断提高, 也会导致历史任务的价值不断提高...
         # 实际上很大概率就是任务在第一次被failed后, 整个系统会将其拒之门外...
         result = [
-            norm_OTDDs[index] * (alpha * origin_history_accs[index] + (1 - alpha) * ucb_factors[index]) for index in range(len(all_significance_state))
+            norm_OTDDs[index] * (alpha * norm_history_accs[index] + (1 - alpha) * ucb_factors[index]) for index in range(len(all_significance_state))
         ]
         
         end = time.time()

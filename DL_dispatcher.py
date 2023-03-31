@@ -21,7 +21,7 @@ def get_df_config():
     parser.add_argument("--real_coming_sleep_time", type=float, default=1.0)
 
     parser.add_argument("--waiting_time", type=int, default=10)
-    parser.add_argument("--dataset_update_timeout", type=int, default=120)
+    parser.add_argument("--update_timeout", type=int, default=120)
     parser.add_argument("--without_start_load_job", action="store_true")
     parser.add_argument("--without_start_load_history_job", action="store_true")
     parser.add_argument("--without_start_load_dataset", action="store_true")
@@ -78,8 +78,8 @@ class Dispatcher(object):
         dispatcher_logger_path = '{}/DL_dispatcher.log'.format(all_logger_path)
         self.dispatcher_logger = get_logger(dispatcher_logger_path, dispatcher_logger_path, enable_multiprocess=True)
         
-    def dispatch_jobs(self, all_decision_num, sched_ip, sched_port):
-        def thread_func_timely_dispatch_job(sched_ip, sched_port):
+    def dispatch_jobs(self, all_decision_num, sched_ip, sched_port, update_timeout):
+        def thread_func_timely_dispatch_job(sched_ip, sched_port, update_timeout):
             while not self.all_finished:
                 count = self.dispatch_jobs_count
                 dispatch_jobs_detail = {}
@@ -95,7 +95,7 @@ class Dispatcher(object):
                         dispatch_jobs_detail[job_id] = info
                 if count > self.dispatch_jobs_count:
                     self.dispatch_jobs_count = count
-                    client = self.get_zerorpc_client(sched_ip, sched_port)
+                    client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
                     client.update_jobs(dispatch_jobs_detail) # 提交上去后, 任务即进入NO_SCHED状态, 之后就是调度器自身会启动一个不断循环的获取计算Siginificane策略和调度策略
                 if self.dispatch_datasets_count == len(self.jobs_detail):
                     self.dispatcher_logger.info("Finished Job Dispatch!")
@@ -105,12 +105,12 @@ class Dispatcher(object):
         # 在最开始一定要将真实的历史结果传过去
         client = self.get_zerorpc_client(sched_ip, sched_port)
         client.init_jobs_all_sequence_num(all_decision_num)
-        p = threading.Thread(target=thread_func_timely_dispatch_job, args=(sched_ip, sched_port), daemon=True)
+        p = threading.Thread(target=thread_func_timely_dispatch_job, args=(sched_ip, sched_port, update_timeout), daemon=True)
         p.start()
         return p
 
-    def dispatch_history_jobs(self, sched_ip, sched_port):
-        client = self.get_zerorpc_client(sched_ip, sched_port)
+    def dispatch_history_jobs(self, sched_ip, sched_port, update_timeout):
+        client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
         client.update_history_jobs(self.history_jobs_detail)
 
     
@@ -122,8 +122,8 @@ class Dispatcher(object):
         self.dispatcher_logger.info("failed: {}".format(job_id))
         self.finished_labels[job_id] = True
 
-    def sched_update_dataset(self, sched_ip, sched_port, dataset_update_timeout):
-        def thread_func_timely_dispatch_dataset(sched_ip, sched_port, dataset_update_timeout):
+    def sched_update_dataset(self, sched_ip, sched_port, update_timeout):
+        def thread_func_timely_dispatch_dataset(sched_ip, sched_port, update_timeout):
             while not self.all_finished:
                 count = self.dispatch_datasets_count
                 subtrain_datasetidentifier_info = {}
@@ -145,14 +145,14 @@ class Dispatcher(object):
                             }
                 if count > self.dispatch_datasets_count:
                     self.dispatch_datasets_count = count
-                    client = self.get_zerorpc_client(sched_ip, sched_port, timeout=dataset_update_timeout)
+                    client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
                     client.update_dataset(subtrain_datasetidentifier_info)
                 if self.dispatch_datasets_count == self.all_datasets_count:
                     self.dispatcher_logger.info("Finished Dataset Dispatch!")
                     break
                 time.sleep(1)
             self.dispatcher_logger.info("Thread [thread_func_timely_dispatch_dataset] finished!")
-        p = threading.Thread(target=thread_func_timely_dispatch_dataset, args=(sched_ip, sched_port, dataset_update_timeout), daemon=True)
+        p = threading.Thread(target=thread_func_timely_dispatch_dataset, args=(sched_ip, sched_port, update_timeout), daemon=True)
         p.start()
         return p
     
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     
     init_gpuidentifiers = INIT_WORKERIDENTIFIERS
     global_sleep_time = args.global_sleep_time
-    dataset_update_timeout = args.dataset_update_timeout
+    update_timeout = args.update_timeout
     scheduler_update_sleep_time = args.scheduler_update_sleep_time
     cal_significance_sleep_time = args.cal_significance_sleep_time
     real_coming_sleep_time = args.real_coming_sleep_time
@@ -278,13 +278,13 @@ if __name__ == "__main__":
             his_jobs_map = json.load(f)
             sorted_his_jobs_temp = sorted(his_jobs_map.items(), key=lambda x: x[1]['time'])
             history_jobs_list = [value for _, value in sorted_his_jobs_temp]
-            print(history_jobs_list)
+            # print(history_jobs_list)
         test_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/test_jobs.json".format(reconstruct_path)
         with open(test_job_path, "r+") as f:
             test_jobs_map = json.load(f)
             sorted_test_jobs_temp = sorted(test_jobs_map.items(), key=lambda x: x[1]['time'])
             jobs_list = [value for _, value in sorted_test_jobs_temp]
-            print(jobs_list)
+            # print(jobs_list)
         all_decision_num = 0
         for job in jobs_list:
             all_decision_num += int(job["TARGET_EPOCHS"] / job["update_sched_epoch_num"])
@@ -298,7 +298,7 @@ if __name__ == "__main__":
         dispatcher.sched_init_sched_register(sched_ip, sched_port, args.assignment_policy, args.significance_policy)
         dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_gpuidentifiers)
         if not args.without_start_load_job:
-            dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, dataset_update_timeout)
+            dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout)
             processes.append(dataset_p)
         
         time.sleep(waiting_time)
@@ -306,9 +306,9 @@ if __name__ == "__main__":
         processes.append(time_p)
 
         if not args.without_start_load_history_job:
-            history_job_p = dispatcher.dispatch_history_jobs(sched_ip, sched_port)
+            history_job_p = dispatcher.dispatch_history_jobs(sched_ip, sched_port, update_timeout)
         if not args.without_start_load_job:
-            job_p = dispatcher.dispatch_jobs(all_decision_num, sched_ip, sched_port)
+            job_p = dispatcher.dispatch_jobs(all_decision_num, sched_ip, sched_port, update_timeout)
             processes.append(job_p)
 
         print("Waiting for load datasets and jobs {} s".format(waiting_time))
