@@ -294,8 +294,10 @@ class Scheduler_server(object):
             threading.Thread(target=read_gpu_state_from_file, args=(gpu_identifier, ), daemon=True).start()
     '''
     
+    def init_jobs_all_sequence_num(self, init_jobs_all_sequence_num):
+        self.job_sequence_all_num = init_jobs_all_sequence_num
+
     def update_jobs(self, jobs_detail_map): # 每次可以增加一批任务
-        count = 0
         for id in jobs_detail_map:
             origin_info = jobs_detail_map[id]
             if id in self.jobid_2_status:
@@ -335,9 +337,7 @@ class Scheduler_server(object):
                 self.jobid_2_logging_file_path[id] = self.all_logger_path + "/{}.log".format(id)
                 self.jobid_2_summary_writer_key[id] = "{}".format(id)
 
-                count += int(math.ceil(self.jobid_2_target_epochs[id] / self.jobid_2_update_sched_epoch_num[id]))
-        self.job_sequence_all_num = count
-        self.sched_logger.info("success add new jobs number: {}".format(self.job_sequence_all_num))
+        self.sched_logger.info("success add new jobs: {}".format(jobs_detail_map))
 
     def update_history_jobs(self, history_jobs_map):
         for id in sorted(history_jobs_map):
@@ -349,6 +349,7 @@ class Scheduler_server(object):
                 self.history_job_budget_consumes.append(target_epsilon_consume)
                 train_dataset_name = history_jobs_map[id]["train_dataset_name"]
                 self.history_job_train_dataset_name.append(train_dataset_name)
+                print("train_dataset_name: ", train_dataset_name)
                 target_selected_num = history_jobs_map[id]["datablock_select_num"]
                 self.history_job_target_selected_num.append(target_selected_num)
                 test_dataset_name = history_jobs_map[id]["test_dataset_name"]

@@ -1,16 +1,18 @@
 import zerorpc
 import time
-from utils.global_variable import SCHE_IP, SCHE_PORT, DISPATCHER_IP, DISPATCHER_PORT, INIT_WORKERIDENTIFIERS, RESULT_PATH
+from utils.global_variable import SCHE_IP, SCHE_PORT, DISPATCHER_IP, DISPATCHER_PORT, INIT_WORKERIDENTIFIERS, RESULT_PATH, RECONSTRUCT_TRACE_PREFIX_PATH
 import threading
 from functools import reduce
 import sys
 import argparse
+import json
 from utils.logging_tools import get_logger
 from utils.generate_tools import generate_dataset, generate_jobs
 
 def get_df_config():
     parser = argparse.ArgumentParser(
                 description="Sweep through lambda values")
+    parser.add_argument("--reconstruct_path", type=str, default="") # jobs-datasets-03-31-14-38-02
     parser.add_argument("--global_sleep_time", type=int, default=5)
 
     parser.add_argument("--scheduler_update_sleep_time", type=float, default=0.0)
@@ -76,7 +78,7 @@ class Dispatcher(object):
         dispatcher_logger_path = '{}/DL_dispatcher.log'.format(all_logger_path)
         self.dispatcher_logger = get_logger(dispatcher_logger_path, dispatcher_logger_path, enable_multiprocess=True)
         
-    def dispatch_jobs(self, sched_ip, sched_port):
+    def dispatch_jobs(self, all_decision_num, sched_ip, sched_port):
         def thread_func_timely_dispatch_job(sched_ip, sched_port):
             while not self.all_finished:
                 count = self.dispatch_jobs_count
@@ -100,6 +102,9 @@ class Dispatcher(object):
                     break
                 time.sleep(1)
             self.dispatcher_logger.info("Thread [thread_func_timely_dispatch_job] finished!")
+        # 在最开始一定要将真实的历史结果传过去
+        client = self.get_zerorpc_client(sched_ip, sched_port)
+        client.init_jobs_all_sequence_num(all_decision_num)
         p = threading.Thread(target=thread_func_timely_dispatch_job, args=(sched_ip, sched_port), daemon=True)
         p.start()
         return p
@@ -256,12 +261,34 @@ if __name__ == "__main__":
 
     waiting_time = args.waiting_time
 
-    datasets_list = generate_dataset(dataset_names=["EMNIST"], fix_epsilon=5.0, fix_delta=1e-5, fix_time=0, num=6)
-    jobs_list = generate_jobs(all_decision_num=500, update_sched_epoch_num=2, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], is_history=False)
-    history_jobs_list = generate_jobs(all_decision_num=500, update_sched_epoch_num=2, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], is_history=False)
-    # print("datasets_list: ", datasets_list)
-    # print("jobs_list: ", jobs_list)
-    # print("history_jobs_list: ", history_jobs_list)
+    reconstruct_path = args.reconstruct_path
+
+    if len(reconstruct_path) <= 0:
+        all_decision_num = 500
+
+        datasets_list = generate_dataset(dataset_names=["EMNIST"], fix_epsilon=5.0, fix_delta=1e-5, fix_time=0, num=6)
+        jobs_list = generate_jobs(all_decision_num=all_decision_num, update_sched_epoch_num=2, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], is_history=False)
+        history_jobs_list = generate_jobs(all_decision_num=all_decision_num, update_sched_epoch_num=2, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], is_history=False)
+    else:
+        dataset_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/datasets.json".format(reconstruct_path)
+        with open(dataset_path, "r+") as f:
+            datasets_list = json.load(f)
+        his_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/his_jobs.json".format(reconstruct_path)
+        with open(his_job_path, "r+") as f:
+            his_jobs_map = json.load(f)
+            sorted_his_jobs_temp = sorted(his_jobs_map.items(), key=lambda x: x[1]['time'])
+            history_jobs_list = [value for _, value in sorted_his_jobs_temp]
+            print(history_jobs_list)
+        test_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/test_jobs.json".format(reconstruct_path)
+        with open(test_job_path, "r+") as f:
+            test_jobs_map = json.load(f)
+            sorted_test_jobs_temp = sorted(test_jobs_map.items(), key=lambda x: x[1]['time'])
+            jobs_list = [value for _, value in sorted_test_jobs_temp]
+            print(jobs_list)
+        all_decision_num = 0
+        for job in jobs_list:
+            all_decision_num += int(job["TARGET_EPOCHS"] / job["update_sched_epoch_num"])
+    
     processes = []
     try:
         dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list)
@@ -281,7 +308,7 @@ if __name__ == "__main__":
         if not args.without_start_load_history_job:
             history_job_p = dispatcher.dispatch_history_jobs(sched_ip, sched_port)
         if not args.without_start_load_job:
-            job_p = dispatcher.dispatch_jobs(sched_ip, sched_port)
+            job_p = dispatcher.dispatch_jobs(all_decision_num, sched_ip, sched_port)
             processes.append(job_p)
 
         print("Waiting for load datasets and jobs {} s".format(waiting_time))
