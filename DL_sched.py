@@ -309,7 +309,7 @@ class Scheduler_server(object):
                 self.jobid_2_gputarget[id] = None
                 # self.jobid_2_datasettargetconfig[id] = {}
                 self.jobid_2_trainconfig[id] = {}
-                target_epsilon_consume = origin_info["EPSILON"]
+                target_epsilon_consume = origin_info["EPSILON"] * origin_info["update_sched_epoch_num"]
                 self.jobid_2_target_epsilon[id] = target_epsilon_consume
                 self.jobid_2_real_epsilon[id] = 0
                 self.jobid_2_submited_time[id] = origin_info["time"]
@@ -345,7 +345,7 @@ class Scheduler_server(object):
             target_job_epoch_num = history_jobs_map[id]["TARGET_EPOCHS"]
             while count < target_job_epoch_num:
                 self.history_job_priority_weights.append(history_jobs_map[id]["priority_weight"])
-                target_epsilon_consume = history_jobs_map[id]["EPSILON"]
+                target_epsilon_consume = history_jobs_map[id]["EPSILON"] * history_jobs_map[id]["update_sched_epoch_num"]
                 self.history_job_budget_consumes.append(target_epsilon_consume)
                 train_dataset_name = history_jobs_map[id]["train_dataset_name"]
                 self.history_job_train_dataset_name.append(train_dataset_name)
@@ -801,7 +801,7 @@ class Scheduler_server(object):
             for temp_job_id, identifier in job_2_selected_datablock_identifiers:
                 if temp_job_id not in self.jobid_2_sub_train_key_ids:
                     self.jobid_2_sub_train_key_ids[temp_job_id] = []
-                consume_epsilon = self.jobid_2_origininfo[temp_job_id]["EPSILON"]
+                consume_epsilon = self.jobid_2_target_epsilon[temp_job_id]
                 dataset_name = job_id_2_dataset_name[temp_job_id]
                 if self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] >= consume_epsilon:
                     self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] -= consume_epsilon # calcu_compare_epsilon

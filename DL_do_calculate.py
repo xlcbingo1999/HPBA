@@ -140,7 +140,7 @@ def do_calculate_func(job_id, model_name,
     model, optimizer, train_loader = \
         get_privacy_dataloader(privacy_engine, model, optimizer, 
                                 train_loader, run_epoch_num, 
-                                EPSILON, DELTA, MAX_GRAD_NORM) 
+                                run_epoch_num * EPSILON, DELTA, MAX_GRAD_NORM) 
 
     with open(logging_file_path, "a+") as f:
         print("job [{}] - epoch [{} to {}] begining ...".format(job_id, begin_epoch_num, begin_epoch_num + run_epoch_num))
