@@ -294,30 +294,13 @@ if __name__ == "__main__":
     logging_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
     jobtrace_save_path = 'jobs-datasets-%s' % (logging_time)
 
-    if len(jobtrace_reconstruct_path) <= 0:
-        all_decision_num = args.all_decision_num
-        time_interval = args.time_interval
-        datasets_list = generate_dataset(dataset_names=["EMNIST"], fix_epsilon=10.0, fix_delta=1e-5, fix_time=0, num=6, save_path=jobtrace_save_path)
-        jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], time_interval=time_interval, is_history=False, dispatcher_ip=dispatcher_ip, dispatcher_port=dispatcher_port, save_path=jobtrace_save_path)
-        history_jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], time_interval=time_interval, is_history=True, dispatcher_ip=dispatcher_ip, dispatcher_port=dispatcher_port, save_path=jobtrace_save_path)
-    else:
-        dataset_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/datasets.json".format(jobtrace_reconstruct_path)
-        with open(dataset_path, "r+") as f:
-            datasets_list = json.load(f)
-        his_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/his_jobs.json".format(jobtrace_reconstruct_path)
-        with open(his_job_path, "r+") as f:
-            history_jobs_list = json.load(f)
-            # sorted_his_jobs_temp = sorted(his_jobs_map.items(), key=lambda x: x[1]['time'])
-            # history_jobs_list = [value for _, value in sorted_his_jobs_temp]
-            # print(history_jobs_list)
-        test_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/test_jobs.json".format(jobtrace_reconstruct_path)
-        with open(test_job_path, "r+") as f:
-            jobs_list = json.load(f)
-            # sorted_test_jobs_temp = sorted(test_jobs_map.items(), key=lambda x: x[1]['time'])
-            # jobs_list = [value for _, value in sorted_test_jobs_temp]
-            # print(jobs_list)
-        all_decision_num = len(jobs_list)
-    
+    all_decision_num = args.all_decision_num
+    time_interval = args.time_interval
+    datasets_list = generate_dataset(dataset_names=["EMNIST"], fix_epsilon=10.0, fix_delta=1e-5, fix_time=0, num=6, jobtrace_reconstruct_path=jobtrace_reconstruct_path, save_path=jobtrace_save_path)
+    jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], time_interval=time_interval, is_history=False, dispatcher_ip=dispatcher_ip, dispatcher_port=dispatcher_port, jobtrace_reconstruct_path=jobtrace_reconstruct_path, save_path=jobtrace_save_path)
+    history_jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], time_interval=time_interval, is_history=True, dispatcher_ip=dispatcher_ip, dispatcher_port=dispatcher_port, jobtrace_reconstruct_path=jobtrace_reconstruct_path, save_path=jobtrace_save_path)
+    all_decision_num = len(jobs_list)
+
     processes = []
     try:
         dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list, logging_time)
