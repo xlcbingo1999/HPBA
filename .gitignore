@@ -1,5 +1,5 @@
 # 独立的变量
-utils/global_variable.py
+DL_shell.txt
 tensorboard_*/
 log_*/
 
