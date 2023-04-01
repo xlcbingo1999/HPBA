@@ -1,6 +1,6 @@
 import zerorpc
 import time
-from utils.global_variable import SCHE_IP, SCHE_PORT, DISPATCHER_IP, DISPATCHER_PORT, INIT_WORKERIDENTIFIERS, RESULT_PATH, RECONSTRUCT_TRACE_PREFIX_PATH
+from utils.global_variable import RESULT_PATH, RECONSTRUCT_TRACE_PREFIX_PATH
 import threading
 from functools import reduce
 import sys
@@ -34,15 +34,24 @@ def get_df_config():
     parser.add_argument("--assignment_policy", type=str, default="HISPolicy")
     parser.add_argument("--significance_policy", type=str, default="HISOTDDPolicy")
 
-    parser.add_argument('--pbg_comparison_cost_epsilons', type=float, nargs="+", default=0.0)
-    parser.add_argument('--pbg_comparison_z_thresholds', type=float, nargs="+", default=0.7)
-    parser.add_argument('--pbg_Ls', type=float, nargs="+", default=0.01)
-    parser.add_argument('--pbg_Us', type=float, nargs="+", default=10.0)
+    parser.add_argument('--pbg_comparison_cost_epsilons', type=float, default=0.0)
+    parser.add_argument('--pbg_comparison_z_thresholds', type=float, default=0.7)
+    parser.add_argument('--pbg_Ls', type=float, default=0.01)
+    parser.add_argument('--pbg_Us', type=float, default=10.0)
 
-    parser.add_argument('--his_betas', type=float, nargs="+", default=0.0)
+    parser.add_argument('--his_betas', type=float, default=0.0)
 
-    parser.add_argument('--dpf_his_betas', type=float, nargs="+", default=0.01)
-    parser.add_argument('--dpf_his_waiting_queue_capacitys', type=int, nargs="+", default=10)
+    parser.add_argument('--dpf_his_betas', type=float, default=0.01)
+    parser.add_argument('--dpf_his_waiting_queue_capacitys', type=int, default=10)
+
+    parser.add_argument("--worker_ips", type=str, nargs="+", default=["172.18.162.2", "172.18.162.3", "172.18.162.4", "172.18.162.5", "172.18.162.6"])
+    parser.add_argument("--worker_ports", type=int, nargs="+", default=[16202, 16203, 16204, 16205, 16206])
+    
+    parser.add_argument("--sched_ip", type=str, default="172.18.162.6")
+    parser.add_argument("--sched_port", type=int, default=16306)
+
+    parser.add_argument("--dispatcher_ip", type=str, default="172.18.162.6")
+    parser.add_argument("--dispatcher_port", type=int, default=16406)
     
     args = parser.parse_args()
     return args
@@ -90,7 +99,7 @@ class Dispatcher(object):
                     need_submit_time = info["time"]
                     has_submited_flag = info["submited"]
                     if not has_submited_flag and need_submit_time <= self.current_time:
-                        self.dispatcher_logger.debug("[add job start!] job_id: {}; need_submit_time: {}; self.current_time: {}".format(job_id, need_submit_time, self.current_time))
+                        self.dispatcher_logger.info("[add job start job_id: {}] need_submit_time: {}; self.current_time: {}".format(job_id, need_submit_time, self.current_time))
                         self.jobs_detail[index][1]["submited"] = True
                         count += 1
                         dispatch_jobs_detail[job_id] = info
@@ -111,16 +120,22 @@ class Dispatcher(object):
         return p
 
     def dispatch_history_jobs(self, sched_ip, sched_port, update_timeout):
-        client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
-        client.update_history_jobs(self.history_jobs_detail)
+        def thread_func_once_dispatch_his_job(sched_ip, sched_port, update_timeout):
+            client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
+            client.update_history_jobs(self.history_jobs_detail)
+            self.dispatcher_logger.info("Thread [thread_func_once_dispatch_his_job] finished!")
+        p = threading.Thread(target=thread_func_once_dispatch_his_job, args=(sched_ip, sched_port, update_timeout), daemon=True)
+        p.start()
+        return p
 
-    
     def finished_job_callback(self, job_id):
-        self.dispatcher_logger.info("finished: {}".format(job_id))
+        current_time = time.time()
+        self.dispatcher_logger.info("[finished job end job_id: {}] current_time: {};".format(job_id, current_time))
         self.finished_labels[job_id] = True   
 
     def failed_job_callback(self, job_id):
-        self.dispatcher_logger.info("failed: {}".format(job_id))
+        current_time = time.time()
+        self.dispatcher_logger.info("[failed job end job_id: {}] current_time: {}".format(job_id, current_time))
         self.finished_labels[job_id] = True
 
     def sched_update_dataset(self, sched_ip, sched_port, update_timeout):
@@ -135,7 +150,7 @@ class Dispatcher(object):
                         delta_capacity = self.datasets_map[dataset_name][sub_train_dataset_identifier]["delta_capacity"]
                         has_submited_flag = self.datasets_map[dataset_name][sub_train_dataset_identifier]["submited"]
                         if not has_submited_flag and need_submit_time <= self.current_time:
-                            self.dispatcher_logger.debug("[add dataset start!] need_submit_time: {}; self.current_time: {}".format(need_submit_time, self.current_time))
+                            self.dispatcher_logger.info("[add dataset start dataset_name: {}; sub_train_dataset_identifier: {}]  need_submit_time: {}; self.current_time: {}".format(dataset_name, sub_train_dataset_identifier, need_submit_time, self.current_time))
                             self.datasets_map[dataset_name][sub_train_dataset_identifier]["submited"] = True
                             count += 1
                             if dataset_name not in subtrain_datasetidentifier_info:
@@ -197,9 +212,9 @@ class Dispatcher(object):
         client = self.get_zerorpc_client(ip, port)
         client.sched_end()
 
-    def sched_update_gpu_status_start(self, ip, port,  init_gpuidentifiers):
+    def sched_update_gpu_status_start(self, ip, port, init_workerip_2_ports, init_gpuidentifiers):
         client = self.get_zerorpc_client(ip, port)
-        client.sched_update_gpu_status_start(init_gpuidentifiers)
+        client.sched_update_gpu_status_start(init_workerip_2_ports, init_gpuidentifiers)
 
     def sched_init_sched_register(self, ip, port, assignment_policy, significance_policy):
         client = self.get_zerorpc_client(ip, port)
@@ -247,12 +262,24 @@ def exit_gracefully(server):
 if __name__ == "__main__":
     args = get_df_config()
 
-    sched_ip = SCHE_IP
-    sched_port = SCHE_PORT
-    dispatcher_ip = DISPATCHER_IP
-    dispatcher_port = DISPATCHER_PORT
+    sched_ip = args.sched_ip
+    sched_port = args.sched_port
+    dispatcher_ip = args.dispatcher_ip
+    dispatcher_port = args.dispatcher_port
+    worker_ips = args.worker_ips
+    worker_ports = args.worker_ports
+
+    worker_ips = args.worker_ips
+    worker_ports = args.worker_ports
+    assert len(worker_ips) == len(worker_ports)
+    init_gpuidentifiers = []
+    init_workerip_2_ports = {}
+    for worker_ip, worker_port in zip(worker_ips, worker_ports):
+        init_workerip_2_ports[worker_ip] = worker_port
+        for i in range(4):
+            temp_identifier = worker_ip + "-{}".format(i)
+            init_gpuidentifiers.append(temp_identifier)
     
-    init_gpuidentifiers = INIT_WORKERIDENTIFIERS
     global_sleep_time = args.global_sleep_time
     update_timeout = args.update_timeout
     scheduler_update_sleep_time = args.scheduler_update_sleep_time
@@ -271,8 +298,8 @@ if __name__ == "__main__":
         all_decision_num = args.all_decision_num
         time_interval = args.time_interval
         datasets_list = generate_dataset(dataset_names=["EMNIST"], fix_epsilon=10.0, fix_delta=1e-5, fix_time=0, num=6, save_path=jobtrace_save_path)
-        jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], time_interval=time_interval, is_history=False, save_path=jobtrace_save_path)
-        history_jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], time_interval=time_interval, is_history=True, save_path=jobtrace_save_path)
+        jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], time_interval=time_interval, is_history=False, dispatcher_ip=dispatcher_ip, dispatcher_port=dispatcher_port, save_path=jobtrace_save_path)
+        history_jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], time_interval=time_interval, is_history=True, dispatcher_ip=dispatcher_ip, dispatcher_port=dispatcher_port, save_path=jobtrace_save_path)
     else:
         dataset_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/datasets.json".format(jobtrace_reconstruct_path)
         with open(dataset_path, "r+") as f:
@@ -298,7 +325,7 @@ if __name__ == "__main__":
         processes.append(remote_server_p)
 
         dispatcher.sched_init_sched_register(sched_ip, sched_port, args.assignment_policy, args.significance_policy)
-        dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_gpuidentifiers)
+        dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_workerip_2_ports, init_gpuidentifiers)
         if not args.without_start_load_job:
             dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout)
             processes.append(dataset_p)
@@ -309,6 +336,7 @@ if __name__ == "__main__":
 
         if not args.without_start_load_history_job:
             history_job_p = dispatcher.dispatch_history_jobs(sched_ip, sched_port, update_timeout)
+            processes.append(history_job_p)
         if not args.without_start_load_job:
             job_p = dispatcher.dispatch_jobs(all_decision_num, sched_ip, sched_port, update_timeout)
             processes.append(job_p)

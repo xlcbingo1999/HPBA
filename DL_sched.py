@@ -6,10 +6,11 @@ import copy
 import numpy as np
 import random
 import math
+import argparse
 from utils.data_loader import fetch_new_dataset
 from utils.get_profiler_significance import get_profiler_selection_result
 from utils.global_functions import FAILED_RESULT_KEY, JOB_STATUS_KEY, JOB_STATUS_UPDATE_PATH, DATASET_STATUS_KEY, add_2_map, normal_counter
-from utils.global_variable import SCHE_IP, SCHE_PORT, INIT_WORKERIDENTIFIERS, INIT_WORKERIP_2_PORTS, GPU_PATH, RESULT_PATH
+from utils.global_variable import GPU_PATH, RESULT_PATH
 from utils.logging_tools import get_logger
 
 from policies.PBG import PBGPolicy
@@ -36,10 +37,9 @@ def DL_server_do_jobs(job_id, origin_info, run_epoch_num, worker_ip, worker_port
     client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info, 0, run_epoch_num, model_save_path, summary_writer_path, summary_writer_key, logging_file_path)
 
 class Scheduler_server(object):
-    def __init__(self, sched_ip, sched_port, init_workerip_2_ports):
+    def __init__(self, sched_ip, sched_port):
         self.sched_ip = sched_ip
         self.sched_port = sched_port
-        self.workerip_2_ports = init_workerip_2_ports
 
         self.all_stop = False
         self.all_finished = False
@@ -52,6 +52,7 @@ class Scheduler_server(object):
         
         # self.gpuidentifier_2_gpu_status = {}
         # self.gpuidentifier_2_gpu_metadata = {}
+        self.workerip_2_ports = {}
         self.gpuidentifier_2_jobinstances = {}
         
         self.sub_train_datasetidentifier_2_dataset_status = {} # 这里必须是一个可以伸缩的map
@@ -375,7 +376,7 @@ class Scheduler_server(object):
             result_d_map = self.get_job_datablock_significance_sync(type_id, all_significance_state, is_history=True)
             self.history_job_significance.append(result_d_map)
                 
-        self.sched_logger.info("success add new history jobs: {}".format(history_jobs_map))
+        self.sched_logger.info("success add new history jobs")
         self.finished_update_init_history_jobs = True
 
     def sche_timely_update_history_job(self, priority_weight, EPSILON, train_dataset_name, datablock_selected_num, test_dataset_name, sub_test_key_id, significance):
@@ -965,7 +966,7 @@ class Scheduler_server(object):
         # self.real_recoming_thread = None
         self.gpu_thread = None
 
-    def sched_update_gpu_status_start(self, init_gpuidentifiers):
+    def sched_update_gpu_status_start(self, init_workerip_2_ports, init_gpuidentifiers):
         '''
         def thread_func_timely_update_gpu(init_gpuidentifiers):
             while not self.all_finished:
@@ -977,6 +978,9 @@ class Scheduler_server(object):
         p.start()
         '''
         self.sched_logger.info("Thread [thread_func_timely_update_gpu] started!")
+        for worker_ip, worker_port in init_workerip_2_ports.items():
+            if worker_ip not in self.workerip_2_ports:
+                self.workerip_2_ports[worker_ip] = worker_port
         for gpu_identifier in init_gpuidentifiers:
             if gpu_identifier not in self.gpuidentifier_2_jobinstances:
                 self.gpuidentifier_2_jobinstances[gpu_identifier] = []
@@ -1018,13 +1022,27 @@ def scheduler_listener_func(scheduler_server_item):
     p.start()
     return p
 
-if __name__ == "__main__":
-    sched_ip = SCHE_IP
-    sched_port = SCHE_PORT
-    init_workeridentifiers = INIT_WORKERIDENTIFIERS
-    init_workerip_2_ports = INIT_WORKERIP_2_PORTS
 
-    scheduler_server_item = Scheduler_server(sched_ip, sched_port, init_workerip_2_ports)
+def get_df_config():
+    parser = argparse.ArgumentParser(
+                description="Sweep through lambda values")
+    parser.add_argument("--worker_ips", type=str, nargs="+", default=["172.18.162.2", "172.18.162.3", "172.18.162.4", "172.18.162.5", "172.18.162.6"])
+    parser.add_argument("--worker_ports", type=int, nargs="+", default=[16202, 16203, 16204, 16205, 16206])
+    
+    parser.add_argument("--sched_ip", type=str, default="172.18.162.6")
+    parser.add_argument("--sched_port", type=int, default=16306)
+    
+    
+    args = parser.parse_args()
+    return args
+
+if __name__ == "__main__":
+    args = get_df_config()
+
+    sched_ip = args.sched_ip
+    sched_port = args.sched_port
+
+    scheduler_server_item = Scheduler_server(sched_ip, sched_port)
     sched_p = scheduler_listener_func(scheduler_server_item)
 
     while not scheduler_server_item.all_stop:

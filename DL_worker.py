@@ -2,8 +2,6 @@ import zerorpc
 import time
 import threading
 import argparse
-from utils.global_functions import FAILED_RESULT_KEY
-from utils.global_variable import WORKER_LOCAL_IP, WORKER_LOCAL_PORT, SCHE_IP, SCHE_PORT, SUB_TRAIN_DATASET_CONFIG_PATH, TEST_DATASET_CONFIG_PATH
 from utils.profier import timely_update_gpu_status
 import torch
 import json
@@ -13,10 +11,10 @@ import sys
 def get_df_config():
     parser = argparse.ArgumentParser(
                 description="Sweep through lambda values")
-    parser.add_argument("--local_ip", type=str, default=WORKER_LOCAL_IP)
-    parser.add_argument("--local_port", type=int, default=WORKER_LOCAL_PORT)
-    parser.add_argument("--sched_ip", type=str, default=SCHE_IP)
-    parser.add_argument("--sche_port", type=int, default=SCHE_PORT)
+    parser.add_argument("--local_ip", type=str, default="172.18.162.6")
+    parser.add_argument("--local_port", type=int, default=16206)
+    parser.add_argument("--sched_ip", type=str, default="172.18.162.6")
+    parser.add_argument("--sched_port", type=int, default=16306)
     
     parser.add_argument("--gpu_update_time", type=int, default=1)
 
@@ -71,12 +69,12 @@ def do_system_calculate_func(worker_ip, worker_port,
 
 
 class Worker_server(object):
-    def __init__(self, local_ip, local_port, sched_ip, sche_port, gpu_update_time):
+    def __init__(self, local_ip, local_port, sched_ip, sched_port, gpu_update_time):
         # self.local_worker_id = None
         self.local_ip = local_ip
         self.local_port = local_port
         self.sched_ip = sched_ip
-        self.sche_port = sche_port
+        self.sched_port = sched_port
 
         self.gpu_update_time = gpu_update_time
 
@@ -96,7 +94,7 @@ class Worker_server(object):
         self.all_finished = True
 
     def get_scheduler_zerorpc_client(self):
-        tcp_ip_port = "tcp://{}:{}".format(self.sched_ip, self.sche_port)
+        tcp_ip_port = "tcp://{}:{}".format(self.sched_ip, self.sched_port)
         client = zerorpc.Client()
         client.connect(tcp_ip_port)
         return client
@@ -104,7 +102,7 @@ class Worker_server(object):
     def finished_job_callback(self, job_id, result, real_duration_time):
         origin_info = self.jobid_2_origininfo[job_id]
         self.report_result(job_id, origin_info, result, real_duration_time)
-        tcp_ip_port = "tcp://{}:{}".format(self.sched_ip, self.sche_port)
+        tcp_ip_port = "tcp://{}:{}".format(self.sched_ip, self.sched_port)
         client = self.get_scheduler_zerorpc_client()
         client.worker_finished_job_callback(job_id, origin_info, result)
         del self.jobid_2_origininfo[job_id]
@@ -195,8 +193,8 @@ def worker_listener_func(worker_server_item):
 
 if __name__ == "__main__":
     args = get_df_config()
-    local_ip, local_port, sched_ip, sche_port, gpu_update_time = args.local_ip, args.local_port, args.sched_ip, args.sche_port, args.gpu_update_time
-    worker_server_item = Worker_server(local_ip, local_port, sched_ip, sche_port, gpu_update_time)
+    local_ip, local_port, sched_ip, sched_port, gpu_update_time = args.local_ip, args.local_port, args.sched_ip, args.sched_port, args.gpu_update_time
+    worker_server_item = Worker_server(local_ip, local_port, sched_ip, sched_port, gpu_update_time)
     # worker_server_item.timely_update_gpu_status()
     worker_p = worker_listener_func(worker_server_item)
 

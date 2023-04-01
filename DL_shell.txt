@@ -1,0 +1,19 @@
+python DL_worker.py \
+    --local_ip 172.18.162.6 \
+    --local_port 16206 \
+    --sched_ip 172.18.162.6 \
+    --sched_port 16306
+
+python DL_sched.py \
+    --worker_ips 172.18.162.6 \
+    --worker_ports 16206 \
+    --sched_ip 172.18.162.6 \
+    --sched_port 16306
+
+python DL_dispatcher.py \
+    --worker_ips 172.18.162.6 \
+    --worker_ports 16206 \
+    --sched_ip 172.18.162.6 \
+    --sched_port 16306 \
+    --dispatcher_ip 172.18.162.6 \
+    --dispatcher_port 16406 

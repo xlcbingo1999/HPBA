@@ -3,15 +3,14 @@ import random
 import itertools
 import json
 import os
-from utils.global_variable import DISPATCHER_IP, DISPATCHER_PORT, RECONSTRUCT_TRACE_PREFIX_PATH
+from utils.global_variable import RECONSTRUCT_TRACE_PREFIX_PATH
 
 waiting_select_model_names = ["CNN", "FF"]
 waiting_select_train_dataset_names = ["EMNIST"]
 waiting_select_test_dataset_names = ["EMNIST-2000", "EMNIST_MNIST-1000_1000", "MNIST-2000"]
-waiting_select_datablock_select_num = [1, 2, 4]
 
 waiting_select_products = list(itertools.product(
-    waiting_select_model_names, waiting_select_train_dataset_names, waiting_select_test_dataset_names, waiting_select_datablock_select_num
+    waiting_select_model_names, waiting_select_train_dataset_names, waiting_select_test_dataset_names
 ))
 
 def get_specific_model_config(model_name):
@@ -53,8 +52,8 @@ def generate_dataset(dataset_names, fix_epsilon=10.0, fix_delta=1e-5, fix_time=0
         print("save dataset trace in {}".format(dataset_path))
     return result
 
-def generate_job_type(model_name, train_dataset_name, test_dataset_name, datablock_select_num):
-    waiting_select_tuple = (model_name, train_dataset_name, test_dataset_name, datablock_select_num)
+def generate_job_type(model_name, train_dataset_name, test_dataset_name):
+    waiting_select_tuple = (model_name, train_dataset_name, test_dataset_name)
     index = waiting_select_products.index(waiting_select_tuple)
     job_type_identifier = "job_type_{}".format(index)
     return job_type_identifier
@@ -65,7 +64,7 @@ def generate_normal_one_job(time, model_name, train_dataset_name, test_dataset_n
                             is_history=False):
     if (is_history and time > 0) or (not is_history and time < 0):
         time = -time
-    job_type = generate_job_type(model_name, train_dataset_name, test_dataset_name, datablock_select_num)
+    job_type = generate_job_type(model_name, train_dataset_name, test_dataset_name)
     job_detail = {
         "time": time,
         "model_name": model_name,
@@ -97,7 +96,9 @@ def poisson_arrival_times(last_arrival_time, lambdas):
     arrival_time = last_arrival_time + np.random.exponential(scale=1/lambdas)
     return arrival_time
 
-def generate_jobs(all_decision_num, per_epoch_EPSILONs, EPSILONs_weights, time_interval, is_history, save_path=""):
+def generate_jobs(all_decision_num, per_epoch_EPSILONs, EPSILONs_weights, time_interval, is_history, 
+                dispatcher_ip, dispatcher_port,
+                save_path=""):
     # 在这里应该生成比较多的类型
     # all_big_job_num = int(all_decision_num / update_sched_epoch_num)
     # lambdas = [random.random() / 10 for _ in range(all_big_job_num)]
@@ -144,11 +145,10 @@ def generate_jobs(all_decision_num, per_epoch_EPSILONs, EPSILONs_weights, time_i
         EPSILON = per_epoch_EPSILONs[EPSILON_i]
 
         DELTA = 1e-8
-        dispatcher_ip = DISPATCHER_IP
-        dispatcher_port = DISPATCHER_PORT
-        
-        current_lambda = 1 / time_interval
-        last_arrival_time = poisson_arrival_times(last_arrival_time, current_lambda)
+
+        if current_decision_num > 0:
+            current_lambda = 1 / time_interval
+            last_arrival_time = poisson_arrival_times(last_arrival_time, current_lambda)
         job = generate_normal_one_job(
             last_arrival_time, model_name, train_dataset_name, test_dataset_name, datablock_select_num, 
             BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPSILON, DELTA, 
