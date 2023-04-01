@@ -40,9 +40,27 @@ else:
     print("File already exists!")
 '''
 
+'''
 import json
 
 data = [{'key': 1}, {'key': 2}]
 
 with open('a.json', 'w') as f:
     json.dump(data, f)
+'''
+import numpy as np
+import random
+
+def poisson_arrival_times(last_arrival_time, lambdas):
+    # n: 总任务数
+    # lambdas: 每个任务的到达率
+    arrival_time = last_arrival_time + np.random.exponential(scale=1/lambdas)
+    return arrival_time
+
+jiange = 100 # 100, 500, 1000
+current_lambda = 1 / jiange
+last_arrival_time = 0.0
+n = 50
+for i in range(n):
+    last_arrival_time = poisson_arrival_times(last_arrival_time, current_lambda)
+    print("i: {}; time: {}".format(i, last_arrival_time))

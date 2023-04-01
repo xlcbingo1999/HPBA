@@ -52,7 +52,7 @@ class Scheduler_server(object):
         
         # self.gpuidentifier_2_gpu_status = {}
         # self.gpuidentifier_2_gpu_metadata = {}
-        self.gpuidentifier_2_jobinstance_oneshot = {}
+        self.gpuidentifier_2_jobinstances = {}
         
         self.sub_train_datasetidentifier_2_dataset_status = {} # 这里必须是一个可以伸缩的map
         self.sub_train_datasetidentifier_2_dataset_metadata = {}
@@ -96,6 +96,7 @@ class Scheduler_server(object):
         self.jobid_2_sub_test_key_id = {}
         self.jobid_2_significance = {}
         self.jobid_2_arrival_index = {}
+        self.jobid_2_typeid = {}
         # self.jobid_2_recoming_min_time = {}
         # self.recoming_time_interval = 5
 
@@ -119,6 +120,7 @@ class Scheduler_server(object):
         self.history_job_test_dataset_name = []
         self.history_job_sub_test_key_id = []
         self.history_job_significance = []
+        self.history_job_type_id = []
 
         self.assignment_policy = None
         self.significance_policy = None
@@ -180,6 +182,7 @@ class Scheduler_server(object):
         self.jobid_2_sub_test_key_id = {}
         self.jobid_2_significance = {}
         self.jobid_2_arrival_index = {}
+        self.jobid_2_typeid = {}
         # self.jobid_2_recoming_min_time = {}
 
         self.jobid_2_target_epochs = {}
@@ -205,6 +208,7 @@ class Scheduler_server(object):
         self.history_job_test_dataset_name = []
         self.history_job_sub_test_key_id = []
         self.history_job_significance = []
+        self.history_job_type_id = []
 
         for worker_ip, worker_port in self.workerip_2_ports.items():
             client = self.get_zerorpc_client(worker_ip, worker_port)
@@ -326,6 +330,7 @@ class Scheduler_server(object):
                 self.jobid_2_test_dataset_name[id] = test_dataset_name
                 self.jobid_2_sub_test_key_id[id] = sub_test_key_id
                 self.jobid_2_arrival_index[id] = self.global_job_arrival_index
+                self.jobid_2_typeid[id] = origin_info["job_type"]
                 self.global_job_arrival_index += 1
 
                 self.jobid_2_target_epochs[id] = origin_info["TARGET_EPOCHS"]
@@ -355,6 +360,8 @@ class Scheduler_server(object):
             self.history_job_test_dataset_name.append(test_dataset_name)
             sub_test_key_id = history_jobs_map[id]["sub_test_key_id"]
             self.history_job_sub_test_key_id.append(sub_test_key_id)
+            type_id = history_jobs_map[id]["job_type"]
+            self.history_job_type_id.append(type_id)
 
             all_significance_state = []
             for sub_train_key_id in self.sub_train_datasetidentifier_2_dataset_status[train_dataset_name]:
@@ -365,7 +372,7 @@ class Scheduler_server(object):
                     "sub_train_key_id": sub_train_key_id
                 }
                 all_significance_state.append(significance_state)
-            result_d_map = self.get_job_datablock_significance_sync(id, all_significance_state, is_history=True)
+            result_d_map = self.get_job_datablock_significance_sync(type_id, all_significance_state, is_history=True)
             self.history_job_significance.append(result_d_map)
                 
         self.sched_logger.info("success add new history jobs: {}".format(history_jobs_map))
@@ -397,17 +404,17 @@ class Scheduler_server(object):
         for job_id in self.jobid_2_results:
             job_res = self.jobid_2_results[job_id]
             if len(job_res) > 0:
-                self.sched_logger.debug("job [{}] last result: {}".format(job_id, job_res[-1]))
+                self.sched_logger.debug("job [{}] last result: {}".format(job_id, job_res))
         self.sched_logger.debug("======== epsilon remain status =========")
         for datasetname in self.sub_train_datasetidentifier_2_epsilon_remain:
             for datasetidentifier in self.sub_train_datasetidentifier_2_epsilon_remain[datasetname]:
                 self.sched_logger.debug("sub_train_datasetidentifier_2_epsilon_remain[{}][{}]: {}".format(datasetname, datasetidentifier, self.sub_train_datasetidentifier_2_epsilon_remain[datasetname][datasetidentifier]))
-        self.sched_logger.debug("======== job duration status =========")
-        for job_id in self.jobid_2_target_epochs:
-            self.sched_logger.debug("job [{}] max epoch num: {}".format(job_id, self.jobid_2_target_epochs[job_id]))
-            # self.sched_logger.debug("job [{}] real sched epoch num: {}".format(job_id, self.jobid_2_real_sched_epochs[job_id]))
-            # self.sched_logger.debug("job [{}] failed epoch num: {}".format(job_id, self.jobid_2_failed_epochs[job_id]))
-            # self.sched_logger.debug("job [{}] current epoch num: {}".format(job_id, self.jobid_2_current_epochs[job_id]))
+        # self.sched_logger.debug("======== job duration status =========")
+        # for job_id in self.jobid_2_target_epochs:
+        #     self.sched_logger.debug("job [{}] max epoch num: {}".format(job_id, self.jobid_2_target_epochs[job_id]))
+        #     self.sched_logger.debug("job [{}] real sched epoch num: {}".format(job_id, self.jobid_2_real_sched_epochs[job_id]))
+        #     self.sched_logger.debug("job [{}] failed epoch num: {}".format(job_id, self.jobid_2_failed_epochs[job_id]))
+        #     self.sched_logger.debug("job [{}] current epoch num: {}".format(job_id, self.jobid_2_current_epochs[job_id]))
         self.sched_logger.debug("==================================")
 
     def get_runtime_state(self, policy, job_id_2_train_dataset_name, job_id_2_target_epsilon_require, 
@@ -480,7 +487,8 @@ class Scheduler_server(object):
 
         gpu_identifier = self.jobid_2_gputarget[job_id]
         self.jobid_2_gputarget[job_id] = None
-        self.gpuidentifier_2_jobinstance_oneshot[gpu_identifier] = None
+        if job_id in self.gpuidentifier_2_jobinstances[gpu_identifier]:
+            self.gpuidentifier_2_jobinstances[gpu_identifier].remove(job_id)
         del self.jobid_2_significance[job_id] 
         del self.jobid_2_sub_train_key_ids[job_id]
         
@@ -526,12 +534,14 @@ class Scheduler_server(object):
             self.sub_train_datasetidentifier_2_epsilon_remain[train_dataset_name][identifier] += remain_epsilon
             if self.sub_train_datasetidentifier_2_epsilon_remain[train_dataset_name][identifier] > 0.0:
                 self.sub_train_datasetidentifier_2_dataset_status[train_dataset_name][identifier] = DATASET_STATUS_KEY.SUBMITED
-        if self.significance_policy.need_update_backward: 
-            self.significance_policy.update_job_datablock_signficance_FAIR(job_id, datablock_identifiers, result)
+        if self.significance_policy.need_update_backward:
+            type_id = self.jobid_2_typeid[job_id]
+            self.significance_policy.update_job_datablock_signficance_FAIR(type_id, datablock_identifiers, result)
 
         gpu_identifier = self.jobid_2_gputarget[job_id]
         self.jobid_2_gputarget[job_id] = None
-        self.gpuidentifier_2_jobinstance_oneshot[gpu_identifier] = None
+        if job_id in self.gpuidentifier_2_jobinstances[gpu_identifier]:
+            self.gpuidentifier_2_jobinstances[gpu_identifier].remove(job_id)
         del self.jobid_2_significance[job_id] 
         del self.jobid_2_sub_train_key_ids[job_id]
 
@@ -685,12 +695,12 @@ class Scheduler_server(object):
             ))
         return origin_status, target_status
 
-    def get_job_datablock_significance_sync(self, job_id, all_significance_state, is_history):
+    def get_job_datablock_significance_sync(self, type_id, all_significance_state, is_history):
         if is_history:
             sub_train_index_2_significance = {
                 index: None for index, _ in enumerate(all_significance_state)
             }
-            history_significance_list = self.significance_policy.get_job_significance_result_for_history_jobs_for_all_datablocks(job_id, all_significance_state)
+            history_significance_list = self.significance_policy.get_job_significance_result_for_history_jobs_for_all_datablocks(type_id, all_significance_state)
             for index, signi in enumerate(history_significance_list):
                 sub_train_index_2_significance[index] = signi
             sub_train_datasetidentifier_2_significance = {
@@ -701,14 +711,14 @@ class Scheduler_server(object):
             sub_train_index_2_significance = {
                 index: None for index, _ in enumerate(all_significance_state)
             }
-            significance_list = self.significance_policy.get_job_significance_result_for_all_datablocks(job_id, all_significance_state)
+            significance_list = self.significance_policy.get_job_significance_result_for_all_datablocks(type_id, all_significance_state)
             for index, signi in enumerate(significance_list):
                 sub_train_index_2_significance[index] = signi
             # 将所有为None的提取出来, 异步请求一下
             async_indexes = [k for k, v in sub_train_index_2_significance.items() if v is None]
             for index in async_indexes:
                 self.sched_logger.warning("[WARNING] enter into get_job_datablock_significance_async!")
-                result_d = self.significance_policy.get_job_datablock_significance_async(job_id, all_significance_state[index], device_index, is_history)
+                result_d = self.significance_policy.get_job_datablock_significance_async(type_id, all_significance_state[index], device_index, is_history)
                 sub_train_index_2_significance[index] = result_d
             sub_train_datasetidentifier_2_significance = {
                 all_significance_state[key]["sub_train_key_id"]: value for key, value in sub_train_index_2_significance.items()
@@ -775,7 +785,8 @@ class Scheduler_server(object):
                         "sub_train_key_id": sub_train_key_id
                     }
                     all_significance_state.append(significance_state)
-            self.jobid_2_significance[job_id] = self.get_job_datablock_significance_sync(job_id, all_significance_state, is_history=False)
+            type_id = self.jobid_2_typeid[job_id]
+            self.jobid_2_significance[job_id] = self.get_job_datablock_significance_sync(type_id, all_significance_state, is_history=False)
             self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.NO_SCHE, JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL)
 
     def sched_dataset_for_done_significance_cal_jobs(self):
@@ -873,10 +884,10 @@ class Scheduler_server(object):
             }
             # 直接根据当前的空挡状态获取worker_identifier
             # worker_identifier = self.jobid_2_gputarget[job_id]
-            gpuidentifier_enable_status = [k for k, v in self.gpuidentifier_2_jobinstance_oneshot.items() if v == None]
+            gpuidentifier_enable_status = [k for k, v in self.gpuidentifier_2_jobinstances.items() if len(v) < 3]
             if len(gpuidentifier_enable_status) > 0:
                 gpu_identifer = random.choice(gpuidentifier_enable_status)
-                self.gpuidentifier_2_jobinstance_oneshot[gpu_identifer] = job_id
+                self.gpuidentifier_2_jobinstances[gpu_identifer].append(job_id) 
                 self.jobid_2_gputarget[job_id] = gpu_identifer
                 worker_ip, worker_gpu_id = self.get_worker_identifier_detail(gpu_identifer)
                 worker_port = self.workerip_2_ports[worker_ip]
@@ -967,8 +978,8 @@ class Scheduler_server(object):
         '''
         self.sched_logger.info("Thread [thread_func_timely_update_gpu] started!")
         for gpu_identifier in init_gpuidentifiers:
-            if gpu_identifier not in self.gpuidentifier_2_jobinstance_oneshot:
-                self.gpuidentifier_2_jobinstance_oneshot[gpu_identifier] = None
+            if gpu_identifier not in self.gpuidentifier_2_jobinstances:
+                self.gpuidentifier_2_jobinstances[gpu_identifier] = []
         self.sched_logger.info("Thread [thread_func_timely_update_gpu] success!")
         
     def sched_update_assignment_policy(self, assignment_policy, assignment_args):

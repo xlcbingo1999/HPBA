@@ -193,7 +193,9 @@ class HISOTDDPolicy(SigPolicy):
         ]
         
         end = time.time()
-        self.logger.info("type_id [{}] to datablocks significance: {}, time: {}".format(type_id, result, end-begin))
+        self.logger.info("type_id [{}] to datablocks significance: {} [norm_OTDDs: {}; norm_history_accs: {}; ucb_factors: {}], time: {}".format(
+            type_id, result, norm_OTDDs, norm_history_accs, ucb_factors, end-begin
+        ))
         return result
 
     '''

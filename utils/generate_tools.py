@@ -97,7 +97,7 @@ def poisson_arrival_times(last_arrival_time, lambdas):
     arrival_time = last_arrival_time + np.random.exponential(scale=1/lambdas)
     return arrival_time
 
-def generate_jobs(all_decision_num, per_epoch_EPSILONs, EPSILONs_weights, is_history, save_path=""):
+def generate_jobs(all_decision_num, per_epoch_EPSILONs, EPSILONs_weights, time_interval, is_history, save_path=""):
     # 在这里应该生成比较多的类型
     # all_big_job_num = int(all_decision_num / update_sched_epoch_num)
     # lambdas = [random.random() / 10 for _ in range(all_big_job_num)]
@@ -147,7 +147,7 @@ def generate_jobs(all_decision_num, per_epoch_EPSILONs, EPSILONs_weights, is_his
         dispatcher_ip = DISPATCHER_IP
         dispatcher_port = DISPATCHER_PORT
         
-        current_lambda = random.random() / 10
+        current_lambda = 1 / time_interval
         last_arrival_time = poisson_arrival_times(last_arrival_time, current_lambda)
         job = generate_normal_one_job(
             last_arrival_time, model_name, train_dataset_name, test_dataset_name, datablock_select_num, 

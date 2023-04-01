@@ -15,6 +15,7 @@ def get_df_config():
     parser.add_argument("--jobtrace_reconstruct_path", type=str, default="") # jobs-datasets-03-31-14-38-02
     parser.add_argument("--global_sleep_time", type=int, default=5)
     parser.add_argument("--all_decision_num", type=int, default=50)
+    parser.add_argument("--time_interval", type=int, default=100) # 100, 500, 1000, 1500 [1/1, 1/2, 1/3, 1/5]
 
     parser.add_argument("--scheduler_update_sleep_time", type=float, default=0.0)
     parser.add_argument("--cal_significance_sleep_time", type=float, default=0.0)
@@ -22,7 +23,7 @@ def get_df_config():
     parser.add_argument("--real_coming_sleep_time", type=float, default=1.0)
 
     parser.add_argument("--waiting_time", type=int, default=10)
-    parser.add_argument("--update_timeout", type=int, default=120)
+    parser.add_argument("--update_timeout", type=int, default=500)
     parser.add_argument("--without_start_load_job", action="store_true")
     parser.add_argument("--without_start_load_history_job", action="store_true")
     parser.add_argument("--without_start_load_dataset", action="store_true")
@@ -89,7 +90,7 @@ class Dispatcher(object):
                     need_submit_time = info["time"]
                     has_submited_flag = info["submited"]
                     if not has_submited_flag and need_submit_time <= self.current_time:
-                        self.dispatcher_logger.debug("[add job start!] need_submit_time: {}; self.current_time: {}".format(need_submit_time, self.current_time))
+                        self.dispatcher_logger.debug("[add job start!] job_id: {}; need_submit_time: {}; self.current_time: {}".format(job_id, need_submit_time, self.current_time))
                         self.jobs_detail[index][1]["submited"] = True
                         count += 1
                         dispatch_jobs_detail[job_id] = info
@@ -268,10 +269,10 @@ if __name__ == "__main__":
 
     if len(jobtrace_reconstruct_path) <= 0:
         all_decision_num = args.all_decision_num
-
+        time_interval = args.time_interval
         datasets_list = generate_dataset(dataset_names=["EMNIST"], fix_epsilon=10.0, fix_delta=1e-5, fix_time=0, num=6, save_path=jobtrace_save_path)
-        jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], is_history=False, save_path=jobtrace_save_path)
-        history_jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], is_history=True, save_path=jobtrace_save_path)
+        jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], time_interval=time_interval, is_history=False, save_path=jobtrace_save_path)
+        history_jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], time_interval=time_interval, is_history=True, save_path=jobtrace_save_path)
     else:
         dataset_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/datasets.json".format(jobtrace_reconstruct_path)
         with open(dataset_path, "r+") as f:
