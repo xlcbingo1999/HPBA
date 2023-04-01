@@ -12,9 +12,8 @@ from utils.generate_tools import generate_dataset, generate_jobs
 def get_df_config():
     parser = argparse.ArgumentParser(
                 description="Sweep through lambda values")
-    parser.add_argument("--jobtrace_reconstruct_path", type=str, default="") # jobs-datasets-03-31-14-38-02
+    parser.add_argument("--reconstruct_path", type=str, default="") # jobs-datasets-03-31-14-38-02
     parser.add_argument("--global_sleep_time", type=int, default=5)
-    parser.add_argument("--all_decision_num", type=int, default=50)
 
     parser.add_argument("--scheduler_update_sleep_time", type=float, default=0.0)
     parser.add_argument("--cal_significance_sleep_time", type=float, default=0.0)
@@ -47,7 +46,7 @@ def get_df_config():
     return args
 
 class Dispatcher(object):
-    def __init__(self, jobs_list, history_jobs_list, datasets_map, logging_time):
+    def __init__(self, jobs_list, history_jobs_list, datasets_map):
         jobs_list = sorted(jobs_list, key=lambda r: r["time"])
         jobs_id_list = ["job_{}".format(x) for x in range(len(jobs_list))]
         jobs_detail = list(map(lambda x: [x[0], x[1]], zip(jobs_id_list, jobs_list)))
@@ -73,6 +72,7 @@ class Dispatcher(object):
         self.all_start_time = time.time()
         self.current_time = 0
 
+        logging_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
         self.current_test_all_dir = 'schedule-review-%s' % (logging_time)
         all_logger_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
         dispatcher_logger_path = '{}/DL_dispatcher.log'.format(all_logger_path)
@@ -190,7 +190,7 @@ class Dispatcher(object):
         client.cal_significance_dispatch_start(cal_significance_sleep_time)
         client.sched_dispatch_start(scheduler_update_sleep_time)
         client.placement_dispatch_start(placement_sleep_time)
-        # client.recoming_jobs_start(real_coming_sleep_time)
+        client.recoming_jobs_start(real_coming_sleep_time)
     
     def sched_end(self, ip, port):
         client = self.get_zerorpc_client(ip, port)
@@ -261,38 +261,37 @@ if __name__ == "__main__":
 
     waiting_time = args.waiting_time
 
-    jobtrace_reconstruct_path = args.jobtrace_reconstruct_path
+    reconstruct_path = args.reconstruct_path
 
-    logging_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
-    jobtrace_save_path = 'jobs-datasets-%s' % (logging_time)
+    if len(reconstruct_path) <= 0:
+        all_decision_num = 500
 
-    if len(jobtrace_reconstruct_path) <= 0:
-        all_decision_num = args.all_decision_num
-
-        datasets_list = generate_dataset(dataset_names=["EMNIST"], fix_epsilon=10.0, fix_delta=1e-5, fix_time=0, num=6, save_path=jobtrace_save_path)
-        jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], is_history=False, save_path=jobtrace_save_path)
-        history_jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], is_history=True, save_path=jobtrace_save_path)
+        datasets_list = generate_dataset(dataset_names=["EMNIST"], fix_epsilon=5.0, fix_delta=1e-5, fix_time=0, num=6)
+        jobs_list = generate_jobs(all_decision_num=all_decision_num, update_sched_epoch_num=2, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], is_history=False)
+        history_jobs_list = generate_jobs(all_decision_num=all_decision_num, update_sched_epoch_num=2, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], is_history=False)
     else:
-        dataset_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/datasets.json".format(jobtrace_reconstruct_path)
+        dataset_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/datasets.json".format(reconstruct_path)
         with open(dataset_path, "r+") as f:
             datasets_list = json.load(f)
-        his_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/his_jobs.json".format(jobtrace_reconstruct_path)
+        his_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/his_jobs.json".format(reconstruct_path)
         with open(his_job_path, "r+") as f:
-            history_jobs_list = json.load(f)
-            # sorted_his_jobs_temp = sorted(his_jobs_map.items(), key=lambda x: x[1]['time'])
-            # history_jobs_list = [value for _, value in sorted_his_jobs_temp]
+            his_jobs_map = json.load(f)
+            sorted_his_jobs_temp = sorted(his_jobs_map.items(), key=lambda x: x[1]['time'])
+            history_jobs_list = [value for _, value in sorted_his_jobs_temp]
             # print(history_jobs_list)
-        test_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/test_jobs.json".format(jobtrace_reconstruct_path)
+        test_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/test_jobs.json".format(reconstruct_path)
         with open(test_job_path, "r+") as f:
-            jobs_list = json.load(f)
-            # sorted_test_jobs_temp = sorted(test_jobs_map.items(), key=lambda x: x[1]['time'])
-            # jobs_list = [value for _, value in sorted_test_jobs_temp]
+            test_jobs_map = json.load(f)
+            sorted_test_jobs_temp = sorted(test_jobs_map.items(), key=lambda x: x[1]['time'])
+            jobs_list = [value for _, value in sorted_test_jobs_temp]
             # print(jobs_list)
-        all_decision_num = len(jobs_list)
+        all_decision_num = 0
+        for job in jobs_list:
+            all_decision_num += int(job["TARGET_EPOCHS"] / job["update_sched_epoch_num"])
     
     processes = []
     try:
-        dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list, logging_time)
+        dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list)
         remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
         processes.append(remote_server_p)
 

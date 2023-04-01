@@ -26,6 +26,7 @@ signficance_state = {
 ot.get_job_datablock_significance_async(signficance_state, args.device_index)
 '''
 
+'''
 import os
 path = '/mnt/linuxidc_client/models_save'
 subpath = path + '/d20230324'
@@ -37,3 +38,11 @@ if not os.path.exists(file):
         f.write("File created successfully!")
 else:
     print("File already exists!")
+'''
+
+import json
+
+data = [{'key': 1}, {'key': 2}]
+
+with open('a.json', 'w') as f:
+    json.dump(data, f)
