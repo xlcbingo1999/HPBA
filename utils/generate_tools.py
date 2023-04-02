@@ -125,6 +125,7 @@ def generate_jobs(all_decision_num, per_epoch_EPSILONs, EPSILONs_weights,
             with open(test_job_path, "r+") as f:
                 jobs = json.load(f)
         current_decision_num = 0
+        last_arrival_time = 0.0
         for job_detail in jobs:
             job_detail = change_dispatcher_ip_port(job_detail, dispatcher_ip, dispatcher_port)
             if need_change_interval:
