@@ -20,6 +20,7 @@ from policies.DPF_HIS_event import DPFHISPolicy
 from policies.Offline import OfflinePolicy
 from significance_policies.HISOTDD import HISOTDDPolicy
 from significance_policies.Temp import TempPolicy
+from significance_policies.OTDD import OTDDPolicy
 
 
 from functools import reduce
@@ -1006,6 +1007,8 @@ class Scheduler_server(object):
     def sched_update_significance_policy(self, significance_policy):
         if significance_policy == "HISOTDDPolicy":
             self.significance_policy = HISOTDDPolicy(self.sched_logger)
+        elif significance_policy == "OTDDPolicy":
+            self.significance_policy = OTDDPolicy(self.sched_logger)
         elif significance_policy == "TempPolicy":
             self.significance_policy = TempPolicy(self.sched_logger)
         self.sched_logger.info("significance_policy: {}".format(self.significance_policy.name))
