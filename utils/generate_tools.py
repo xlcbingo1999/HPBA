@@ -69,6 +69,10 @@ def change_dispatcher_ip_port(job_detail, dispatcher_ip, dispatcher_port):
     job_detail["dispatcher_port"] = dispatcher_port
     return job_detail
 
+def change_arrival_time(job_detail, arrival_time):
+    job_detail["time"] = arrival_time
+    return job_detail
+
 def generate_normal_one_job(time, model_name, train_dataset_name, test_dataset_name, datablock_select_num, 
                             BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPSILON, DELTA, 
                             TARGET_EPOCHS, dispatcher_ip, dispatcher_port,
@@ -107,7 +111,8 @@ def poisson_arrival_times(last_arrival_time, lambdas):
     arrival_time = last_arrival_time + np.random.exponential(scale=1/lambdas)
     return arrival_time
 
-def generate_jobs(all_decision_num, per_epoch_EPSILONs, EPSILONs_weights, time_interval, is_history, 
+def generate_jobs(all_decision_num, per_epoch_EPSILONs, EPSILONs_weights, 
+                time_interval, need_change_interval, is_history, 
                 dispatcher_ip, dispatcher_port,
                 jobtrace_reconstruct_path="", save_path=""):
     if len(jobtrace_reconstruct_path) > 0:
@@ -119,8 +124,15 @@ def generate_jobs(all_decision_num, per_epoch_EPSILONs, EPSILONs_weights, time_i
             test_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/test_jobs.json".format(jobtrace_reconstruct_path)
             with open(test_job_path, "r+") as f:
                 jobs = json.load(f)
+        current_decision_num = 0
         for job_detail in jobs:
             job_detail = change_dispatcher_ip_port(job_detail, dispatcher_ip, dispatcher_port)
+            if need_change_interval:
+                if current_decision_num > 0:
+                    current_lambda = 1 / time_interval
+                    last_arrival_time = poisson_arrival_times(last_arrival_time, current_lambda)
+                job_detail = change_arrival_time(job_detail, last_arrival_time)
+                current_decision_num += 1
     else:
         # 从一大堆里面生成
         models = ["CNN"]

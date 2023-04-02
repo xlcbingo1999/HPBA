@@ -16,6 +16,7 @@ def get_df_config():
     parser.add_argument("--global_sleep_time", type=int, default=5)
     parser.add_argument("--all_decision_num", type=int, default=50)
     parser.add_argument("--time_interval", type=int, default=100) # 100, 500, 1000, 1500 [1/1, 1/2, 1/3, 1/5]
+    parser.add_argument("--need_change_interval", action="store_true")
 
     parser.add_argument("--scheduler_update_sleep_time", type=float, default=0.0)
     parser.add_argument("--cal_significance_sleep_time", type=float, default=0.0)
@@ -268,9 +269,6 @@ if __name__ == "__main__":
     dispatcher_port = args.dispatcher_port
     worker_ips = args.worker_ips
     worker_ports = args.worker_ports
-
-    worker_ips = args.worker_ips
-    worker_ports = args.worker_ports
     assert len(worker_ips) == len(worker_ports)
     init_gpuidentifiers = []
     init_workerip_2_ports = {}
@@ -296,9 +294,40 @@ if __name__ == "__main__":
 
     all_decision_num = args.all_decision_num
     time_interval = args.time_interval
-    datasets_list = generate_dataset(dataset_names=["EMNIST"], fix_epsilon=10.0, fix_delta=1e-5, fix_time=0, num=6, jobtrace_reconstruct_path=jobtrace_reconstruct_path, save_path=jobtrace_save_path)
-    jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], time_interval=time_interval, is_history=False, dispatcher_ip=dispatcher_ip, dispatcher_port=dispatcher_port, jobtrace_reconstruct_path=jobtrace_reconstruct_path, save_path=jobtrace_save_path)
-    history_jobs_list = generate_jobs(all_decision_num=all_decision_num, per_epoch_EPSILONs=[0.02, 0.1], EPSILONs_weights=[0.8, 0.2], time_interval=time_interval, is_history=True, dispatcher_ip=dispatcher_ip, dispatcher_port=dispatcher_port, jobtrace_reconstruct_path=jobtrace_reconstruct_path, save_path=jobtrace_save_path)
+    need_change_interval = args.need_change_interval
+    datasets_list = generate_dataset(
+        dataset_names=["EMNIST"], 
+        fix_epsilon=10.0, 
+        fix_delta=1e-5, 
+        fix_time=0, 
+        num=6, 
+        jobtrace_reconstruct_path=jobtrace_reconstruct_path, 
+        save_path=jobtrace_save_path
+    )
+    jobs_list = generate_jobs(
+        all_decision_num=all_decision_num, 
+        per_epoch_EPSILONs=[0.02, 0.1], 
+        EPSILONs_weights=[0.8, 0.2], 
+        time_interval=time_interval, 
+        need_change_interval=need_change_interval, 
+        is_history=False, 
+        dispatcher_ip=dispatcher_ip, 
+        dispatcher_port=dispatcher_port, 
+        jobtrace_reconstruct_path=jobtrace_reconstruct_path, 
+        save_path=jobtrace_save_path
+    )
+    history_jobs_list = generate_jobs(
+        all_decision_num=all_decision_num, 
+        per_epoch_EPSILONs=[0.02, 0.1], 
+        EPSILONs_weights=[0.8, 0.2], 
+        time_interval=time_interval, 
+        need_change_interval=need_change_interval, 
+        is_history=True, 
+        dispatcher_ip=dispatcher_ip, 
+        dispatcher_port=dispatcher_port, 
+        jobtrace_reconstruct_path=jobtrace_reconstruct_path, 
+        save_path=jobtrace_save_path
+    )
     all_decision_num = len(jobs_list)
 
     processes = []
