@@ -60,7 +60,7 @@ class OTDDPolicy(SigPolicy):
 
         self.logger = logger
 
-        self.need_update_backward = True
+        self.need_update_backward = False
 
         self.OTDD_beta = 0.02
         self.max_OTDD = 0.0

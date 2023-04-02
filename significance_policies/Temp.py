@@ -9,6 +9,8 @@ class TempPolicy(SigPolicy):
         super().__init__()
         self._name = "TempPolicy"
 
+        self.need_update_backward = False
+
         self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + "/significance_TempPolicy.json"
         self.logger = logger
         with open(self.significance_trace_path, "r+") as f:
@@ -75,3 +77,10 @@ class TempPolicy(SigPolicy):
             type_id, result, origin_Temps, end-begin
         ))
         return result
+    
+    def get_job_datablock_significance_async(self, type_id, signficance_state, device_index, is_history):
+        print("nothing happen")
+        raise ValueError("get_job_datablock_significance_async")
+    
+    def update_job_datablock_signficance_FAIR(self, type_id, used_sub_train_key_ids, current_result):
+        print("nothing happen")
