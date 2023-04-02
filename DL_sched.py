@@ -315,7 +315,7 @@ class Scheduler_server(object):
             else:
                 self.jobid_2_status[id] = JOB_STATUS_KEY.NO_SCHE
                 self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE].append(id)
-                self.jobid_2_results[id] = []
+                self.jobid_2_results[id] = {}
                 self.jobid_2_origininfo[id] = origin_info
                 self.jobid_2_gputarget[id] = None
                 # self.jobid_2_datasettargetconfig[id] = {}
@@ -411,10 +411,14 @@ class Scheduler_server(object):
         for job_id in self.jobid_2_results:
             job_res = self.jobid_2_results[job_id]
             self.sched_logger.debug("job [{}] last result: {}".format(job_id, job_res))
-            all_train_loss += job_res["train_loss"]
-            all_train_accuracy += job_res["train_acc"]
-            all_test_loss += job_res["test_loss"]
-            all_test_accuracy += job_res["test_acc"]
+            if "train_loss" in job_res:
+                all_train_loss += job_res["train_loss"]
+            if "train_acc" in job_res:
+                all_train_accuracy += job_res["train_acc"]
+            if "test_loss" in job_res:
+                all_test_loss += job_res["test_loss"]
+            if "test_acc" in job_res:
+                all_test_accuracy += job_res["test_acc"]
         self.sched_logger.debug("all test jobs num: {}".format(self.job_sequence_all_num))
         self.sched_logger.debug("all_train_loss: {}".format(all_train_loss /  self.job_sequence_all_num))
         self.sched_logger.debug("all_train_accuracy: {}".format(all_train_accuracy /  self.job_sequence_all_num))
