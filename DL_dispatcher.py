@@ -372,7 +372,7 @@ if __name__ == "__main__":
         while not all_finished_label:
             time.sleep(global_sleep_time)
             all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
-        dispatcher.sched_report_status("all stop")
+        dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
         print("logically all stoped!")
         dispatcher.all_finished = True
         dispatcher.sched_end(sched_ip, sched_port)
