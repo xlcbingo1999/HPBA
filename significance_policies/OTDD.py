@@ -259,6 +259,7 @@ class OTDDPolicy(SigPolicy):
     def update_job_datablock_signficance_FAIR(self, type_id, used_sub_train_key_ids, current_result):
         # 需要有一些真实的结果来调整重要性评估指标, 将每一次计算得到的delta_loss反馈回场景中
         # 因为所有维度都固定, 所以delta_loss的变化幅度不会非常大?
+        '''
         current_acc = current_result["test_acc"]
         if type_id not in self.type_identifier_2_typeitem:
             raise ValueError("type_id must in self.type_identifier_2_typeitem")
@@ -273,3 +274,5 @@ class OTDDPolicy(SigPolicy):
             if sub_train_key not in type_item.history_subtrain_block_used_count:
                 type_item.history_subtrain_block_used_count[sub_train_key] = 0
             type_item.history_subtrain_block_used_count[sub_train_key] += 1
+        '''
+        print("nothing happen")
