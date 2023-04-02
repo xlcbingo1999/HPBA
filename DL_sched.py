@@ -230,6 +230,7 @@ class Scheduler_server(object):
         self.sched_logger.info("success clear all datasets")
 
     def stop_all(self):
+        self.report_status("all stop")
         for worker_ip, worker_port in self.workerip_2_ports.items():
             client = self.get_zerorpc_client(worker_ip, worker_port)
             client.stop_all()
@@ -403,10 +404,23 @@ class Scheduler_server(object):
     def report_status(self, location):
         self.sched_logger.debug("======== Scheduler Status in {} ========".format(location))
         self.sched_logger.debug("======== result status ========")
+        all_train_loss = 0.0
+        all_train_accuracy = 0.0
+        all_test_loss = 0.0
+        all_test_accuracy = 0.0
         for job_id in self.jobid_2_results:
             job_res = self.jobid_2_results[job_id]
-            if len(job_res) > 0:
-                self.sched_logger.debug("job [{}] last result: {}".format(job_id, job_res))
+            self.sched_logger.debug("job [{}] last result: {}".format(job_id, job_res))
+            all_train_loss += job_res["train_loss"]
+            all_train_accuracy += job_res["train_acc"]
+            all_test_loss += job_res["test_loss"]
+            all_test_accuracy += job_res["test_acc"]
+        self.sched_logger.debug("all test jobs num: {}".format(self.job_sequence_all_num))
+        self.sched_logger.debug("all_train_loss: {}".format(all_train_loss /  self.job_sequence_all_num))
+        self.sched_logger.debug("all_train_accuracy: {}".format(all_train_accuracy /  self.job_sequence_all_num))
+        self.sched_logger.debug("all_test_loss: {}".format(all_test_loss /  self.job_sequence_all_num))
+        self.sched_logger.debug("all_test_accuracy: {}".format(all_test_accuracy /  self.job_sequence_all_num))
+        
         self.sched_logger.debug("======== epsilon remain status =========")
         for datasetname in self.sub_train_datasetidentifier_2_epsilon_remain:
             for datasetidentifier in self.sub_train_datasetidentifier_2_epsilon_remain[datasetname]:
@@ -565,6 +579,7 @@ class Scheduler_server(object):
         self.finished_job_to_dispatcher(job_id, origin_info)
         origin_status, target_status = self.get_job_status_update_origin_target(status_update_path)
         self.sche_reflash_job_status(job_id, origin_status, target_status)
+        self.report_status("finished job: {}".format(job_id))
 
     '''
     def report_status(self, location):
