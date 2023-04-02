@@ -135,9 +135,16 @@ class HISPolicy(Policy):
         waiting_select_indexes = np.array(range(datablock_num + 1))
         current_job_probability = list(current_job_probability)
         current_job_probability.append(target_datablock_select_num - sum(current_job_probability))
-        current_job_probability = [proba if proba > 0.0 else 0.0 for proba in current_job_probability]
-        current_job_probability = current_job_probability / sum(current_job_probability)
         null_index = len(current_job_probability) - 1
+        for index, proba in enumerate(current_job_probability):
+            if proba <= 0.0:
+                current_job_probability[index] = 0.0
+            if index < null_index:
+                datablock_identifier = temp_index_2_datablock_identifier[index]
+                if target_epsilon_require > sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier]:
+                    current_job_probability[index] = 0.0
+
+        current_job_probability = current_job_probability / sum(current_job_probability)
         result_select_num = target_datablock_select_num
         if len(waiting_select_indexes) < target_datablock_select_num:
             result_select_num = len(waiting_select_indexes)
