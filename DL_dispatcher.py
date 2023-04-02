@@ -216,6 +216,10 @@ class Dispatcher(object):
         client = self.get_zerorpc_client(ip, port)
         client.sched_end()
 
+    def sched_report_status(self, ip, port, location):
+        client = self.get_zerorpc_client(ip, port)
+        client.report_status(location)
+
     def sched_update_gpu_status_start(self, ip, port, init_workerip_2_ports, init_gpuidentifiers):
         client = self.get_zerorpc_client(ip, port)
         client.sched_update_gpu_status_start(init_workerip_2_ports, init_gpuidentifiers)
@@ -368,6 +372,7 @@ if __name__ == "__main__":
         while not all_finished_label:
             time.sleep(global_sleep_time)
             all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
+        dispatcher.sched_report_status("all stop")
         print("logically all stoped!")
         dispatcher.all_finished = True
         dispatcher.sched_end(sched_ip, sched_port)

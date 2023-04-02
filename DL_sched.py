@@ -21,7 +21,8 @@ from policies.Offline import OfflinePolicy
 from significance_policies.HISOTDD import HISOTDDPolicy
 from significance_policies.Temp import TempPolicy
 from significance_policies.OTDD import OTDDPolicy
-
+from significance_policies.NewHVOTDD import NewHVOTDDPolicy
+from significance_policies.HVOTDD import HVOTDDPolicy
 
 from functools import reduce
 
@@ -230,7 +231,6 @@ class Scheduler_server(object):
         self.sched_logger.info("success clear all datasets")
 
     def stop_all(self):
-        self.report_status("all stop")
         for worker_ip, worker_port in self.workerip_2_ports.items():
             client = self.get_zerorpc_client(worker_ip, worker_port)
             client.stop_all()
@@ -424,6 +424,15 @@ class Scheduler_server(object):
         self.sched_logger.debug("all_train_accuracy: {}".format(all_train_accuracy /  self.job_sequence_all_num))
         self.sched_logger.debug("all_test_loss: {}".format(all_test_loss /  self.job_sequence_all_num))
         self.sched_logger.debug("all_test_accuracy: {}".format(all_test_accuracy /  self.job_sequence_all_num))
+
+        current_success_num = len(self.status_2_jobid[JOB_STATUS_KEY.FINISHED])
+        current_failed_num = len(self.status_2_jobid[JOB_STATUS_KEY.FAILED])
+        self.sched_logger.debug("current_success_num: {}; current_failed_num: {}".format(current_success_num, current_failed_num))
+        if current_success_num > 0:
+            self.sched_logger.debug("success_train_loss: {}".format(all_train_loss / current_success_num))
+            self.sched_logger.debug("success_train_accuracy: {}".format(all_train_accuracy / current_success_num))
+            self.sched_logger.debug("success_test_loss: {}".format(all_test_loss / current_success_num))
+            self.sched_logger.debug("success_test_accuracy: {}".format(all_test_accuracy / current_success_num))
         
         self.sched_logger.debug("======== epsilon remain status =========")
         for datasetname in self.sub_train_datasetidentifier_2_epsilon_remain:
@@ -1028,6 +1037,8 @@ class Scheduler_server(object):
             self.significance_policy = HISOTDDPolicy(self.sched_logger)
         elif significance_policy == "OTDDPolicy":
             self.significance_policy = OTDDPolicy(self.sched_logger)
+        elif significance_policy == "HVOTDDPolicy":
+            self.significance_policy = HVOTDDPolicy(self.sched_logger)
         elif significance_policy == "TempPolicy":
             self.significance_policy = TempPolicy(self.sched_logger)
         self.sched_logger.info("significance_policy: {}".format(self.significance_policy.name))
