@@ -12,9 +12,12 @@ from utils.generate_tools import generate_dataset, generate_jobs
 def get_df_config():
     parser = argparse.ArgumentParser(
                 description="Sweep through lambda values")
-    parser.add_argument("--jobtrace_reconstruct_path", type=str, default="") # jobs-datasets-03-31-14-38-02
+    parser.add_argument("--dataset_reconstruct_path", type=str, default="") # jobs-datasets-03-31-14-38-02
+    parser.add_argument("--test_jobtrace_reconstruct_path", type=str, default="") # jobs-datasets-03-31-14-38-02
+    parser.add_argument("--history_jobtrace_reconstruct_path", type=str, default="")
     parser.add_argument("--global_sleep_time", type=int, default=5)
     parser.add_argument("--all_decision_num", type=int, default=50)
+    parser.add_argument("--all_history_num", type=int, default=50)
     parser.add_argument("--time_interval", type=int, default=100) # 100, 500, 1000, 1500 [1/1, 1/2, 1/3, 1/5]
     parser.add_argument("--need_change_interval", action="store_true")
 
@@ -287,12 +290,15 @@ if __name__ == "__main__":
 
     waiting_time = args.waiting_time
 
-    jobtrace_reconstruct_path = args.jobtrace_reconstruct_path
+    dataset_reconstruct_path = args.dataset_reconstruct_path
+    test_jobtrace_reconstruct_path = args.test_jobtrace_reconstruct_path
+    history_jobtrace_reconstruct_path = args.history_jobtrace_reconstruct_path
 
     logging_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
     jobtrace_save_path = 'jobs-datasets-%s' % (logging_time)
 
     all_decision_num = args.all_decision_num
+    all_history_num = args.all_history_num
     time_interval = args.time_interval
     need_change_interval = args.need_change_interval
     datasets_list = generate_dataset(
@@ -301,11 +307,11 @@ if __name__ == "__main__":
         fix_delta=1e-5, 
         fix_time=0, 
         num=6, 
-        jobtrace_reconstruct_path=jobtrace_reconstruct_path, 
+        dataset_reconstruct_path=dataset_reconstruct_path, 
         save_path=jobtrace_save_path
     )
     jobs_list = generate_jobs(
-        all_decision_num=all_decision_num, 
+        all_num=all_decision_num, 
         per_epoch_EPSILONs=[0.02, 0.1], 
         EPSILONs_weights=[0.8, 0.2], 
         time_interval=time_interval, 
@@ -313,11 +319,11 @@ if __name__ == "__main__":
         is_history=False, 
         dispatcher_ip=dispatcher_ip, 
         dispatcher_port=dispatcher_port, 
-        jobtrace_reconstruct_path=jobtrace_reconstruct_path, 
+        jobtrace_reconstruct_path=test_jobtrace_reconstruct_path, 
         save_path=jobtrace_save_path
     )
     history_jobs_list = generate_jobs(
-        all_decision_num=all_decision_num, 
+        all_num=all_history_num, 
         per_epoch_EPSILONs=[0.02, 0.1], 
         EPSILONs_weights=[0.8, 0.2], 
         time_interval=time_interval, 
@@ -325,7 +331,7 @@ if __name__ == "__main__":
         is_history=True, 
         dispatcher_ip=dispatcher_ip, 
         dispatcher_port=dispatcher_port, 
-        jobtrace_reconstruct_path=jobtrace_reconstruct_path, 
+        jobtrace_reconstruct_path=history_jobtrace_reconstruct_path, 
         save_path=jobtrace_save_path
     )
     all_decision_num = len(jobs_list)

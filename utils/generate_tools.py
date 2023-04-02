@@ -27,10 +27,10 @@ def get_specific_model_config(model_name):
             "TARGET_EPOCHS": 50
         }
 
-def generate_dataset(dataset_names, fix_epsilon=10.0, fix_delta=1e-5, fix_time=0, num=6, jobtrace_reconstruct_path="", save_path=""):
-    if len(jobtrace_reconstruct_path) > 0:
-        print("load from path: {}".format(jobtrace_reconstruct_path))
-        dataset_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/datasets.json".format(jobtrace_reconstruct_path)
+def generate_dataset(dataset_names, fix_epsilon=10.0, fix_delta=1e-5, fix_time=0, num=6, dataset_reconstruct_path="", save_path=""):
+    if len(dataset_reconstruct_path) > 0:
+        print("load from path: {}".format(dataset_reconstruct_path))
+        dataset_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/datasets.json".format(dataset_reconstruct_path)
         with open(dataset_path, "r+") as f:
             datasets_list = json.load(f)
     else:
@@ -111,7 +111,7 @@ def poisson_arrival_times(last_arrival_time, lambdas):
     arrival_time = last_arrival_time + np.random.exponential(scale=1/lambdas)
     return arrival_time
 
-def generate_jobs(all_decision_num, per_epoch_EPSILONs, EPSILONs_weights, 
+def generate_jobs(all_num, per_epoch_EPSILONs, EPSILONs_weights, 
                 time_interval, need_change_interval, is_history, 
                 dispatcher_ip, dispatcher_port,
                 jobtrace_reconstruct_path="", save_path=""):
@@ -150,7 +150,7 @@ def generate_jobs(all_decision_num, per_epoch_EPSILONs, EPSILONs_weights,
         jobs = []
         current_decision_num = 0
         last_arrival_time = 0.0
-        while current_decision_num < all_decision_num:
+        while current_decision_num < all_num:
             model_name_index_list = [i for i, _ in enumerate(models)]
             model_name_i = random.choices(model_name_index_list)[0]
             model_name = models[model_name_i]
