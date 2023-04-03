@@ -50,6 +50,7 @@ def get_df_config():
 
     parser.add_argument("--worker_ips", type=str, nargs="+", default=["172.18.162.2", "172.18.162.3", "172.18.162.4", "172.18.162.5", "172.18.162.6"])
     parser.add_argument("--worker_ports", type=int, nargs="+", default=[16202, 16203, 16204, 16205, 16206])
+    parser.add_argument("--worker_indexes", type=int, nargs="+", default=[0, 1, 2, 3])
     
     parser.add_argument("--sched_ip", type=str, default="172.18.162.6")
     parser.add_argument("--sched_port", type=int, default=16306)
@@ -276,12 +277,13 @@ if __name__ == "__main__":
     dispatcher_port = args.dispatcher_port
     worker_ips = args.worker_ips
     worker_ports = args.worker_ports
+    worker_indexes = args.worker_indexes
     assert len(worker_ips) == len(worker_ports)
     init_gpuidentifiers = []
     init_workerip_2_ports = {}
     for worker_ip, worker_port in zip(worker_ips, worker_ports):
         init_workerip_2_ports[worker_ip] = worker_port
-        for i in range(4):
+        for i in worker_indexes:
             temp_identifier = worker_ip + "-{}".format(i)
             init_gpuidentifiers.append(temp_identifier)
     
