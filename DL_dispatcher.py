@@ -21,7 +21,7 @@ def get_df_config():
     parser.add_argument("--time_interval", type=int, default=100) # 100, 500, 1000, 1500 [1/1, 1/2, 1/3, 1/5]
     parser.add_argument("--need_change_interval", action="store_true")
 
-    parser.add_argument("--budget_capacity_ratio", type=int, default=1)
+    parser.add_argument("--budget_capacity_ratio", type=float, default=1)
 
     parser.add_argument("--scheduler_update_sleep_time", type=float, default=0.0)
     parser.add_argument("--cal_significance_sleep_time", type=float, default=0.0)
