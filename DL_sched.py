@@ -16,6 +16,7 @@ from utils.logging_tools import get_logger
 from policies.PBG import PBGPolicy
 from policies.Sage import SagePolicy
 from policies.HIS import HISPolicy
+from policies.HISwithC import HISwithCPolicy
 from policies.DPF_HIS_event import DPFHISPolicy
 from policies.Offline import OfflinePolicy
 from significance_policies.HISOTDD import HISOTDDPolicy
@@ -45,8 +46,10 @@ class Scheduler_server(object):
 
         self.all_stop = False
         self.all_finished = False
+
         self.all_testbed_thread = None
         self.sched_thread = None
+        # self.best_serve_thread = None
         self.cal_significance_thread = None
         self.placement_thread = None
         # self.real_recoming_thread = None
@@ -462,7 +465,7 @@ class Scheduler_server(object):
         state["current_sub_train_datasetidentifier_2_epsilon_remain"] = copy.deepcopy(self.sub_train_datasetidentifier_2_epsilon_remain)
         state["current_sub_train_datasetidentifier_2_epsilon_capcity"] = copy.deepcopy(self.sub_train_datasetidentifier_2_epsilon_capacity)
 
-        if policy.name == "HISPolicy" or policy.name == "DPFHISPolicy":
+        if policy.need_history:
             state["all_job_sequence_num"] = self.job_sequence_all_num
             state["history_job_priority_weights"] = self.history_job_priority_weights
             state["history_job_budget_consumes"] = self.history_job_budget_consumes
@@ -871,7 +874,7 @@ class Scheduler_server(object):
             # self.jobid_2_real_sched_epochs[temp_job_id] += self.jobid_2_update_sched_epoch_num[temp_job_id]
 
         for temp_job_id in need_failed_job:
-            self.sched_logger.info("failed job scheduling [{}]".format(temp_job_id))
+            self.sched_logger.info("failed job scheduling [{}] first".format(temp_job_id))
             # TODO(xlc): 这里不应该直接设置为Failed状态, 而是考虑max_time的情况, 决定是否将任务放到NO_SCHED的状态, 同时需要知道模型的最新保存位置?
             status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "failed")
             origin_info = self.jobid_2_origininfo[temp_job_id]
@@ -940,6 +943,34 @@ class Scheduler_server(object):
             with ThreadPoolExecutor(max_workers=len(args)) as pool:
                 pool.map(DL_server_do_jobs, *final_args)
 
+    '''
+    def sched_best_serve_for_failed_jobs(self):
+        all_failed_sched_jobs_copy = copy.deepcopy(self.status_2_jobid[JOB_STATUS_KEY.FAILED])
+        if len(all_failed_sched_jobs_copy) <= 0:
+            return 
+        # 注意, 这里只会执行一次, 完成For循环后就要将任务的状态改变, 能上就该状态为DONE_ALL_SCHDE，不能上则保留为Failed，然后传输给dispatcher
+        # TODO(xlc): 需要进行一波修改, 但是比较麻烦
+        for job_id in all_failed_sched_jobs_copy:
+            self.sched_logger.info("failed job scheduling [{}] final".format(job_id))
+            origin_info = self.jobid_2_origininfo[job_id]
+            self.failed_job_to_dispatcher(job_id, origin_info, is_first_failed=False)
+
+    def set_final_job_flag(self, status):
+        self.final_job_come = status
+        self.sched_logger.info("set_final_job_flag: {}".format(status))
+
+    def sched_best_serve_start(self, best_serve_time):
+        def thread_func_timely_best_serve(best_serve_time):
+            while not self.all_finished and self.final_job_come and self.finished_update_init_history_jobs:
+                self.sched_best_serve_for_failed_jobs()
+                time.sleep(best_serve_time)
+            self.sched_logger.info("Thread [thread_func_timely_best_serve] finished!")
+        p = threading.Thread(target=thread_func_timely_best_serve, args=(best_serve_time, ), daemon=True)
+        self.best_serve_thread = p
+        p.start()
+        self.sched_logger.info("Thread [thread_func_timely_best_serve] started!")
+    '''
+
     def sched_dispatch_start(self, scheduler_update_sleep_time):
         def thread_func_timely_schedule(scheduler_update_sleep_time):
             while not self.all_finished and self.finished_update_init_history_jobs:
@@ -988,8 +1019,10 @@ class Scheduler_server(object):
 
     def sched_end(self):
         self.all_finished = True
+        # self.final_job_come = False
         self.all_testbed_thread = None
         self.sched_thread = None
+        # self.best_serve_thread = None
         self.cal_significance_thread = None
         self.placement_thread = None
         # self.real_recoming_thread = None
@@ -1022,6 +1055,9 @@ class Scheduler_server(object):
         elif assignment_policy == "HISPolicy":
             beta = assignment_args
             policy_item = HISPolicy(beta, self.sched_logger)
+        elif assignment_policy == "HISwithCPolicy":
+            beta = assignment_args
+            policy_item = HISwithCPolicy(beta, self.sched_logger)
         elif assignment_policy == "DPFHISPolicy":
             beta, waiting_queue_capacity = assignment_args
             policy_item = DPFHISPolicy(beta, waiting_queue_capacity, self.sched_logger)

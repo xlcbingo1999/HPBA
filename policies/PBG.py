@@ -17,6 +17,7 @@ class PBGPolicy(Policy):
         self.waiting_queue_capacity = 1
 
         self.only_one = True
+        self.need_history = False
 
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))

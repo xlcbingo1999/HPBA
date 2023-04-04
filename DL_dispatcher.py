@@ -21,10 +21,12 @@ def get_df_config():
     parser.add_argument("--time_interval", type=int, default=100) # 100, 500, 1000, 1500 [1/1, 1/2, 1/3, 1/5]
     parser.add_argument("--need_change_interval", action="store_true")
 
+    parser.add_argument("--budget_capacity_ratio", type=int, default=1)
+
     parser.add_argument("--scheduler_update_sleep_time", type=float, default=0.0)
     parser.add_argument("--cal_significance_sleep_time", type=float, default=0.0)
     parser.add_argument("--placement_sleep_time", type=float, default=1.0)
-    parser.add_argument("--real_coming_sleep_time", type=float, default=1.0)
+    parser.add_argument("--sched_best_serve_sleep_time", type=float, default=1.0)
 
     parser.add_argument("--waiting_time", type=int, default=10)
     parser.add_argument("--update_timeout", type=int, default=500)
@@ -113,6 +115,7 @@ class Dispatcher(object):
                     client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
                     client.update_jobs(dispatch_jobs_detail) # 提交上去后, 任务即进入NO_SCHED状态, 之后就是调度器自身会启动一个不断循环的获取计算Siginificane策略和调度策略
                 if self.dispatch_datasets_count == len(self.jobs_detail):
+                    client.set_final_job_flag(True)
                     self.dispatcher_logger.info("Finished Job Dispatch!")
                     break
                 time.sleep(1)
@@ -205,13 +208,13 @@ class Dispatcher(object):
         client = self.get_zerorpc_client(ip, port)
         client.stop_all()
 
-    def sched_dispatch_start(self, ip, port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time, real_coming_sleep_time):
+    def sched_dispatch_start(self, ip, port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time, sched_best_serve_sleep_time):
         client = self.get_zerorpc_client(ip, port)
         # client.sched_dispatch_testbed_start(cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time)
         client.cal_significance_dispatch_start(cal_significance_sleep_time)
         client.sched_dispatch_start(scheduler_update_sleep_time)
         client.placement_dispatch_start(placement_sleep_time)
-        # client.recoming_jobs_start(real_coming_sleep_time)
+        # client.sched_best_serve_start(sched_best_serve_sleep_time)
     
     def sched_end(self, ip, port):
         client = self.get_zerorpc_client(ip, port)
@@ -234,7 +237,7 @@ class Dispatcher(object):
             L_list = args.pbg_Ls
             U_list = args.pbg_Us
             assignment_args = (comparison_cost_epsilon_list, comparison_z_threshold_list, L_list, U_list)
-        elif assignment_policy == "HISPolicy":
+        elif assignment_policy == "HISPolicy" or assignment_policy == "HISwithCPolicy":
             beta_list = args.his_betas
             assignment_args = beta_list
         elif assignment_policy == "DPFHISPolicy":
@@ -291,7 +294,7 @@ if __name__ == "__main__":
     update_timeout = args.update_timeout
     scheduler_update_sleep_time = args.scheduler_update_sleep_time
     cal_significance_sleep_time = args.cal_significance_sleep_time
-    real_coming_sleep_time = args.real_coming_sleep_time
+    sched_best_serve_sleep_time = args.sched_best_serve_sleep_time
     placement_sleep_time = args.placement_sleep_time
 
     waiting_time = args.waiting_time
@@ -299,6 +302,9 @@ if __name__ == "__main__":
     dataset_reconstruct_path = args.dataset_reconstruct_path
     test_jobtrace_reconstruct_path = args.test_jobtrace_reconstruct_path
     history_jobtrace_reconstruct_path = args.history_jobtrace_reconstruct_path
+
+    budget_capacity_ratio = args.budget_capacity_ratio
+    base_capacity = 10.0
 
     logging_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
     jobtrace_save_path = 'jobs-datasets-%s' % (logging_time)
@@ -309,7 +315,7 @@ if __name__ == "__main__":
     need_change_interval = args.need_change_interval
     datasets_list = generate_dataset(
         dataset_names=["EMNIST"], 
-        fix_epsilon=10.0, 
+        fix_epsilon=base_capacity * budget_capacity_ratio, 
         fix_delta=1e-5, 
         fix_time=0, 
         num=6, 
@@ -367,7 +373,7 @@ if __name__ == "__main__":
 
         print("Waiting for load datasets and jobs {} s".format(waiting_time))
         time.sleep(waiting_time)
-        dispatcher.sched_dispatch_start(sched_ip, sched_port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time, real_coming_sleep_time)
+        dispatcher.sched_dispatch_start(sched_ip, sched_port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time, sched_best_serve_sleep_time)
         
         # 主线程的最后一个操作!
         all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())

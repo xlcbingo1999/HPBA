@@ -18,6 +18,7 @@ class WaitingJob(object):
         self.dominant_share = 0.0
 
         self.only_one = False
+        self.need_history = False
 
 class OfflinePolicy(Policy):
     def __init__(self, waiting_queue_capacity, logger):

@@ -18,6 +18,7 @@ class WaitingJob(object):
         self.dominant_share = 0.0
 
         self.only_one = False
+        self.need_history = True
         
 
 class DPFHISPolicy(Policy):

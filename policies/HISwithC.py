@@ -7,10 +7,10 @@ from scipy.optimize import linear_sum_assignment
 import cvxpy as cp
 import json
 
-class HISPolicy(Policy):
+class HISwithCPolicy(Policy):
     def __init__(self, beta, logger):
         super().__init__()
-        self._name = 'HISPolicy'
+        self._name = 'HISwithCPolicy'
         self.beta = beta
         # self.gamma = gamma
         # self.delta = delta
@@ -34,7 +34,7 @@ class HISPolicy(Policy):
 
         matrix_X = cp.Variable((job_num, datablock_num), nonneg=True)
         objective = cp.Maximize(
-            cp.sum(cp.multiply(sign_matrix, matrix_X))
+            cp.sum(cp.sum(cp.multiply(sign_matrix, matrix_X), axis=1) / job_target_datablock_selected_num_list)
         )
 
         constraints = [

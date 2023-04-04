@@ -48,6 +48,8 @@ data = [{'key': 1}, {'key': 2}]
 with open('a.json', 'w') as f:
     json.dump(data, f)
 '''
+
+'''
 import numpy as np
 import random
 
@@ -64,3 +66,36 @@ n = 50
 for i in range(n):
     last_arrival_time = poisson_arrival_times(last_arrival_time, current_lambda)
     print("i: {}; time: {}".format(i, last_arrival_time))
+'''
+
+import cvxpy as cp
+import numpy as np
+
+# Define problem parameters
+n = 2  # Number of items
+m = 3  # Number of bins
+p = np.array(
+    [[1, 2, 3],
+     [4, 5, 6]]
+)  # Probability matrix
+c = np.array(
+    [2, 4]
+)  # Capacity of each item
+x = cp.Variable((n, m), boolean=True)  # Binary variables
+
+# Define optimization problem
+# objective = cp.Maximize(cp.sum(cp.multiply(p, x) / c))
+objective = cp.Maximize(cp.sum((cp.sum(cp.multiply(p, x), axis=1) / c)))
+print(objective)
+
+constraints = [
+    cp.sum(x[i, :]) <= 1 for i in range(n)  # Each item can only be in one bin
+]
+prob = cp.Problem(objective, constraints)
+
+# Solve optimization problem
+result = prob.solve()
+
+# Print optimal objective value and binary variables
+print("Optimal objective value:", result)
+print("Binary variables:\n", x.value)
