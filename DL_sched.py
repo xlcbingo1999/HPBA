@@ -22,7 +22,7 @@ from policies.Offline import OfflinePolicy
 from significance_policies.HISOTDD import HISOTDDPolicy
 from significance_policies.Temp import TempPolicy
 from significance_policies.OTDD import OTDDPolicy
-from significance_policies.NewHVOTDD import NewHVOTDDPolicy
+from significance_policies.HV import HVPolicy
 from significance_policies.HVOTDD import HVOTDDPolicy
 
 from functools import reduce
@@ -1075,6 +1075,8 @@ class Scheduler_server(object):
             self.significance_policy = OTDDPolicy(self.sched_logger)
         elif significance_policy == "HVOTDDPolicy":
             self.significance_policy = HVOTDDPolicy(self.sched_logger)
+        elif significance_policy == "HVPolicy":
+            self.significance_policy = HVPolicy(self.sched_logger)
         elif significance_policy == "TempPolicy":
             self.significance_policy = TempPolicy(self.sched_logger)
         self.sched_logger.info("significance_policy: {}".format(self.significance_policy.name))
