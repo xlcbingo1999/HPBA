@@ -31,7 +31,7 @@ class StreamingwithRemainPolicy(Policy):
         target_datablock_select_num = state["job_id_2_target_datablock_selected_num"][job_id]
         if target_datablock_select_num > 1:
             self.logger.info("target_datablock_select_num: {} > 1 => change to 1".format(target_datablock_select_num))
-        target_datablock_select_num = 1
+            target_datablock_select_num = 1
         job_priority_weight = state["job_id_2_job_priority_weight"][job_id]
         sub_train_datasetidentifier_2_significance = state["job_id_2_significance"][job_id]
         
