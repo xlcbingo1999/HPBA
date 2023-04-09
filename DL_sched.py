@@ -15,6 +15,8 @@ from utils.logging_tools import get_logger
 
 from policies.PBG import PBGPolicy
 from policies.Sage import SagePolicy
+from policies.SagewithRemain import SagewithRemainPolicy
+from policies.StreamingwithRemain import StreamingwithRemainPolicy
 from policies.HIS import HISPolicy
 from policies.HISwithC import HISwithCPolicy
 from policies.DPF_HIS_event import DPFHISPolicy
@@ -1063,6 +1065,10 @@ class Scheduler_server(object):
             policy_item = DPFHISPolicy(beta, waiting_queue_capacity, self.sched_logger)
         elif assignment_policy == "SagePolicy":
             policy_item = SagePolicy(self.sched_logger)
+        elif assignment_policy == "SagewithRemainPolicy":
+            policy_item = SagewithRemainPolicy(self.sched_logger)
+        elif assignment_policy == "StreamingwithRemainPolicy":
+            policy_item = StreamingwithRemainPolicy(self.sched_logger)
         elif assignment_policy == "OfflinePolicy":
             policy_item = OfflinePolicy(self.sched_logger)
         self.assignment_policy = policy_item

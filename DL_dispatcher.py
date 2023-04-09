@@ -43,7 +43,7 @@ def get_df_config():
     parser.add_argument('--pbg_comparison_cost_epsilons', type=float, default=0.0)
     parser.add_argument('--pbg_comparison_z_thresholds', type=float, default=0.7)
     parser.add_argument('--pbg_Ls', type=float, default=0.01)
-    parser.add_argument('--pbg_Us', type=float, default=10.0)
+    parser.add_argument('--pbg_Us', type=float, default=10.0) # 0.1
 
     parser.add_argument('--his_betas', type=float, default=0.0)
 
