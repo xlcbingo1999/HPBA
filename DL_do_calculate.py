@@ -90,6 +90,23 @@ class CNN(nn.Module):
         output = self.out(x)
         return output
 
+class FF(nn.Module):
+    def __init__(self, output_dim):
+        super(FF, self).__init__()
+        self.hidden = [128, 32]
+        self.linear = nn.Sequential(
+            nn.Linear(28 * 28, self.hidden[0], bias=True),
+            nn.ReLU(),
+            nn.Linear(self.hidden[0], self.hidden[1], bias=True),
+            nn.ReLU(),
+            nn.Linear(self.hidden[1], output_dim, bias=True)
+        )
+
+    def forward(self, x):
+        x = x.view(x.size(0), -1)
+        output = self.linear(x)
+        return output    
+
 def do_calculate_func(job_id, model_name, 
                     train_dataset_name, sub_train_key_ids,
                     test_dataset_name, sub_test_key_id,
@@ -119,6 +136,8 @@ def do_calculate_func(job_id, model_name,
 
     device = torch.device("cuda:{}".format(device_index) if torch.cuda.is_available() else "cpu")
     if model_name == "CNN":
+        model = CNN(output_dim=len(train_dataset.classes))
+    elif model_name == "FF":
         model = CNN(output_dim=len(train_dataset.classes))
     elif model_name == "resnet18":
         model = models.resnet18(num_classes=len(train_dataset.classes))

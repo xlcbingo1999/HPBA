@@ -136,8 +136,8 @@ def generate_jobs(all_num, per_epoch_EPSILONs, EPSILONs_weights,
                 current_decision_num += 1
     else:
         # 从一大堆里面生成
-        models = ["CNN"]
-        models_weights = [1.0]
+        models = ["CNN", "FF"]
+        models_weights = [0.5, 0.5]
         
         train_dataset_names = ["EMNIST"]
         
@@ -152,7 +152,7 @@ def generate_jobs(all_num, per_epoch_EPSILONs, EPSILONs_weights,
         last_arrival_time = 0.0
         while current_decision_num < all_num:
             model_name_index_list = [i for i, _ in enumerate(models)]
-            model_name_i = random.choices(model_name_index_list)[0]
+            model_name_i = random.choices(model_name_index_list, weights=models_weights)[0]
             model_name = models[model_name_i]
             
             details = get_specific_model_config(model_name)
