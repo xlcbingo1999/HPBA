@@ -188,24 +188,30 @@ class HISwithCPolicy(Policy):
         job_arrival_index = state["job_id_2_arrival_index"][job_id]
         
         all_job_sequence_num = self.job_sequence_all_num
-        history_job_priority_weights = state["history_job_priority_weights"]
-        history_job_budget_consumes = state["history_job_budget_consumes"]
-        history_job_signficance = state["history_job_significance"]
-        history_job_target_datablock_selected_num = state["history_job_target_datablock_selected_num"]
+        offline_history_job_priority_weights = state["offline_history_job_priority_weights"]
+        offline_history_job_budget_consumes = state["offline_history_job_budget_consumes"]
+        offline_history_job_signficance = state["offline_history_job_significance"]
+        offline_history_job_target_datablock_selected_num = state["offline_history_job_target_datablock_selected_num"]
+
+        online_history_job_priority_weights = state["online_history_job_priority_weights"]
+        online_history_job_budget_consumes = state["online_history_job_budget_consumes"]
+        online_history_job_signficance = state["online_history_job_significance"]
+        online_history_job_target_datablock_selected_num = state["online_history_job_target_datablock_selected_num"]
 
         # assert target_datablock_select_num == 1
         
-        if len(history_job_priority_weights) < all_job_sequence_num:
-            sample_history_job_priority_weights = history_job_priority_weights
-            sample_history_job_budget_consumes = history_job_budget_consumes
-            sample_history_job_signficances = history_job_signficance
-            sample_history_job_target_datablock_selected_nums = history_job_target_datablock_selected_num
+        if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < all_job_sequence_num:
+            sample_history_job_priority_weights = offline_history_job_priority_weights + online_history_job_priority_weights
+            sample_history_job_budget_consumes = offline_history_job_budget_consumes + online_history_job_budget_consumes
+            sample_history_job_signficances = offline_history_job_signficance + online_history_job_signficance
+            sample_history_job_target_datablock_selected_nums = offline_history_job_target_datablock_selected_num + online_history_job_target_datablock_selected_num
         else:
-            sample_indexes = random.sample(range(len(history_job_priority_weights)), all_job_sequence_num-1)
-            sample_history_job_priority_weights = [history_job_priority_weights[i] for i in sample_indexes]
-            sample_history_job_budget_consumes = [history_job_budget_consumes[i] for i in sample_indexes]
-            sample_history_job_signficances = [history_job_signficance[i] for i in sample_indexes]
-            sample_history_job_target_datablock_selected_nums = [history_job_target_datablock_selected_num[i] for i in sample_indexes]
+            select_num_from_offline_history = max(all_job_sequence_num - len(online_history_job_priority_weights) - 1, 0)
+            sample_indexes = random.sample(range(len(offline_history_job_priority_weights)), select_num_from_offline_history)
+            sample_history_job_priority_weights = online_history_job_priority_weights + [offline_history_job_priority_weights[i] for i in sample_indexes]
+            sample_history_job_budget_consumes = online_history_job_budget_consumes + [offline_history_job_budget_consumes[i] for i in sample_indexes]
+            sample_history_job_signficances = online_history_job_signficance + [offline_history_job_signficance[i] for i in sample_indexes]
+            sample_history_job_target_datablock_selected_nums = online_history_job_target_datablock_selected_num + [offline_history_job_target_datablock_selected_num[i] for i in sample_indexes]
 
         if job_arrival_index < self.beta * all_job_sequence_num:
             self.logger.info("stop due to sample caused by job_arrival_index: {}; self.beta: {}; all_job_sequence_num: {}".format(
