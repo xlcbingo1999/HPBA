@@ -17,8 +17,10 @@ from policies.PBG import PBGPolicy
 from policies.Sage import SagePolicy
 from policies.SagewithRemain import SagewithRemainPolicy
 from policies.StreamingwithRemain import StreamingwithRemainPolicy
+from policies.BestFitwithRemain import BestFitwithRemainPolicy
 from policies.HIS import HISPolicy
 from policies.HISwithC import HISwithCPolicy
+from policies.IterativeHIS import IterativeHISPolicy
 from policies.DPF_HIS_event import DPFHISPolicy
 from policies.Offline import OfflinePolicy
 from significance_policies.HISOTDD import HISOTDDPolicy
@@ -121,14 +123,23 @@ class Scheduler_server(object):
 
         self.job_sequence_all_num = 0
         self.global_job_arrival_index = 0
-        self.history_job_priority_weights = []
-        self.history_job_budget_consumes = []
-        self.history_job_train_dataset_name = []
-        self.history_job_target_selected_num = []
-        self.history_job_test_dataset_name = []
-        self.history_job_sub_test_key_id = []
-        self.history_job_significance = []
-        self.history_job_type_id = []
+        self.offline_history_job_priority_weights = []
+        self.offline_history_job_budget_consumes = []
+        self.offline_history_job_target_selected_num = []
+        self.offline_history_job_train_dataset_name = []
+        self.offline_history_job_test_dataset_name = []
+        self.offline_history_job_sub_test_key_id = []
+        self.offline_history_job_significance = []
+        self.offline_history_job_type_id = []
+
+        self.online_history_job_priority_weights = []
+        self.online_history_job_budget_consumes = []
+        self.online_history_job_target_selected_num = []
+        self.online_history_job_train_dataset_name = []
+        self.online_history_job_test_dataset_name = []
+        self.online_history_job_sub_test_key_id = []
+        self.online_history_job_significance = []
+        self.online_history_job_type_id = []
 
         self.assignment_policy = None
         self.significance_policy = None
@@ -209,14 +220,23 @@ class Scheduler_server(object):
         self.jobid_2_finished_time = {}
 
         self.job_sequence_all_num = 0
-        self.history_job_priority_weights = []
-        self.history_job_budget_consumes = []
-        self.history_job_train_dataset_name = []
-        self.history_job_target_selected_num = []
-        self.history_job_test_dataset_name = []
-        self.history_job_sub_test_key_id = []
-        self.history_job_significance = []
-        self.history_job_type_id = []
+        self.offline_history_job_priority_weights = []
+        self.offline_history_job_budget_consumes = []
+        self.offline_history_job_target_selected_num = []
+        self.offline_history_job_train_dataset_name = []
+        self.offline_history_job_test_dataset_name = []
+        self.offline_history_job_sub_test_key_id = []
+        self.offline_history_job_significance = []
+        self.offline_history_job_type_id = []
+
+        self.online_history_job_priority_weights = []
+        self.online_history_job_budget_consumes = []
+        self.online_history_job_target_selected_num = []
+        self.online_history_job_train_dataset_name = []
+        self.online_history_job_test_dataset_name = []
+        self.online_history_job_sub_test_key_id = []
+        self.online_history_job_significance = []
+        self.online_history_job_type_id = []
 
         for worker_ip, worker_port in self.workerip_2_ports.items():
             client = self.get_zerorpc_client(worker_ip, worker_port)
@@ -310,6 +330,7 @@ class Scheduler_server(object):
     
     def init_jobs_all_sequence_num(self, init_jobs_all_sequence_num):
         self.job_sequence_all_num = init_jobs_all_sequence_num
+        self.sched_logger.info("dispatcher init job_all_seq_num: {}".format(self.job_sequence_all_num))
 
     def update_jobs(self, jobs_detail_map): # 每次可以增加一批任务
         for id in jobs_detail_map:
@@ -357,19 +378,19 @@ class Scheduler_server(object):
     def update_history_jobs(self, history_jobs_map):
         for id in sorted(history_jobs_map):
             # target_job_epoch_num = history_jobs_map[id]["TARGET_EPOCHS"]
-            self.history_job_priority_weights.append(history_jobs_map[id]["priority_weight"])
+            self.offline_history_job_priority_weights.append(history_jobs_map[id]["priority_weight"])
             target_epsilon_consume = history_jobs_map[id]["EPSILON"] * history_jobs_map[id]["TARGET_EPOCHS"]
-            self.history_job_budget_consumes.append(target_epsilon_consume)
-            train_dataset_name = history_jobs_map[id]["train_dataset_name"]
-            self.history_job_train_dataset_name.append(train_dataset_name)
+            self.offline_history_job_budget_consumes.append(target_epsilon_consume)
             target_selected_num = history_jobs_map[id]["datablock_select_num"]
-            self.history_job_target_selected_num.append(target_selected_num)
+            self.offline_history_job_target_selected_num.append(target_selected_num)
+            train_dataset_name = history_jobs_map[id]["train_dataset_name"]
+            self.offline_history_job_train_dataset_name.append(train_dataset_name)
             test_dataset_name = history_jobs_map[id]["test_dataset_name"]
-            self.history_job_test_dataset_name.append(test_dataset_name)
+            self.offline_history_job_test_dataset_name.append(test_dataset_name)
             sub_test_key_id = history_jobs_map[id]["sub_test_key_id"]
-            self.history_job_sub_test_key_id.append(sub_test_key_id)
+            self.offline_history_job_sub_test_key_id.append(sub_test_key_id)
             type_id = history_jobs_map[id]["job_type"]
-            self.history_job_type_id.append(type_id)
+            self.offline_history_job_type_id.append(type_id)
 
             all_significance_state = []
             for sub_train_key_id in self.sub_train_datasetidentifier_2_dataset_status[train_dataset_name]:
@@ -381,19 +402,19 @@ class Scheduler_server(object):
                 }
                 all_significance_state.append(significance_state)
             result_d_map = self.get_job_datablock_significance_sync(type_id, all_significance_state, is_history=True)
-            self.history_job_significance.append(result_d_map)
+            self.offline_history_job_significance.append(result_d_map)
                 
         self.sched_logger.info("success add new history jobs")
         self.finished_update_init_history_jobs = True
 
     def sche_timely_update_history_job(self, priority_weight, EPSILON, train_dataset_name, datablock_selected_num, test_dataset_name, sub_test_key_id, significance):
-        self.history_job_priority_weights.append(priority_weight)
-        self.history_job_budget_consumes.append(EPSILON)
-        self.history_job_train_dataset_name.append(train_dataset_name)
-        self.history_job_target_selected_num.append(datablock_selected_num)
-        self.history_job_test_dataset_name.append(test_dataset_name)
-        self.history_job_sub_test_key_id.append(sub_test_key_id)
-        self.history_job_significance.append(significance)
+        self.online_history_job_priority_weights.append(priority_weight)
+        self.online_history_job_budget_consumes.append(EPSILON)
+        self.online_history_job_target_selected_num.append(datablock_selected_num)
+        self.online_history_job_train_dataset_name.append(train_dataset_name)
+        self.online_history_job_test_dataset_name.append(test_dataset_name)
+        self.online_history_job_sub_test_key_id.append(sub_test_key_id)
+        self.online_history_job_significance.append(significance)
         self.sched_logger.info("success add a new history job")
 
     def sche_reflash_job_status(self, job_id, origin_status, new_status):
@@ -468,12 +489,15 @@ class Scheduler_server(object):
         state["current_sub_train_datasetidentifier_2_epsilon_capcity"] = copy.deepcopy(self.sub_train_datasetidentifier_2_epsilon_capacity)
 
         if policy.need_history:
-            state["all_job_sequence_num"] = self.job_sequence_all_num
-            state["history_job_priority_weights"] = self.history_job_priority_weights
-            state["history_job_budget_consumes"] = self.history_job_budget_consumes
-            state["history_job_train_dataset_name"] = self.history_job_train_dataset_name
-            state["history_job_target_datablock_selected_num"] = self.history_job_target_selected_num
-            state["history_job_significance"] = self.history_job_significance
+            state["offline_history_job_priority_weights"] = self.offline_history_job_priority_weights
+            state["offline_history_job_budget_consumes"] = self.offline_history_job_budget_consumes
+            state["offline_history_job_target_datablock_selected_num"] = self.offline_history_job_target_selected_num
+            state["offline_history_job_significance"] = self.offline_history_job_significance
+
+            state["online_history_job_priority_weights"] = self.online_history_job_priority_weights
+            state["online_history_job_budget_consumes"] = self.online_history_job_budget_consumes
+            state["online_history_job_target_datablock_selected_num"] = self.online_history_job_target_selected_num
+            state["online_history_job_significance"] = self.online_history_job_significance
  
         return state
     
@@ -1055,20 +1079,25 @@ class Scheduler_server(object):
             comparison_cost_epsilon, comparison_z_threshold, L, U = assignment_args
             policy_item = PBGPolicy(comparison_cost_epsilon, comparison_z_threshold, L, U, self.sched_logger)
         elif assignment_policy == "HISPolicy":
-            beta = assignment_args
-            policy_item = HISPolicy(beta, self.sched_logger)
+            beta, job_sequence_all_num = assignment_args
+            policy_item = HISPolicy(beta, job_sequence_all_num, self.sched_logger)
         elif assignment_policy == "HISwithCPolicy":
-            beta = assignment_args
-            policy_item = HISwithCPolicy(beta, self.sched_logger)
+            beta, job_sequence_all_num = assignment_args
+            policy_item = HISwithCPolicy(beta, job_sequence_all_num, self.sched_logger)
+        elif assignment_policy == "IterativeHISPolicy":
+            beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
+            policy_item = IterativeHISPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.sched_logger)
         elif assignment_policy == "DPFHISPolicy":
-            beta, waiting_queue_capacity = assignment_args
-            policy_item = DPFHISPolicy(beta, waiting_queue_capacity, self.sched_logger)
+            beta, waiting_queue_capacity, job_sequence_all_num = assignment_args
+            policy_item = DPFHISPolicy(beta, job_sequence_all_num, waiting_queue_capacity, self.sched_logger)
         elif assignment_policy == "SagePolicy":
             policy_item = SagePolicy(self.sched_logger)
         elif assignment_policy == "SagewithRemainPolicy":
             policy_item = SagewithRemainPolicy(self.sched_logger)
         elif assignment_policy == "StreamingwithRemainPolicy":
             policy_item = StreamingwithRemainPolicy(self.sched_logger)
+        elif assignment_policy == "BestFitwithRemainPolicy":
+            policy_item = BestFitwithRemainPolicy(self.sched_logger)
         elif assignment_policy == "OfflinePolicy":
             policy_item = OfflinePolicy(self.sched_logger)
         self.assignment_policy = policy_item

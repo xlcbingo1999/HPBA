@@ -8,7 +8,7 @@ import cvxpy as cp
 import json
 
 class HISPolicy(Policy):
-    def __init__(self, beta, logger):
+    def __init__(self, beta, job_sequence_all_num, logger):
         super().__init__()
         self._name = 'HISPolicy'
         self.beta = beta
@@ -19,6 +19,7 @@ class HISPolicy(Policy):
         self.waiting_queue_capacity = 1
         self.only_one = True
         self.need_history = True
+        self.job_sequence_all_num = job_sequence_all_num
 
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
@@ -184,7 +185,7 @@ class HISPolicy(Policy):
         sub_train_datasetidentifier_2_significance = state["job_id_2_significance"][job_id]
         job_arrival_index = state["job_id_2_arrival_index"][job_id]
         
-        all_job_sequence_num = state["all_job_sequence_num"]
+        all_job_sequence_num = self.job_sequence_all_num
         history_job_priority_weights = state["history_job_priority_weights"]
         history_job_budget_consumes = state["history_job_budget_consumes"]
         history_job_signficance = state["history_job_significance"]

@@ -46,6 +46,7 @@ def get_df_config():
     parser.add_argument('--pbg_Us', type=float, default=0.1) # 0.1
 
     parser.add_argument('--his_betas', type=float, default=0.0)
+    parser.add_argument('--his_batch_size_for_one_epochs', type=int, default=25)
 
     parser.add_argument('--dpf_his_betas', type=float, default=0.01)
     parser.add_argument('--dpf_his_waiting_queue_capacitys', type=int, default=10)
@@ -228,7 +229,7 @@ class Dispatcher(object):
         client = self.get_zerorpc_client(ip, port)
         client.sched_update_gpu_status_start(init_workerip_2_ports, init_gpuidentifiers)
 
-    def sched_init_sched_register(self, ip, port, assignment_policy, significance_policy):
+    def sched_init_sched_register(self, ip, port, assignment_policy, significance_policy, all_decision_num):
         client = self.get_zerorpc_client(ip, port)
         client.initialize_logging_path(self.current_test_all_dir)
         if assignment_policy == "PBGPolicy":
@@ -239,11 +240,15 @@ class Dispatcher(object):
             assignment_args = (comparison_cost_epsilon_list, comparison_z_threshold_list, L_list, U_list)
         elif assignment_policy == "HISPolicy" or assignment_policy == "HISwithCPolicy":
             beta_list = args.his_betas
-            assignment_args = beta_list
+            assignment_args = (beta_list, all_decision_num)
+        elif assignment_policy == "IterativeHISPolicy":
+            beta_list = args.his_betas
+            batch_size_for_one_epoch_list = args.his_batch_size_for_one_epochs
+            assignment_args = (beta_list, batch_size_for_one_epoch_list, all_decision_num)
         elif assignment_policy == "DPFHISPolicy":
             beta_list = args.dpf_his_betas
             waiting_queue_capacity_list = args.dpf_his_waiting_queue_capacitys
-            assignment_args = (beta_list, waiting_queue_capacity_list)
+            assignment_args = (beta_list, waiting_queue_capacity_list, all_decision_num)
         else:
             assignment_args = None
         client.sched_update_assignment_policy(assignment_policy, assignment_args)
@@ -354,7 +359,7 @@ if __name__ == "__main__":
         remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
         processes.append(remote_server_p)
 
-        dispatcher.sched_init_sched_register(sched_ip, sched_port, args.assignment_policy, args.significance_policy)
+        dispatcher.sched_init_sched_register(sched_ip, sched_port, args.assignment_policy, args.significance_policy, all_decision_num)
         dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_workerip_2_ports, init_gpuidentifiers)
         if not args.without_start_load_job:
             dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout)

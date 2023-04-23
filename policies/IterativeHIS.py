@@ -7,19 +7,26 @@ from scipy.optimize import linear_sum_assignment
 import cvxpy as cp
 import json
 
-class HISwithCPolicy(Policy):
-    def __init__(self, beta, job_sequence_all_num, logger):
+class IterativeHISPolicy(Policy):
+    def __init__(self, beta, job_sequence_all_num, batch_size_for_one_epoch, logger):
         super().__init__()
-        self._name = 'HISwithCPolicy'
+        self._name = 'IterativeHISPolicy'
         self.beta = beta
         # self.gamma = gamma
         # self.delta = delta
         # self.only_small = only_small
         self.logger = logger
         self.waiting_queue_capacity = 1
+        
         self.only_one = True
         self.need_history = True
+
+        
+        self.remain_epsilon_budget_from_last_epoch = {} # 初始化设置为None, 后续有需要再加上去
+        self.batch_size_for_one_epoch = batch_size_for_one_epoch
         self.job_sequence_all_num = job_sequence_all_num
+        self.logger.info("check job_sequence_all_num: {}".format(self.job_sequence_all_num))
+        self.epoch_num = np.ceil(self.job_sequence_all_num / self.batch_size_for_one_epoch)
 
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
@@ -35,7 +42,7 @@ class HISwithCPolicy(Policy):
 
         matrix_X = cp.Variable((job_num, datablock_num), nonneg=True)
         objective = cp.Maximize(
-            cp.sum(cp.sum(cp.multiply(sign_matrix, matrix_X), axis=1) / job_target_datablock_selected_num_list)
+            cp.sum(cp.multiply(sign_matrix, matrix_X))
         )
 
         constraints = [
@@ -46,9 +53,9 @@ class HISwithCPolicy(Policy):
         ]
 
         # self.logger.debug("check sign_matrix: {}".format(sign_matrix))
-        # self.logger.debug("check job_privacy_budget_consume_list: {}".format(job_privacy_budget_consume_list))
+        self.logger.debug("check job_privacy_budget_consume_list [max: {}] [min: {}]".format(max(job_privacy_budget_consume_list), min(job_privacy_budget_consume_list)))
         # self.logger.debug("check job_target_datablock_selected_num_list: {}".format(job_target_datablock_selected_num_list))
-        # self.logger.debug("check datablock_privacy_budget_capacity_list: {}".format(datablock_privacy_budget_capacity_list))
+        self.logger.debug("check datablock_privacy_budget_capacity_list: [max: {}] [min: {}]".format(max(datablock_privacy_budget_capacity_list), min(datablock_privacy_budget_capacity_list)))
         # self.logger.debug("check sum of datablock_privacy_budget_capacity_list: {}".format(np.sum(datablock_privacy_budget_capacity_list)))
         self.logger.debug("check sum of job_privacy_budget_consume_list: {}".format(np.sum(job_privacy_budget_consume_list * job_target_datablock_selected_num_list)))
 
@@ -129,7 +136,9 @@ class HISwithCPolicy(Policy):
         datablock_privacy_budget_capacity_list = np.zeros(shape=sign_matrix.shape[1])
         job_target_datablock_selected_num_list = np.array(current_all_job_target_datablock_selected_nums)
         for temp_index in temp_index_2_datablock_identifier:
-            datablock_privacy_budget_capacity_list[temp_index] = sub_train_datasetidentifier_2_epsilon_capcity[temp_index_2_datablock_identifier[temp_index]]
+            datablock_privacy_budget_capacity_list[temp_index] = sub_train_datasetidentifier_2_epsilon_capcity[temp_index_2_datablock_identifier[temp_index]] / self.epoch_num
+            if temp_index_2_datablock_identifier[temp_index] in self.remain_epsilon_budget_from_last_epoch:
+                datablock_privacy_budget_capacity_list[temp_index] += self.remain_epsilon_budget_from_last_epoch[temp_index_2_datablock_identifier[temp_index]]
         assign_result_matrix = self.get_LP_result(sign_matrix, datablock_privacy_budget_capacity_list, job_target_datablock_selected_num_list, current_all_job_budget_consumes)
         job_num, datablock_num = sign_matrix.shape[0], sign_matrix.shape[1]
         current_job_probability = assign_result_matrix[-1] # 这里其实相当于算出了一个分数, 如果为了这个分数不被泄露, 可以用指数机制加噪, 该方案被证实为满足DP-差分隐私.
@@ -186,26 +195,32 @@ class HISwithCPolicy(Policy):
         job_arrival_index = state["job_id_2_arrival_index"][job_id]
         
         all_job_sequence_num = self.job_sequence_all_num
-        history_job_priority_weights = state["history_job_priority_weights"]
-        history_job_budget_consumes = state["history_job_budget_consumes"]
-        history_job_signficance = state["history_job_significance"]
-        history_job_target_datablock_selected_num = state["history_job_target_datablock_selected_num"]
+        offline_history_job_priority_weights = state["offline_history_job_priority_weights"]
+        offline_history_job_budget_consumes = state["offline_history_job_budget_consumes"]
+        offline_history_job_signficance = state["offline_history_job_significance"]
+        offline_history_job_target_datablock_selected_num = state["offline_history_job_target_datablock_selected_num"]
+
+        online_history_job_priority_weights = state["online_history_job_priority_weights"]
+        online_history_job_budget_consumes = state["online_history_job_budget_consumes"]
+        online_history_job_signficance = state["online_history_job_significance"]
+        online_history_job_target_datablock_selected_num = state["online_history_job_target_datablock_selected_num"]
 
         # assert target_datablock_select_num == 1
         
-        if len(history_job_priority_weights) < all_job_sequence_num:
-            sample_history_job_priority_weights = history_job_priority_weights
-            sample_history_job_budget_consumes = history_job_budget_consumes
-            sample_history_job_signficances = history_job_signficance
-            sample_history_job_target_datablock_selected_nums = history_job_target_datablock_selected_num
+        if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < self.batch_size_for_one_epoch:
+            sample_history_job_priority_weights = offline_history_job_priority_weights + online_history_job_priority_weights
+            sample_history_job_budget_consumes = offline_history_job_budget_consumes + online_history_job_budget_consumes
+            sample_history_job_signficances = offline_history_job_signficance + online_history_job_signficance
+            sample_history_job_target_datablock_selected_nums = offline_history_job_target_datablock_selected_num + online_history_job_target_datablock_selected_num
         else:
-            sample_indexes = random.sample(range(len(history_job_priority_weights)), all_job_sequence_num-1)
-            sample_history_job_priority_weights = [history_job_priority_weights[i] for i in sample_indexes]
-            sample_history_job_budget_consumes = [history_job_budget_consumes[i] for i in sample_indexes]
-            sample_history_job_signficances = [history_job_signficance[i] for i in sample_indexes]
-            sample_history_job_target_datablock_selected_nums = [history_job_target_datablock_selected_num[i] for i in sample_indexes]
+            select_num_from_offline_history = max(self.batch_size_for_one_epoch - len(online_history_job_priority_weights) - 1, 0)
+            sample_indexes = random.sample(range(len(offline_history_job_priority_weights)), select_num_from_offline_history)
+            sample_history_job_priority_weights = online_history_job_priority_weights + [offline_history_job_priority_weights[i] for i in sample_indexes]
+            sample_history_job_budget_consumes = online_history_job_budget_consumes + [offline_history_job_budget_consumes[i] for i in sample_indexes]
+            sample_history_job_signficances = online_history_job_signficance + [offline_history_job_signficance[i] for i in sample_indexes]
+            sample_history_job_target_datablock_selected_nums = online_history_job_target_datablock_selected_num + [offline_history_job_target_datablock_selected_num[i] for i in sample_indexes]
 
-        if job_arrival_index < self.beta * all_job_sequence_num:
+        if job_arrival_index % self.batch_size_for_one_epoch < self.beta * self.batch_size_for_one_epoch:
             self.logger.info("stop due to sample caused by job_arrival_index: {}; self.beta: {}; all_job_sequence_num: {}".format(
                 job_arrival_index, self.beta, all_job_sequence_num
             ))

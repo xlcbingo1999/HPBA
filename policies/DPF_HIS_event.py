@@ -22,7 +22,7 @@ class WaitingJob(object):
         
 
 class DPFHISPolicy(Policy):
-    def __init__(self, beta, waiting_queue_capacity, logger):
+    def __init__(self, beta, job_sequence_all_num, waiting_queue_capacity, logger):
         super().__init__()
         self._name = 'DPFHISPolicy'
         # 保存一个unlocked的量
@@ -31,7 +31,8 @@ class DPFHISPolicy(Policy):
         self.waiting_queue_capacity = waiting_queue_capacity
 
         self.beta = beta
-        self.logger = logger        
+        self.logger = logger    
+        self.job_sequence_all_num = job_sequence_all_num    
     
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
@@ -46,7 +47,7 @@ class DPFHISPolicy(Policy):
         job_id_2_significance = state["job_id_2_significance"]
         job_id_2_arrival_index = state["job_id_2_arrival_index"]
 
-        all_job_sequence_num = state["all_job_sequence_num"]
+        all_job_sequence_num = self.job_sequence_all_num
         history_job_priority_weights = state["history_job_priority_weights"]
         history_job_budget_consumes = state["history_job_budget_consumes"]
         history_job_signficance = state["history_job_significance"]
