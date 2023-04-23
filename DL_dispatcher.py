@@ -44,6 +44,7 @@ def get_df_config():
     parser.add_argument('--pbg_comparison_z_thresholds', type=float, default=0.7)
     parser.add_argument('--pbg_Ls', type=float, default=0.01)
     parser.add_argument('--pbg_Us', type=float, default=0.1) # 0.1
+    parser.add_argument('--pbg_gittas', type=float, default=0.9)
 
     parser.add_argument('--his_betas', type=float, default=0.0)
     parser.add_argument('--his_batch_size_for_one_epochs', type=int, default=25)
@@ -238,6 +239,13 @@ class Dispatcher(object):
             L_list = args.pbg_Ls
             U_list = args.pbg_Us
             assignment_args = (comparison_cost_epsilon_list, comparison_z_threshold_list, L_list, U_list)
+        elif assignment_policy == "PBGMixPolicy":
+            comparison_cost_epsilon_list = args.pbg_comparison_cost_epsilons
+            comparison_z_threshold_list = args.pbg_comparison_z_thresholds
+            L_list = args.pbg_Ls
+            U_list = args.pbg_Us
+            gitta_list = args.pbg_gittas
+            assignment_args = (comparison_cost_epsilon_list, comparison_z_threshold_list, L_list, U_list, gitta_list)
         elif assignment_policy == "HISPolicy" or assignment_policy == "HISwithCPolicy":
             beta_list = args.his_betas
             assignment_args = (beta_list, all_decision_num)

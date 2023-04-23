@@ -104,7 +104,7 @@ class IterativeHISPolicy(Policy):
         return selected_datablock_identifiers, calcu_compare_epsilon
     '''
 
-    def get_allocation_for_small(self, history_job_priority_weights, 
+    def get_allocation_for_small(self, job_id, history_job_priority_weights, 
                                 history_job_budget_consumes, 
                                 history_job_signficances, 
                                 history_job_target_datablock_selected_nums,
@@ -116,6 +116,7 @@ class IterativeHISPolicy(Policy):
                                 job_priority_weight):
         
         selected_datablock_identifiers = []
+        selected_real_sched_epsilon_map = {}
         calcu_compare_epsilon = 0.0
         
         current_all_job_priority_weights = copy.deepcopy(history_job_priority_weights)
@@ -175,7 +176,8 @@ class IterativeHISPolicy(Policy):
             datablock_identifier = temp_index_2_datablock_identifier[choose_index]
             if target_epsilon_require <= sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier]:
                 selected_datablock_identifiers.append(datablock_identifier)
-        return selected_datablock_identifiers, calcu_compare_epsilon
+                selected_real_sched_epsilon_map[(job_id, datablock_identifier)] = target_epsilon_require
+        return selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
 
     def get_allocation(self, state):
         job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]
@@ -225,10 +227,11 @@ class IterativeHISPolicy(Policy):
                 job_arrival_index, self.beta, all_job_sequence_num
             ))
             selected_datablock_identifiers = []
+            selected_real_sched_epsilon_map = {}
             calcu_compare_epsilon = 0.0
         else:
-            selected_datablock_identifiers, \
-                calcu_compare_epsilon = self.get_allocation_for_small(sample_history_job_priority_weights, 
+            selected_datablock_identifiers, selected_real_sched_epsilon_map, \
+                calcu_compare_epsilon = self.get_allocation_for_small(job_id, sample_history_job_priority_weights, 
                                 sample_history_job_budget_consumes, 
                                 sample_history_job_signficances, 
                                 sample_history_job_target_datablock_selected_nums,
@@ -240,4 +243,4 @@ class IterativeHISPolicy(Policy):
         job_2_selected_datablock_identifiers = [
             (job_id, identifier) for identifier in selected_datablock_identifiers
         ]
-        return job_2_selected_datablock_identifiers, calcu_compare_epsilon
+        return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon

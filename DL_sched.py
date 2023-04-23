@@ -14,6 +14,7 @@ from utils.global_variable import GPU_PATH, RESULT_PATH
 from utils.logging_tools import get_logger
 
 from policies.PBG import PBGPolicy
+from policies.PBGMix import PBGMixPolicy
 from policies.Sage import SagePolicy
 from policies.SagewithRemain import SagewithRemainPolicy
 from policies.StreamingwithRemain import StreamingwithRemainPolicy
@@ -37,11 +38,11 @@ import fcntl
 import sys
 
 
-def DL_server_do_jobs(job_id, origin_info, run_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path):
+def DL_server_do_jobs(job_id, origin_info, sched_epsilon, run_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path):
     client = zerorpc.Client()
     client.connect("tcp://{}:{}".format(worker_ip, worker_port))
     
-    client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info, 0, run_epoch_num, model_save_path, summary_writer_path, summary_writer_key, logging_file_path)
+    client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info, sched_epsilon, 0, run_epoch_num, model_save_path, summary_writer_path, summary_writer_key, logging_file_path)
 
 class Scheduler_server(object):
     def __init__(self, sched_ip, sched_port):
@@ -93,6 +94,7 @@ class Scheduler_server(object):
         self.jobid_2_trainconfig = {}
 
         self.jobid_2_target_epsilon = {}
+        self.jobid_2_sched_epsilon = {}
         self.jobid_2_real_epsilon = {}
         self.jobid_2_priority_weight = {}
 
@@ -192,6 +194,7 @@ class Scheduler_server(object):
         self.jobid_2_trainconfig = {}
 
         self.jobid_2_target_epsilon = {}
+        self.jobid_2_sched_epsilon = {}
         self.jobid_2_real_epsilon = {}
         self.jobid_2_priority_weight = {}
         self.jobid_2_train_dataset_name = {}
@@ -348,6 +351,7 @@ class Scheduler_server(object):
                 self.jobid_2_trainconfig[id] = {}
                 target_epsilon_consume = origin_info["EPSILON"] * origin_info["TARGET_EPOCHS"]
                 self.jobid_2_target_epsilon[id] = target_epsilon_consume
+                self.jobid_2_sched_epsilon[id] = 0
                 self.jobid_2_real_epsilon[id] = 0
                 self.jobid_2_submited_time[id] = origin_info["time"]
                 self.jobid_2_priority_weight[id] = origin_info["priority_weight"]
@@ -520,9 +524,9 @@ class Scheduler_server(object):
                                     job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
                                     job_id_2_test_dataset_name, job_id_2_sub_test_key_id, 
                                     job_id_2_significance, job_id_2_arrival_index)
-        job_2_selected_datablock_identifiers, calcu_compare_epsilon = policy.get_allocation(state)
+        job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon = policy.get_allocation(state)
         # not_selected_datablock_identifiers = [tu[0] for tu in sub_train_sort[target_datablock_select_num:]]
-        return job_2_selected_datablock_identifiers, calcu_compare_epsilon
+        return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
 
     def finished_job_to_dispatcher(self, job_id, origin_info):
         dispatcher_ip = origin_info["dispatcher_ip"]
@@ -585,7 +589,7 @@ class Scheduler_server(object):
         self.jobid_2_results[job_id] = result
 
         self.jobid_2_real_epsilon[job_id] = result["epsilon_consume"]
-        remain_epsilon = self.jobid_2_target_epsilon[job_id] - self.jobid_2_real_epsilon[job_id]
+        remain_epsilon = self.jobid_2_sched_epsilon[job_id] - self.jobid_2_real_epsilon[job_id]
         train_dataset_name = self.jobid_2_train_dataset_name[job_id]
         datablock_identifiers = self.jobid_2_sub_train_key_ids[job_id]
         for identifier in datablock_identifiers:
@@ -865,7 +869,7 @@ class Scheduler_server(object):
         job_id_2_arrival_index = {job_id: self.jobid_2_arrival_index[job_id] for job_id in all_done_sig_cal_jobs_copy}
         
         # 为没有决定分配方案的任务决定分配方案
-        job_2_selected_datablock_identifiers, calcu_compare_epsilon = \
+        job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon = \
             self.get_scheduling_datablock_result(self.assignment_policy, job_id_2_dataset_name, 
                 job_id_2_target_epsilon_require, job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
                 job_id_2_test_dataset_name, job_id_2_sub_test_key_id, job_id_2_significance, job_id_2_arrival_index)
@@ -875,7 +879,7 @@ class Scheduler_server(object):
             for temp_job_id, identifier in job_2_selected_datablock_identifiers:
                 if temp_job_id not in self.jobid_2_sub_train_key_ids:
                     self.jobid_2_sub_train_key_ids[temp_job_id] = []
-                consume_epsilon = self.jobid_2_target_epsilon[temp_job_id]
+                consume_epsilon = selected_real_sched_epsilon_map[(temp_job_id, identifier)] 
                 dataset_name = job_id_2_dataset_name[temp_job_id]
                 if self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] >= consume_epsilon:
                     self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] -= consume_epsilon # calcu_compare_epsilon
@@ -935,6 +939,7 @@ class Scheduler_server(object):
         args = []
         for job_id in all_done_all_sched_jobs_copy:
             origin_info = self.jobid_2_origininfo[job_id]
+            sched_epsilon = self.jobid_2_sched_epsilon[job_id]
             worker_dataset_config = {
                 "train_dataset_name": self.jobid_2_train_dataset_name[job_id],
                 "test_dataset_name": self.jobid_2_test_dataset_name[job_id],
@@ -957,7 +962,7 @@ class Scheduler_server(object):
                 run_epoch_num = self.jobid_2_target_epochs[job_id]
                 # begin_epoch_num = self.jobid_2_real_sched_epochs[job_id]
                 # update_sched_epoch_num = self.jobid_2_update_sched_epoch_num[job_id]
-                args.append([job_id, origin_info, run_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path])
+                args.append([job_id, origin_info, sched_epsilon, run_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path])
                 if job_id not in self.jobid_2_started_time:
                     self.jobid_2_started_time[job_id] = []
                 self.jobid_2_started_time[job_id].append(time.time())
@@ -1078,6 +1083,9 @@ class Scheduler_server(object):
         if assignment_policy == "PBGPolicy":
             comparison_cost_epsilon, comparison_z_threshold, L, U = assignment_args
             policy_item = PBGPolicy(comparison_cost_epsilon, comparison_z_threshold, L, U, self.sched_logger)
+        elif assignment_policy == "PBGMixPolicy":
+            comparison_cost_epsilon, comparison_z_threshold, L, U, gitta = assignment_args
+            policy_item = PBGMixPolicy(comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, self.sched_logger)
         elif assignment_policy == "HISPolicy":
             beta, job_sequence_all_num = assignment_args
             policy_item = HISPolicy(beta, job_sequence_all_num, self.sched_logger)

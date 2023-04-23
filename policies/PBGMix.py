@@ -1,3 +1,5 @@
+# 目前看这个算法会对任务的指标造成损失, 可能改动的代码量还不小
+# 这个算法不能进行simulation
 from policies.BasePolicy import Policy
 import copy
 import random
@@ -5,14 +7,15 @@ import numpy as np
 import math
 import json
 
-class PBGPolicy(Policy):
-    def __init__(self, comparison_cost_epsilon, comparison_z_threshold, L, U, logger):
+class PBGMixPolicy(Policy):
+    def __init__(self, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, logger):
         super().__init__()
-        self._name = 'PBGPolicy'
+        self._name = 'PBGMixPolicy'
         self.comparison_cost_epsilon = comparison_cost_epsilon
         self.comparison_z_threshold = comparison_z_threshold
         self.L = L
         self.U = U
+        self.gitta = gitta
         self.logger = logger
         self.waiting_queue_capacity = 1
 
@@ -36,30 +39,23 @@ class PBGPolicy(Policy):
             return math.pow(self.U * math.exp(1) / self.L, datablock_z) * self.L / math.exp(1)
         return self.L
 
-    def filter_by_threshold(self, datablock_epsilon_capacity, datablock_z, target_epsilon_consume, significance_plus_weight):
-        if datablock_z < self.comparison_z_threshold:
-            is_select = True
-            # new_z = datablock_z + target_epsilon_consume / datablock_epsilon_capacity
-            compare_epsilon = 0.0
-        else:
-            if self.comparison_cost_epsilon > 0.0:
-                if ((significance_plus_weight / (target_epsilon_consume + self.comparison_cost_epsilon)) + self.Lap(4.0/self.comparison_cost_epsilon) > self.Threshold_func(datablock_z) + self.Lap(2.0/self.comparison_cost_epsilon) 
-                and target_epsilon_consume + self.comparison_cost_epsilon < (1.0 - datablock_z) * datablock_epsilon_capacity):
-                    is_select = True
-                    compare_epsilon = self.comparison_cost_epsilon
-                
-                else:
-                    is_select = False
-                    compare_epsilon = 0.0
+    def filter_by_threshold(self, target_epsilon_consume, datablock_epsilon_capacity, epsilon_star):
+        if self.comparison_cost_epsilon > 0.0:
+            if epsilon_star + self.Lap(4.0/self.comparison_cost_epsilon) >= self.gitta * target_epsilon_consume + self.Lap(2.0/self.comparison_cost_epsilon):
+                is_select = True
+                compare_epsilon = self.comparison_cost_epsilon
             else:
-                if ((significance_plus_weight / target_epsilon_consume) > self.Threshold_func(datablock_z)
-                and target_epsilon_consume < (1.0 - datablock_z) * datablock_epsilon_capacity):
-                    is_select = True
-                    compare_epsilon = 0.0
-                else:
-                    is_select = False
-                    compare_epsilon = 0.0
-        return is_select, compare_epsilon
+                is_select = False
+                compare_epsilon = 0.0
+        else:
+            if epsilon_star >= self.gitta * target_epsilon_consume:
+                is_select = True
+                compare_epsilon = 0.0
+            else:
+                is_select = False
+                compare_epsilon = 0.0
+        real_sched_epsilon = min(epsilon_star, datablock_epsilon_capacity - compare_epsilon, target_epsilon_consume)
+        return is_select, real_sched_epsilon, compare_epsilon
         
     def get_allocation(self, state):
         job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]
@@ -92,17 +88,23 @@ class PBGPolicy(Policy):
             datablock_epsilon_capacity = sub_train_datasetidentifier_2_epsilon_capcity[datasetidentifier]
             datablock_z = temp_datasetidentifier_2_epsilon_z[datasetidentifier]
             significance_plus_weight = job_priority_weight * sub_train_datasetidentifier_2_significance[datasetidentifier]
+            T = self.U / (1 + np.log(self.U / self.L))
+            if self.comparison_cost_epsilon > 0.0:
+                epsilon_star = significance_plus_weight / T - self.comparison_cost_epsilon
+            else:
+                epsilon_star = significance_plus_weight / T
             
-            is_select, compare_epsilon = self.filter_by_threshold(datablock_epsilon_capacity, datablock_z, target_epsilon_require, significance_plus_weight)
+            is_select, real_sched_epsilon, compare_epsilon = self.filter_by_threshold(target_epsilon_require, datablock_epsilon_capacity, epsilon_star)
             if is_select:
                 count += 1
                 selected_datablock_identifiers.append(datasetidentifier)
-                selected_real_sched_epsilon_map[(job_id, datasetidentifier)] = target_epsilon_require
+                selected_real_sched_epsilon_map[(job_id, datasetidentifier)] = real_sched_epsilon
                 calcu_compare_epsilon += compare_epsilon
             del temp_datasetidentifier_2_epsilon_z[datasetidentifier]
         
         job_2_selected_datablock_identifiers = [
             (job_id, identifier) for identifier in selected_datablock_identifiers
         ]
+        
         return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
 

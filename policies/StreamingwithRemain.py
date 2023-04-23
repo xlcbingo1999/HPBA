@@ -43,12 +43,14 @@ class StreamingwithRemainPolicy(Policy):
         count = 0
         calcu_compare_epsilon = 0.0
         selected_datablock_identifiers = []
+        selected_real_sched_epsilon_map = {}
         while count < target_datablock_select_num and len(temp_datasetidentifier_2_epsilon_z.keys()) > 0:
             # 获取随机一个数据集
             datasetidentifier = random.choice(list(temp_datasetidentifier_2_epsilon_z.keys()))
             datablock_epsilon_capacity = sub_train_datasetidentifier_2_epsilon_capcity[datasetidentifier]
             datablock_z = temp_datasetidentifier_2_epsilon_z[datasetidentifier]            
             selected_datablock_identifiers.append(datasetidentifier)
+            selected_real_sched_epsilon_map[(job_id, datasetidentifier)] = target_epsilon_require
             # final_datasetidentifier_2_epsilon_z[datasetidentifier] = new_z
             del temp_datasetidentifier_2_epsilon_z[datasetidentifier]
             count += 1
@@ -56,4 +58,4 @@ class StreamingwithRemainPolicy(Policy):
         job_2_selected_datablock_identifiers = [
             (job_id, identifier) for identifier in selected_datablock_identifiers
         ]
-        return job_2_selected_datablock_identifiers, calcu_compare_epsilon
+        return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
