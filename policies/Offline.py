@@ -173,11 +173,13 @@ class OfflinePolicy(Policy):
             waiting_job_selected_sign.append(temp_selected_probability)
         scheduler_order = self.get_schedule_order(waiting_job_selected_sign)
         job_2_selected_datablock_identifiers = []
+        selected_real_sched_epsilon_map = {}
         for x, y in scheduler_order:
             job = self.waiting_queue[x]
             datablock_identifier = waiting_job_selected_datablock_identifiers[x][y]
             if job.target_epsilon_require <= sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier]:
                 job_2_selected_datablock_identifiers.append((job.job_id, datablock_identifier))
+                selected_real_sched_epsilon_map[(job.job_id, datablock_identifier)] = job.target_epsilon_require
                 sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier] -= job.target_epsilon_require
 
-        return job_2_selected_datablock_identifiers, calcu_compare_epsilon
+        return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
