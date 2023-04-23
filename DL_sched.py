@@ -943,7 +943,7 @@ class Scheduler_server(object):
             origin_info = self.jobid_2_origininfo[job_id]
             sched_epsilon_per_epoch = self.jobid_2_sched_epsilon[job_id] / self.jobid_2_target_epochs[job_id]
             
-            self.sched_logger.info("job_id: [{}] sched_epsilon_per_epoch: {}".format(job_id, sched_epsilon_per_epoch))
+            # self.sched_logger.info("job_id: [{}] sched_epsilon_per_epoch: {}".format(job_id, sched_epsilon_per_epoch))
             worker_dataset_config = {
                 "train_dataset_name": self.jobid_2_train_dataset_name[job_id],
                 "test_dataset_name": self.jobid_2_test_dataset_name[job_id],
