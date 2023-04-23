@@ -38,11 +38,12 @@ import fcntl
 import sys
 
 
-def DL_server_do_jobs(job_id, origin_info, sched_epsilon, run_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path):
+def DL_server_do_jobs(job_id, origin_info, sched_epsilon_per_epoch, run_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path):
     client = zerorpc.Client()
     client.connect("tcp://{}:{}".format(worker_ip, worker_port))
     
-    client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info, sched_epsilon, 0, run_epoch_num, model_save_path, summary_writer_path, summary_writer_key, logging_file_path)
+    print("sched_epsilon_per_epoch in DL_server_do_jobs: [{}]".format(sched_epsilon_per_epoch))
+    client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info, sched_epsilon_per_epoch, 0, run_epoch_num, model_save_path, summary_writer_path, summary_writer_key, logging_file_path)
 
 class Scheduler_server(object):
     def __init__(self, sched_ip, sched_port):
@@ -589,13 +590,13 @@ class Scheduler_server(object):
         self.jobid_2_results[job_id] = result
 
         self.jobid_2_real_epsilon[job_id] = result["epsilon_consume"]
-        remain_epsilon = self.jobid_2_sched_epsilon[job_id] - self.jobid_2_real_epsilon[job_id]
-        train_dataset_name = self.jobid_2_train_dataset_name[job_id]
+        # remain_epsilon = self.jobid_2_sched_epsilon[job_id] - self.jobid_2_real_epsilon[job_id]
+        # train_dataset_name = self.jobid_2_train_dataset_name[job_id]
         datablock_identifiers = self.jobid_2_sub_train_key_ids[job_id]
-        for identifier in datablock_identifiers:
-            self.sub_train_datasetidentifier_2_epsilon_remain[train_dataset_name][identifier] += remain_epsilon
-            if self.sub_train_datasetidentifier_2_epsilon_remain[train_dataset_name][identifier] > 0.0:
-                self.sub_train_datasetidentifier_2_dataset_status[train_dataset_name][identifier] = DATASET_STATUS_KEY.SUBMITED
+        # for identifier in datablock_identifiers:
+        #     self.sub_train_datasetidentifier_2_epsilon_remain[train_dataset_name][identifier] += remain_epsilon
+        #     if self.sub_train_datasetidentifier_2_epsilon_remain[train_dataset_name][identifier] > 0.0:
+        #         self.sub_train_datasetidentifier_2_dataset_status[train_dataset_name][identifier] = DATASET_STATUS_KEY.SUBMITED
         if self.significance_policy.need_update_backward:
             type_id = self.jobid_2_typeid[job_id]
             self.significance_policy.update_job_datablock_signficance_FAIR(type_id, datablock_identifiers, result)
@@ -940,8 +941,9 @@ class Scheduler_server(object):
         args = []
         for job_id in all_done_all_sched_jobs_copy:
             origin_info = self.jobid_2_origininfo[job_id]
-            sched_epsilon = self.jobid_2_sched_epsilon[job_id]
-            self.sched_logger.info("job_id: [{}] sched_epsilon: {}".format(job_id, sched_epsilon))
+            sched_epsilon_per_epoch = self.jobid_2_sched_epsilon[job_id] / self.jobid_2_target_epochs[job_id]
+            
+            self.sched_logger.info("job_id: [{}] sched_epsilon_per_epoch: {}".format(job_id, sched_epsilon_per_epoch))
             worker_dataset_config = {
                 "train_dataset_name": self.jobid_2_train_dataset_name[job_id],
                 "test_dataset_name": self.jobid_2_test_dataset_name[job_id],
@@ -964,7 +966,7 @@ class Scheduler_server(object):
                 run_epoch_num = self.jobid_2_target_epochs[job_id]
                 # begin_epoch_num = self.jobid_2_real_sched_epochs[job_id]
                 # update_sched_epoch_num = self.jobid_2_update_sched_epoch_num[job_id]
-                args.append([job_id, origin_info, sched_epsilon, run_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path])
+                args.append([job_id, origin_info, sched_epsilon_per_epoch, run_epoch_num, worker_ip, worker_port, worker_gpu_id, worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path])
                 if job_id not in self.jobid_2_started_time:
                     self.jobid_2_started_time[job_id] = []
                 self.jobid_2_started_time[job_id].append(time.time())

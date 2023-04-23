@@ -129,7 +129,7 @@ class Worker_server(object):
             client.worker_gpu_status_callback(worker_gpu_identifier, new_status_map[gpu_id])
     """
 
-    def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info, sched_epsilon,
+    def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info, sched_epsilon_per_epoch,
                   begin_epoch_num, update_sched_epoch_num, 
                   model_save_path, summary_writer_path, summary_writer_key, logging_file_path):
         # print("[bugxlc] job_id: {} call caculate => info: {}".format(job_id, origin_info))
@@ -147,11 +147,12 @@ class Worker_server(object):
             model_name = origin_info["model_name"]
             
             LR = origin_info["LR"]
-            EPSILON = sched_epsilon
+            EPSILON = sched_epsilon_per_epoch
             DELTA = origin_info["DELTA"]
             MAX_GRAD_NORM = origin_info["MAX_GRAD_NORM"]
             BATCH_SIZE = origin_info["BATCH_SIZE"]
             MAX_PHYSICAL_BATCH_SIZE = origin_info["MAX_PHYSICAL_BATCH_SIZE"]
+            print("EPSILON in begin_job line: 155 [{}]".format(EPSILON))
 
             worker_ip = self.local_ip
             worker_port = self.local_port

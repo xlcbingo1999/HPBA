@@ -41,7 +41,7 @@ class BestFitwithRemainPolicy(Policy):
         calcu_compare_epsilon = 0.0
         selected_datablock_identifiers = []
         selected_real_sched_epsilon_map = {}
-        enable_sub_train_datasetidentifier_2_significance = {key: value for key, value in sub_train_datasetidentifier_2_significance.items()}
+        enable_sub_train_datasetidentifier_2_significance = {key: value for key, value in temp_datasetidentifier_2_epsilon_z.items()}
         sorted_sub_train_datasetidentifier_2_significance = sorted(enable_sub_train_datasetidentifier_2_significance.items(), key=lambda x: x[1], reverse=True)
         while count < target_datablock_select_num and len(temp_datasetidentifier_2_epsilon_z.keys()) > 0:
             # 获取价值最高的数据块

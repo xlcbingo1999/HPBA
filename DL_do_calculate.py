@@ -123,6 +123,7 @@ def do_calculate_func(job_id, model_name,
         print("check test_dataset_name: {}".format(test_dataset_name), file=f)
         print("check sub_test_key_id: {}".format(sub_test_key_id), file=f)
         print("check device_index: {}".format(device_index), file=f)
+        print("check EPSILON: {}",format(EPSILON), file=f)
         
     train_dataset = get_concat_dataset(train_dataset_name, sub_train_key_ids, 
                                     DATASET_PATH, SUB_TRAIN_DATASET_CONFIG_PATH, 
