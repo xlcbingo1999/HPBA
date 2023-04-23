@@ -880,6 +880,7 @@ class Scheduler_server(object):
                 if temp_job_id not in self.jobid_2_sub_train_key_ids:
                     self.jobid_2_sub_train_key_ids[temp_job_id] = []
                 consume_epsilon = selected_real_sched_epsilon_map[(temp_job_id, identifier)] 
+                self.jobid_2_sched_epsilon[temp_job_id] = consume_epsilon
                 dataset_name = job_id_2_dataset_name[temp_job_id]
                 if self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] >= consume_epsilon:
                     self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] -= consume_epsilon # calcu_compare_epsilon
@@ -940,6 +941,7 @@ class Scheduler_server(object):
         for job_id in all_done_all_sched_jobs_copy:
             origin_info = self.jobid_2_origininfo[job_id]
             sched_epsilon = self.jobid_2_sched_epsilon[job_id]
+            self.sched_logger.info("job_id: [{}] sched_epsilon: {}".format(job_id, sched_epsilon))
             worker_dataset_config = {
                 "train_dataset_name": self.jobid_2_train_dataset_name[job_id],
                 "test_dataset_name": self.jobid_2_test_dataset_name[job_id],
