@@ -31,7 +31,8 @@ class IterativeHISPolicy(Policy):
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
         self.logger.info("policy args: beta: {}".format(self.beta))
-        # self.logger.info("policy args: gamma: {}".format(self.gamma))
+        self.logger.info("policy args: epoch_num: {}".format(self.epoch_num))
+        self.logger.info("policy args: batch_size_for_one_epoch: {}".format(self.batch_size_for_one_epoch))
         # self.logger.info("policy args: delta: {}".format(self.delta))
         # self.logger.info("policy args: only_small: {}".format(self.only_small))
 
@@ -53,9 +54,9 @@ class IterativeHISPolicy(Policy):
         ]
 
         # self.logger.debug("check sign_matrix: {}".format(sign_matrix))
-        self.logger.debug("check job_privacy_budget_consume_list [max: {}] [min: {}]".format(max(job_privacy_budget_consume_list), min(job_privacy_budget_consume_list)))
-        # self.logger.debug("check job_target_datablock_selected_num_list: {}".format(job_target_datablock_selected_num_list))
-        self.logger.debug("check datablock_privacy_budget_capacity_list: [max: {}] [min: {}]".format(max(datablock_privacy_budget_capacity_list), min(datablock_privacy_budget_capacity_list)))
+        self.logger.debug("check remain_epsilon_budget_from_last_epoch {}".format(self.remain_epsilon_budget_from_last_epoch))
+        self.logger.debug("check job_target_datablock_selected_num_list: {}".format(job_target_datablock_selected_num_list))
+        self.logger.debug("check datablock_privacy_budget_capacity_list: {}".format(datablock_privacy_budget_capacity_list))
         # self.logger.debug("check sum of datablock_privacy_budget_capacity_list: {}".format(np.sum(datablock_privacy_budget_capacity_list)))
         self.logger.debug("check sum of job_privacy_budget_consume_list: {}".format(np.sum(job_privacy_budget_consume_list * job_target_datablock_selected_num_list)))
 
@@ -222,6 +223,9 @@ class IterativeHISPolicy(Policy):
             sample_history_job_signficances = online_history_job_signficance + [offline_history_job_signficance[i] for i in sample_indexes]
             sample_history_job_target_datablock_selected_nums = online_history_job_target_datablock_selected_num + [offline_history_job_target_datablock_selected_num[i] for i in sample_indexes]
 
+        if job_arrival_index % self.batch_size_for_one_epoch == 0:
+            self.remain_epsilon_budget_from_last_epoch 
+            self.logger.info("update remain_epsilon_budget_from_last_epoch: {}".format(self.remain_epsilon_budget_from_last_epoch))
         if job_arrival_index % self.batch_size_for_one_epoch < self.beta * self.batch_size_for_one_epoch:
             self.logger.info("stop due to sample caused by job_arrival_index: {}; self.beta: {}; all_job_sequence_num: {}".format(
                 job_arrival_index, self.beta, all_job_sequence_num
