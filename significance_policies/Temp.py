@@ -5,18 +5,22 @@ import time
 from utils.global_variable import SIGNIFICANCE_TRACE_PREFIX_PATH
 
 class TempPolicy(SigPolicy):
-    def __init__(self, logger):
+    def __init__(self, simulation, logger):
         super().__init__()
         self._name = "TempPolicy"
 
         self.need_update_backward = False
 
-        self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + "/significance_TempPolicy.json"
+        if simulation:
+            self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + "/significance_TempPolicy_100.json"
+        else:
+            self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + "/significance_TempPolicy.json"
         self.logger = logger
         with open(self.significance_trace_path, "r+") as f:
             self.significance_trace = json.load(f)
+        # self.logger.info("self.significance_trace: {}".format(self.significance_trace))
 
-    def value_in_origin_OTDD_trace(self, train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id):
+    def value_in_origin_temp_trace(self, train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id):
         if train_dataset_name not in self.significance_trace:
             return None
         if sub_train_key_id not in self.significance_trace[train_dataset_name]:
@@ -37,15 +41,15 @@ class TempPolicy(SigPolicy):
             test_dataset_name = signficance_state["test_dataset_name"]
             sub_test_key_id = signficance_state["sub_test_key_id"]
 
-            # 获取原始的OTDD
-            origin_otdd_d = self.value_in_origin_OTDD_trace(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id)
-            origin_Temps.append(origin_otdd_d)
+            # 获取原始的temp
+            origin_temp_d = self.value_in_origin_temp_trace(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id)
+            origin_Temps.append(origin_temp_d)
         
         result = [
             origin_Temps[index] for index in range(len(all_significance_state))
         ]
         end = time.time()
-        self.logger.info("history_type_id [{}] to datablocks significance: {}, time: {}".format(history_type_id, result, end-begin))
+        # self.logger.info("history_type_id [{}] to datablocks significance: {}, time: {}".format(history_type_id, result, end-begin))
         return result
 
     def get_job_significance_result_for_all_datablocks(self, type_id, all_significance_state):
@@ -60,9 +64,9 @@ class TempPolicy(SigPolicy):
             # 获取epsilon的剩余值
             # remain_epsilons.append(sub_train_key_remain_epsilon)
 
-            # 获取原始的OTDD
-            origin_otdd_d = self.value_in_origin_OTDD_trace(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id)
-            origin_Temps.append(origin_otdd_d)
+            # 获取原始的temp
+            origin_temp_d = self.value_in_origin_temp_trace(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id)
+            origin_Temps.append(origin_temp_d)
             
         # 全局量 * (局部量 + UCB), 对量纲的影响是最小的
         # 不能把当前时刻的remain_epsilon传进来, 会导致历史任务的价值偏高, 当前任务的价值不断下降
@@ -73,9 +77,9 @@ class TempPolicy(SigPolicy):
         ]
         
         end = time.time()
-        self.logger.info("type_id [{}] to datablocks significance: {} [origin_Temps: {}], time: {}".format(
-            type_id, result, origin_Temps, end-begin
-        ))
+        # self.logger.info("type_id [{}] to datablocks significance: {} [origin_Temps: {}], time: {}".format(
+            # type_id, result, origin_Temps, end-begin
+        # ))
         return result
     
     def get_job_datablock_significance_async(self, type_id, signficance_state, device_index, is_history):

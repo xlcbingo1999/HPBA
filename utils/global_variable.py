@@ -6,6 +6,7 @@ SUB_TRAIN_DATASET_CONFIG_PATH = DATASET_PATH + "/{}/subtrain_12_split_1.0_dirich
 TEST_DATASET_CONFIG_PATH = DATASET_PATH + "/{}/subtest.json".format(DATASET_NAME)
 SIGNIFICANCE_TRACE_PREFIX_PATH = DATASET_PATH + "/traces"
 RECONSTRUCT_TRACE_PREFIX_PATH = DATASET_PATH + "/traces/reconstruct_traces"
+ALIBABA_DP_TRACE_PATH = DATASET_PATH + "/PRIVACY/alibaba-dp-workload/sample_output"
 
 LOGGING_DATE = "20230323"
 RESULT_PATH = "/mnt/linuxidc_client/opacus_testbed_result"

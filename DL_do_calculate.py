@@ -55,6 +55,8 @@ def get_df_config():
     parser.add_argument("--begin_epoch_num", type=int, required=True)
     parser.add_argument("--run_epoch_num", type=int, required=True)
 
+    parser.add_argument("--final_significance", type=float, required=True)
+    parser.add_argument("--simulation_flag", action="store_true")
     args = parser.parse_args()
     return args
 
@@ -114,8 +116,22 @@ def do_calculate_func(job_id, model_name,
                     model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
                     LR, EPSILON, DELTA, MAX_GRAD_NORM, 
                     BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
-                    begin_epoch_num, run_epoch_num):
+                    begin_epoch_num, run_epoch_num, final_significance, simulation_flag):
     begin_time = time.time()
+
+    if simulation_flag:
+        all_results = {
+            'train_acc': 0.0,
+            'train_loss': 0.0,
+            'test_acc': 0.0,
+            'test_loss': 0.0,
+            'epsilon_consume': run_epoch_num * EPSILON,
+            'begin_epoch_num': begin_epoch_num,
+            'run_epoch_num': run_epoch_num,
+            'final_significance': final_significance
+        }
+        real_duration_time = time.time() - begin_time
+        return job_id, all_results, real_duration_time
     
     with open(logging_file_path, "a+") as f:
         print("check train_dataset_name: {}".format(train_dataset_name), file=f)
@@ -123,6 +139,7 @@ def do_calculate_func(job_id, model_name,
         print("check test_dataset_name: {}".format(test_dataset_name), file=f)
         print("check sub_test_key_id: {}".format(sub_test_key_id), file=f)
         print("check device_index: {}".format(device_index), file=f)
+        print("check final_significance: {}".format(final_significance), file=f)
         print("check EPSILON: {}",format(EPSILON), file=f)
         
     train_dataset = get_concat_dataset(train_dataset_name, sub_train_key_ids, 
@@ -272,7 +289,8 @@ def do_calculate_func(job_id, model_name,
         'test_loss': np.mean(total_val_loss),
         'epsilon_consume': epsilon,
         'begin_epoch_num': begin_epoch_num,
-        'run_epoch_num': run_epoch_num
+        'run_epoch_num': run_epoch_num,
+        'final_significance': final_significance
     }
 
     with open(logging_file_path, "a+") as f:
@@ -312,6 +330,9 @@ if __name__ == "__main__":
     BATCH_SIZE = args.BATCH_SIZE
     MAX_PHYSICAL_BATCH_SIZE = args.MAX_PHYSICAL_BATCH_SIZE
 
+    final_significance = args.final_significance
+    simulation_flag = args.simulation_flag
+
     begin_epoch_num = args.begin_epoch_num
     run_epoch_num = args.run_epoch_num
 
@@ -323,7 +344,7 @@ if __name__ == "__main__":
         model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
         LR, EPSILON, DELTA, MAX_GRAD_NORM, 
         BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
-        begin_epoch_num, run_epoch_num
+        begin_epoch_num, run_epoch_num, final_significance, simulation_flag
     )
     
     tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)

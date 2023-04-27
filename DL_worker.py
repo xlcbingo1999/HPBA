@@ -7,6 +7,8 @@ import torch
 import json
 import os
 import sys
+from utils.global_variable import RESULT_PATH
+from utils.logging_tools import get_logger
 
 def get_df_config():
     parser = argparse.ArgumentParser(
@@ -17,7 +19,7 @@ def get_df_config():
     parser.add_argument("--sched_port", type=int, default=16306)
     
     parser.add_argument("--gpu_update_time", type=int, default=1)
-
+    
     args = parser.parse_args()
     return args
 
@@ -29,7 +31,7 @@ def do_system_calculate_func(worker_ip, worker_port,
                             model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
                             LR, EPSILON, DELTA, MAX_GRAD_NORM, 
                             BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
-                            begin_epoch_num, run_epoch_num):
+                            begin_epoch_num, run_epoch_num, final_significance, simulation_flag):
     execute_cmds = []
     # execute_cmds.append("conda run -n py39torch113") # 会卡住, 没有任何log, 这个时候最好做重定向!
     execute_cmds.append("python -u DL_do_calculate.py")
@@ -61,6 +63,9 @@ def do_system_calculate_func(worker_ip, worker_port,
     execute_cmds.append("--MAX_PHYSICAL_BATCH_SIZE {}".format(MAX_PHYSICAL_BATCH_SIZE))
     execute_cmds.append("--begin_epoch_num {}".format(begin_epoch_num))
     execute_cmds.append("--run_epoch_num {}".format(run_epoch_num))
+    execute_cmds.append("--final_significance {}".format(final_significance))
+    if simulation_flag:
+        execute_cmds.append("--simulation_flag")
 
     finally_execute_cmd = " ".join(execute_cmds)
     # print(finally_execute_cmd)
@@ -82,13 +87,14 @@ class Worker_server(object):
         self.jobid_2_thread = {}
 
         self.all_finished = False
+        self.worker_logger = None
         # gpu_device_count = torch.cuda.device_count()
         # self.worker_gpus_ready = {index:True for index in range(gpu_device_count)} # 直接允许即可
 
     def clear_all_jobs(self):
         self.jobid_2_origininfo = {}
         self.jobid_2_thread = {}
-        print("success clear all jobs in worker!")
+        self.worker_logger.info("success clear all jobs in worker!")
 
     def stop_all(self):
         self.all_finished = True
@@ -102,11 +108,12 @@ class Worker_server(object):
     def finished_job_callback(self, job_id, result, real_duration_time):
         origin_info = self.jobid_2_origininfo[job_id]
         self.report_result(job_id, origin_info, result, real_duration_time)
-        tcp_ip_port = "tcp://{}:{}".format(self.sched_ip, self.sched_port)
         client = self.get_scheduler_zerorpc_client()
         client.worker_finished_job_callback(job_id, origin_info, result)
-        del self.jobid_2_origininfo[job_id]
-        del self.jobid_2_thread[job_id]
+        if job_id in self.jobid_2_origininfo:
+            del self.jobid_2_origininfo[job_id]
+        if job_id in self.jobid_2_thread:
+            del self.jobid_2_thread[job_id]
 
     def failed_job_callback(self, job_id, failed_result_key):
         origin_info = self.jobid_2_origininfo[job_id]
@@ -117,6 +124,10 @@ class Worker_server(object):
         if job_id in self.jobid_2_thread:
             self.jobid_2_thread[job_id].join()
             del self.jobid_2_thread[job_id]
+
+    def initialize_logging_path(self, current_test_all_dir):
+        logger_path = "{}/{}/DL_worker_{}_{}.log".format(RESULT_PATH, current_test_all_dir, self.local_ip, self.local_port) 
+        self.worker_logger = get_logger(logger_path, logger_path, enable_multiprocess=True)
 
     """
     def update_worker_gpus_status_callback(self, new_status_map):
@@ -131,9 +142,24 @@ class Worker_server(object):
 
     def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info, sched_epsilon_per_epoch,
                   begin_epoch_num, update_sched_epoch_num, 
-                  model_save_path, summary_writer_path, summary_writer_key, logging_file_path):
-        # print("[bugxlc] job_id: {} call caculate => info: {}".format(job_id, origin_info))
+                  model_save_path, summary_writer_path, summary_writer_key, logging_file_path, final_significance, simulation_flag):
+        # self.worker_logger.info("[bugxlc] job_id: {} call caculate => info: {}".format(job_id, origin_info))
         self.jobid_2_origininfo[job_id] = origin_info
+        if simulation_flag:
+            all_results = {
+                'train_acc': 0.0,
+                'train_loss': 0.0,
+                'test_acc': 0.0,
+                'test_loss': 0.0,
+                'epsilon_consume': update_sched_epoch_num * sched_epsilon_per_epoch,
+                'begin_epoch_num': begin_epoch_num,
+                'run_epoch_num': update_sched_epoch_num,
+                'final_significance': final_significance
+            }
+            self.finished_job_callback(job_id, all_results, 0.0)
+            return 
+        
+        
         try:
             # GPU调度
             device_index = worker_gpu_id
@@ -152,7 +178,7 @@ class Worker_server(object):
             MAX_GRAD_NORM = origin_info["MAX_GRAD_NORM"]
             BATCH_SIZE = origin_info["BATCH_SIZE"]
             MAX_PHYSICAL_BATCH_SIZE = origin_info["MAX_PHYSICAL_BATCH_SIZE"]
-            print("EPSILON in begin_job line: 155 [{}]".format(EPSILON))
+            self.worker_logger.info("EPSILON in begin_job {}: [{}]".format(job_id, EPSILON))
 
             worker_ip = self.local_ip
             worker_port = self.local_port
@@ -164,7 +190,7 @@ class Worker_server(object):
                 device_index, 
                 model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
                 LR, EPSILON, DELTA, MAX_GRAD_NORM, 
-                BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, begin_epoch_num, update_sched_epoch_num), daemon=True)
+                BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, begin_epoch_num, update_sched_epoch_num, final_significance, simulation_flag), daemon=True)
             self.jobid_2_thread[job_id] = p
             p.start()
         except Exception as e:
@@ -172,7 +198,7 @@ class Worker_server(object):
             raise ValueError("No this calculate func: {}".format(e))
 
     def report_result(self, job_id, origin_info, result, real_duration_time):
-        print("Worker finished job [{}] => result: {}; time: {}".format(job_id, result, real_duration_time))
+        self.worker_logger.info("Worker finished job [{}] => result: {}; time: {}".format(job_id, result, real_duration_time))
 
     def timely_update_gpu_status(self):
         gpu_devices_count = torch.cuda.device_count()

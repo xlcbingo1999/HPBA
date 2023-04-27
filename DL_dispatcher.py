@@ -1,13 +1,16 @@
 import zerorpc
 import time
 from utils.global_variable import RESULT_PATH, RECONSTRUCT_TRACE_PREFIX_PATH
+from utils.global_functions import get_types, convert_types
 import threading
 from functools import reduce
 import sys
 import argparse
 import json
+import copy
+from queue import PriorityQueue
 from utils.logging_tools import get_logger
-from utils.generate_tools import generate_dataset, generate_jobs
+from utils.generate_tools import generate_dataset, generate_jobs, generate_alibaba_jobs, generate_alibaba_dataset
 
 def get_df_config():
     parser = argparse.ArgumentParser(
@@ -20,7 +23,13 @@ def get_df_config():
     parser.add_argument("--all_history_num", type=int, default=50)
     parser.add_argument("--time_interval", type=int, default=100) # 100, 500, 1000, 1500 [1/1, 1/2, 1/3, 1/5]
     parser.add_argument("--need_change_interval", action="store_true")
+    
+    parser.add_argument("--simulation_flag", action="store_true")
+    parser.add_argument("--simulation_time_speed_up", type=float, default=1.0)
+    parser.add_argument("--simulation_datablock_num", type=int, default=100)
+    parser.add_argument("--simulation_datablock_require_epsilon_max_ratio", type=float, default=0.1)
 
+    parser.add_argument("--base_capacity", type=float, default=10.0)
     parser.add_argument("--budget_capacity_ratio", type=float, default=1)
 
     parser.add_argument("--scheduler_update_sleep_time", type=float, default=0.0)
@@ -97,6 +106,9 @@ class Dispatcher(object):
         dispatcher_logger_path = '{}/DL_dispatcher.log'.format(all_logger_path)
         self.dispatcher_logger = get_logger(dispatcher_logger_path, dispatcher_logger_path, enable_multiprocess=True)
         
+    def end_by_sched(self):
+        self.all_finished = True
+
     def dispatch_jobs(self, all_decision_num, sched_ip, sched_port, update_timeout):
         def thread_func_timely_dispatch_job(sched_ip, sched_port, update_timeout):
             while not self.all_finished:
@@ -117,6 +129,7 @@ class Dispatcher(object):
                     client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
                     client.update_jobs(dispatch_jobs_detail) # 提交上去后, 任务即进入NO_SCHED状态, 之后就是调度器自身会启动一个不断循环的获取计算Siginificane策略和调度策略
                 if self.dispatch_datasets_count == len(self.jobs_detail):
+                    client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
                     client.set_final_job_flag(True)
                     self.dispatcher_logger.info("Finished Job Dispatch!")
                     break
@@ -181,6 +194,7 @@ class Dispatcher(object):
         p = threading.Thread(target=thread_func_timely_dispatch_dataset, args=(sched_ip, sched_port, update_timeout), daemon=True)
         p.start()
         return p
+
     
     def sched_update_current_time(self):
         def thread_func_timely_update_time():
@@ -191,6 +205,40 @@ class Dispatcher(object):
         p = threading.Thread(target=thread_func_timely_update_time, daemon=True)
         p.start()
         return p
+
+    def sched_simulation_start(self, sched_ip, sched_port):
+        subtrain_datasetidentifier_info = {}
+        for dataset_name in self.datasets_map:
+            for sub_train_dataset_identifier in self.datasets_map[dataset_name]:
+                need_submit_time = self.datasets_map[dataset_name][sub_train_dataset_identifier]["time"]
+                epsilon_capacity = self.datasets_map[dataset_name][sub_train_dataset_identifier]["epsilon_capacity"]
+                delta_capacity = self.datasets_map[dataset_name][sub_train_dataset_identifier]["delta_capacity"]
+                if dataset_name not in subtrain_datasetidentifier_info:
+                    subtrain_datasetidentifier_info[dataset_name] = {}
+                subtrain_datasetidentifier_info[dataset_name][sub_train_dataset_identifier] = {
+                    "time": need_submit_time,
+                    "epsilon_capacity": epsilon_capacity,
+                    "delta_capacity": delta_capacity,
+                }
+        temp_history_job_details = {}
+        for history_job_id in self.history_jobs_detail:
+            info = self.history_jobs_detail[history_job_id]
+            del_info = copy.deepcopy(info)
+            temp_history_job_details[history_job_id] = del_info
+
+        temp_submit_job_details = []
+        for index in range(len(self.jobs_detail)):
+            job_id, info = self.jobs_detail[index]
+            del_info = copy.deepcopy(info)
+            del del_info["submited"] 
+            temp_submit_job_details.append([job_id, del_info])
+        subtrain_datasetidentifier_info = convert_types(subtrain_datasetidentifier_info)
+        temp_history_job_details = convert_types(temp_history_job_details)
+        temp_submit_job_details = convert_types(temp_submit_job_details)
+        all_decision_num = len(temp_submit_job_details)
+        client = self.get_zerorpc_client(sched_ip, sched_port)
+        client.init_jobs_all_sequence_num(all_decision_num)
+        client.sched_simulation_start(subtrain_datasetidentifier_info, temp_history_job_details, temp_submit_job_details)
     
     def get_zerorpc_client(self, ip, port, timeout=30):
         tcp_ip_port = "tcp://{}:{}".format(ip, port)
@@ -228,10 +276,11 @@ class Dispatcher(object):
 
     def sched_update_gpu_status_start(self, ip, port, init_workerip_2_ports, init_gpuidentifiers):
         client = self.get_zerorpc_client(ip, port)
-        client.sched_update_gpu_status_start(init_workerip_2_ports, init_gpuidentifiers)
+        client.sched_update_gpu_status_start(init_workerip_2_ports, init_gpuidentifiers, self.current_test_all_dir)
 
-    def sched_init_sched_register(self, ip, port, assignment_policy, significance_policy, all_decision_num):
+    def sched_init_sched_register(self, ip, port, assignment_policy, significance_policy, all_decision_num, simulation):
         client = self.get_zerorpc_client(ip, port)
+        client.initialize_simulation_flag(simulation)
         client.initialize_logging_path(self.current_test_all_dir)
         if assignment_policy == "PBGPolicy":
             comparison_cost_epsilon_list = args.pbg_comparison_cost_epsilons
@@ -261,6 +310,7 @@ class Dispatcher(object):
             assignment_args = None
         client.sched_update_assignment_policy(assignment_policy, assignment_args)
         client.sched_update_significance_policy(significance_policy)
+        self.dispatcher_logger.info("sched_init_sched_register finished!")
 
     def sched_init_history_policy(self, ip, port, history_jobs_map):
         client = self.get_zerorpc_client(ip, port)
@@ -284,48 +334,17 @@ def exit_gracefully(server):
     print("closing server")
     server.close()
 
-if __name__ == "__main__":
-    args = get_df_config()
+def testbed_experiment_start(sched_ip, sched_port,
+                            dispatcher_ip, dispatcher_port,
+                            worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
+                            global_sleep_time, update_timeout, scheduler_update_sleep_time, 
+                            cal_significance_sleep_time, sched_best_serve_sleep_time, 
+                            placement_sleep_time, waiting_time,
+                            dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
+                            budget_capacity_ratio, base_capacity,
+                            logging_time, jobtrace_save_path,
+                            all_decision_num, all_history_num, time_interval, need_change_interval):
 
-    sched_ip = args.sched_ip
-    sched_port = args.sched_port
-    dispatcher_ip = args.dispatcher_ip
-    dispatcher_port = args.dispatcher_port
-    worker_ips = args.worker_ips
-    worker_ports = args.worker_ports
-    worker_indexes = args.worker_indexes
-    assert len(worker_ips) == len(worker_ports)
-    init_gpuidentifiers = []
-    init_workerip_2_ports = {}
-    for worker_ip, worker_port in zip(worker_ips, worker_ports):
-        init_workerip_2_ports[worker_ip] = worker_port
-        for i in worker_indexes:
-            temp_identifier = worker_ip + "-{}".format(i)
-            init_gpuidentifiers.append(temp_identifier)
-    
-    global_sleep_time = args.global_sleep_time
-    update_timeout = args.update_timeout
-    scheduler_update_sleep_time = args.scheduler_update_sleep_time
-    cal_significance_sleep_time = args.cal_significance_sleep_time
-    sched_best_serve_sleep_time = args.sched_best_serve_sleep_time
-    placement_sleep_time = args.placement_sleep_time
-
-    waiting_time = args.waiting_time
-
-    dataset_reconstruct_path = args.dataset_reconstruct_path
-    test_jobtrace_reconstruct_path = args.test_jobtrace_reconstruct_path
-    history_jobtrace_reconstruct_path = args.history_jobtrace_reconstruct_path
-
-    budget_capacity_ratio = args.budget_capacity_ratio
-    base_capacity = 10.0
-
-    logging_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
-    jobtrace_save_path = 'jobs-datasets-%s' % (logging_time)
-
-    all_decision_num = args.all_decision_num
-    all_history_num = args.all_history_num
-    time_interval = args.time_interval
-    need_change_interval = args.need_change_interval
     datasets_list = generate_dataset(
         dataset_names=["EMNIST"], 
         fix_epsilon=base_capacity * budget_capacity_ratio, 
@@ -367,7 +386,7 @@ if __name__ == "__main__":
         remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
         processes.append(remote_server_p)
 
-        dispatcher.sched_init_sched_register(sched_ip, sched_port, args.assignment_policy, args.significance_policy, all_decision_num)
+        dispatcher.sched_init_sched_register(sched_ip, sched_port, args.assignment_policy, args.significance_policy, all_decision_num, simulation=False)
         dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_workerip_2_ports, init_gpuidentifiers)
         if not args.without_start_load_job:
             dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout)
@@ -395,6 +414,84 @@ if __name__ == "__main__":
             all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
         dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
         print("logically all stoped!")
+        dispatcher.sched_end(sched_ip, sched_port)
+        if not args.without_finished_clear_job:
+            dispatcher.sched_clear_all_jobs(sched_ip, sched_port)
+        if not args.without_finished_clear_dataset:
+            dispatcher.sched_clear_all_datasets(sched_ip, sched_port)
+        print("Stop workers and scheduler")
+        time.sleep(waiting_time)
+        
+        if not args.without_stop_all:
+            dispatcher.stop_all(sched_ip, sched_port)
+        print("Waiting for stop threads {} s".format(waiting_time))
+        time.sleep(waiting_time)
+        sys.exit(0)
+    except Exception as e:
+        print("[xlc] Exception: ", e)
+
+def simulation_experiment_start(sched_ip, sched_port,
+                            dispatcher_ip, dispatcher_port,
+                            worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
+                            dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
+                            budget_capacity_ratio, base_capacity,
+                            logging_time, jobtrace_save_path,
+                            all_decision_num, all_history_num, need_change_interval,
+                            simulation_time_speed_up, simulation_datablock_num, simulation_datablock_require_epsilon_max_ratio
+                            ):
+    min_epsilon_capacity = base_capacity * budget_capacity_ratio
+    datasets_list = generate_alibaba_dataset(
+        num=simulation_datablock_num,
+        time_speed_up=simulation_time_speed_up,
+        dataset_names=["EMNIST"],
+        fix_epsilon=min_epsilon_capacity,
+        fix_delta=1e-5,
+        dataset_reconstruct_path=dataset_reconstruct_path, 
+        save_path=jobtrace_save_path
+    )
+    jobs_list = generate_alibaba_jobs(
+        all_num=all_decision_num,
+        time_speed_up=simulation_time_speed_up,
+        need_change_interval=need_change_interval,
+        is_history=False,
+        datablock_require_epsilon_max_ratio=simulation_datablock_require_epsilon_max_ratio,
+        min_epsilon_capacity=min_epsilon_capacity,
+        dispatcher_ip=dispatcher_ip,
+        dispatcher_port=dispatcher_port,
+        jobtrace_reconstruct_path=test_jobtrace_reconstruct_path,
+        save_path=jobtrace_save_path
+    )
+    history_jobs_list = generate_alibaba_jobs(
+        all_num=all_history_num,
+        time_speed_up=simulation_time_speed_up,
+        need_change_interval=need_change_interval,
+        is_history=True,
+        datablock_require_epsilon_max_ratio=simulation_datablock_require_epsilon_max_ratio,
+        min_epsilon_capacity=min_epsilon_capacity,
+        dispatcher_ip=dispatcher_ip,
+        dispatcher_port=dispatcher_port,
+        jobtrace_reconstruct_path=history_jobtrace_reconstruct_path,
+        save_path=jobtrace_save_path
+    )
+    all_decision_num = len(jobs_list)
+    
+    processes = []
+    try:
+        dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list, logging_time)
+        remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
+        processes.append(remote_server_p)
+
+        dispatcher.sched_init_sched_register(sched_ip, sched_port, args.assignment_policy, args.significance_policy, all_decision_num, simulation=True)
+        dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_workerip_2_ports, init_gpuidentifiers)
+
+        # 合并成统一的事件队列, 需要等待所有的
+        dispatcher.sched_simulation_start(sched_ip, sched_port) # 同样直接启动一个线程, 完成一大堆队列操作即可
+
+        # 主线程的最后一个操作!
+        while not dispatcher.all_finished:
+            time.sleep(global_sleep_time)
+        dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
+        print("logically all stoped!")
         dispatcher.all_finished = True
         dispatcher.sched_end(sched_ip, sched_port)
         if not args.without_finished_clear_job:
@@ -411,3 +508,73 @@ if __name__ == "__main__":
         sys.exit(0)
     except Exception as e:
         print("[xlc] Exception: ", e)
+
+
+if __name__ == "__main__":
+    args = get_df_config()
+
+    sched_ip = args.sched_ip
+    sched_port = args.sched_port
+    dispatcher_ip = args.dispatcher_ip
+    dispatcher_port = args.dispatcher_port
+    worker_ips = args.worker_ips
+    worker_ports = args.worker_ports
+    worker_indexes = args.worker_indexes
+    assert len(worker_ips) == len(worker_ports)
+    init_gpuidentifiers = []
+    init_workerip_2_ports = {}
+    for worker_ip, worker_port in zip(worker_ips, worker_ports):
+        init_workerip_2_ports[worker_ip] = worker_port
+        for i in worker_indexes:
+            temp_identifier = worker_ip + "-{}".format(i)
+            init_gpuidentifiers.append(temp_identifier)
+
+    dataset_reconstruct_path = args.dataset_reconstruct_path
+    test_jobtrace_reconstruct_path = args.test_jobtrace_reconstruct_path
+    history_jobtrace_reconstruct_path = args.history_jobtrace_reconstruct_path
+
+    budget_capacity_ratio = args.budget_capacity_ratio
+    base_capacity = args.base_capacity
+
+    logging_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
+    jobtrace_save_path = 'jobs-datasets-%s' % (logging_time)
+
+    all_decision_num = args.all_decision_num
+    all_history_num = args.all_history_num
+    time_interval = args.time_interval
+    need_change_interval = args.need_change_interval
+
+    simulation_time_speed_up = args.simulation_time_speed_up
+    simulation_datablock_num = args.simulation_datablock_num
+    simulation_datablock_require_epsilon_max_ratio = args.simulation_datablock_require_epsilon_max_ratio
+
+    global_sleep_time = args.global_sleep_time 
+    update_timeout = args.update_timeout 
+    scheduler_update_sleep_time = args.scheduler_update_sleep_time
+    cal_significance_sleep_time = args.cal_significance_sleep_time 
+    sched_best_serve_sleep_time = args.sched_best_serve_sleep_time
+    placement_sleep_time = args.placement_sleep_time 
+    waiting_time = args.waiting_time
+
+    if args.simulation_flag:
+        simulation_experiment_start(sched_ip, sched_port,
+                            dispatcher_ip, dispatcher_port,
+                            worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
+                            dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
+                            budget_capacity_ratio, base_capacity,
+                            logging_time, jobtrace_save_path,
+                            all_decision_num, all_history_num, need_change_interval,
+                            simulation_time_speed_up, simulation_datablock_num, simulation_datablock_require_epsilon_max_ratio)
+    else:
+        testbed_experiment_start(sched_ip, sched_port,
+                            dispatcher_ip, dispatcher_port,
+                            worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
+                            global_sleep_time, update_timeout, scheduler_update_sleep_time, 
+                            cal_significance_sleep_time, sched_best_serve_sleep_time, 
+                            placement_sleep_time, waiting_time,
+                            dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
+                            budget_capacity_ratio, base_capacity,
+                            logging_time, jobtrace_save_path,
+                            all_decision_num, all_history_num, time_interval, need_change_interval)    
+    
+        

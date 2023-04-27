@@ -50,7 +50,7 @@ class JobTypeItem(object): # TODO: 改成 JobTypeItem
         return history_result_fenzi / history_result_fenmu
 
 class HVOTDDPolicy(SigPolicy):
-    def __init__(self, logger, batch_size=16, history_alpha=0.5, history_rho=0.5):
+    def __init__(self, simulation, logger, batch_size=16, history_alpha=0.5, history_rho=0.5):
         super().__init__()
         self._name = "HVOTDDPolicy"
         self.distance_batch_size = batch_size

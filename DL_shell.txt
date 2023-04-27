@@ -1,19 +1,38 @@
 python DL_worker.py \
-    --local_ip 172.18.162.6 \
-    --local_port 16206 \
-    --sched_ip 172.18.162.6 \
-    --sched_port 16306
+    --local_ip 172.18.162.5 \
+    --local_port 16205 \
+    --sched_ip 172.18.162.5 \
+    --sched_port 16305
 
 python DL_sched.py \
-    --worker_ips 172.18.162.6 \
-    --worker_ports 16206 \
-    --sched_ip 172.18.162.6 \
-    --sched_port 16306
+    --worker_ips 172.18.162.5 \
+    --worker_ports 16205 \
+    --sched_ip 172.18.162.5 \
+    --sched_port 16305
 
 python DL_dispatcher.py \
-    --worker_ips 172.18.162.6 \
-    --worker_ports 16206 \
-    --sched_ip 172.18.162.6 \
-    --sched_port 16306 \
-    --dispatcher_ip 172.18.162.6 \
-    --dispatcher_port 16406 
+    --worker_ips 172.18.162.5 \
+    --worker_ports 16205 \
+    --sched_ip 172.18.162.5 \
+    --sched_port 16305 \
+    --dispatcher_ip 172.18.162.5 \
+    --dispatcher_port 16405 \
+    --assignment_policy SagewithRemainPolicy \
+    --significance_policy TempPolicy \
+    --simulation_flag \
+    --all_decision_num 2000 \
+    --all_history_num 2000
+
+
+python DL_dispatcher.py \
+    --worker_ips 172.18.162.5 \
+    --worker_ports 16205 \
+    --sched_ip 172.18.162.5 \
+    --sched_port 16305 \
+    --dispatcher_ip 172.18.162.5 \
+    --dispatcher_port 16405 \
+    --assignment_policy SagewithRemainPolicy \
+    --significance_policy TempPolicy \
+    --dataset_reconstruct_path jobs-datasets-04-10-21-49-44 \
+    --test_jobtrace_reconstruct_path jobs-datasets-04-10-21-49-44 \
+    --history_jobtrace_reconstruct_path jobs-datasets-04-02-18-52-51

@@ -50,7 +50,7 @@ class JobTypeItem(object): # TODO: 改成 JobTypeItem
         return history_result_fenzi / history_result_fenmu
 
 class OTDDPolicy(SigPolicy):
-    def __init__(self, logger, batch_size=16, history_alpha=0.5, history_rho=0.5):
+    def __init__(self, simulation, logger, batch_size=16, history_alpha=0.5, history_rho=0.5):
         super().__init__()
         self._name = "OTDDPolicy"
         self.distance_batch_size = batch_size
@@ -65,7 +65,10 @@ class OTDDPolicy(SigPolicy):
         self.OTDD_beta = 0.02
         self.max_OTDD = 0.0
 
-        self.OTDD_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + "/significance_OTDDPolicy.json"
+        if simulation:
+            self.OTDD_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + "/significance_OTDDPolicy.json"
+        else:
+            self.OTDD_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + "/significance_OTDDPolicy.json"
         with open(self.OTDD_trace_path, "r+") as f:
             self.origin_OTDD_trace = json.load(f)
         

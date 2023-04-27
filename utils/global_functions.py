@@ -1,5 +1,6 @@
 from enum import Enum
-
+import json
+import numpy as np
 
 def normal_counter(origin_counter):
     sum_value = sum(origin_counter.values(), 0)
@@ -18,6 +19,42 @@ def add_2_map(A, B):
             C.update({key: A.get(key) or B.get(key)})
     return C
 
+def get_types(var):
+    var_type = type(var).__name__
+    if var_type in ('list', 'tuple', 'set'):
+        sub_types = set()
+        for sub_var in var:
+            sub_types.add(get_types(sub_var))
+        return var_type + '[' + ', '.join(sub_types) + ']'
+    elif var_type == 'dict':
+        sub_types = set()
+        for key, value in var.items():
+            sub_types.add(get_types(key) + ': ' + get_types(value))
+        return var_type + '[' + ', '.join(sub_types) + ']'
+    else:
+        return var_type
+
+def convert_types(var):
+    if isinstance(var, np.int64):
+        return int(var)
+    elif isinstance(var, np.float64):
+        return float(var)
+    elif isinstance(var, (list, tuple)):
+        return [convert_types(sub_var) for sub_var in var]
+    elif isinstance(var, dict):
+        return {convert_types(key): convert_types(value) for key, value in var.items()}
+    else:
+        return var
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
 
 class FAILED_RESULT_KEY(Enum):
     WORKER_NO_READY = 1
@@ -34,8 +71,12 @@ class JOB_STATUS_KEY(Enum):
 
     RECOMING = 201
 
-    FINISHED = 301
+    SIMULATION_NO_SUMBIT = 301
+
+    FINISHED = 888
     FAILED = 999
+
+
     
 
 class JOB_STATUS_UPDATE_PATH(Enum):
@@ -48,13 +89,14 @@ class JOB_STATUS_UPDATE_PATH(Enum):
     RUNNING_2_RECOMING = 102
     SIGNIFICANCE_2_RECOMING = 103
     NOSCHED_2_RECOMING = 104
-    
-    RECOMING_2_NOSCHED = 301
 
     NOSCHED_2_FINISHED = 201
     SIGNIFICANCE_2_FINISHED = 202
     ALLSCHED_2_FINISHED = 203
     RUNNING_2_FINISHED = 204
+    
+    RECOMING_2_NOSCHED = 301
+    SIMULATION_NOSUBMIT_2_NOSHCED = 401
 
     NOSCHED_2_FAILED = 991
     ALLSCHED_2_FAILED = 992
@@ -69,4 +111,19 @@ class DATASET_STATUS_KEY(Enum):
     SUBMITED = 1
     EXHAUST = 2
 
+class EVENT_KEY(Enum):
+    JOB_SUBMIT = 100
+    JOB_SUCCESS = 101
+    JOB_FAILED = 102
+
+    WORKER_ADD = 200
+    WORKER_REMOVE = 201
+
+    DATABLOCK_ADD = 300
+    DATABLOCK_REMOVE = 301
+
+    HISTORY_JOB_SUBMIT = 400
+
+    TEST_START = 500
+    MAX_TIME = 100000
     
