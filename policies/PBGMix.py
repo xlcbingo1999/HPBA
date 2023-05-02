@@ -107,4 +107,3 @@ class PBGMixPolicy(Policy):
         ]
         
         return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
-

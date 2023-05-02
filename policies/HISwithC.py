@@ -21,6 +21,24 @@ class HISwithCPolicy(Policy):
         self.need_history = True
         self.job_sequence_all_num = job_sequence_all_num
 
+        self.offline_history_job_priority_weights = []
+        self.offline_history_job_budget_consumes = []
+        self.offline_history_job_target_selected_num = []
+        self.offline_history_job_train_dataset_name = []
+        self.offline_history_job_test_dataset_name = []
+        self.offline_history_job_sub_test_key_id = []
+        self.offline_history_job_type_id = []
+        self.offline_history_job_significance = []
+
+        self.online_history_job_priority_weights = []
+        self.online_history_job_budget_consumes = []
+        self.online_history_job_target_selected_num = []
+        self.online_history_job_train_dataset_name = []
+        self.online_history_job_test_dataset_name = []
+        self.online_history_job_sub_test_key_id = []
+        self.online_history_job_type_id = []
+        self.online_history_job_significance = []
+
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
         self.logger.info("policy args: beta: {}".format(self.beta))
@@ -188,16 +206,15 @@ class HISwithCPolicy(Policy):
         job_arrival_index = state["job_id_2_arrival_index"][job_id]
         
         all_job_sequence_num = self.job_sequence_all_num
-        offline_history_job_priority_weights = state["offline_history_job_priority_weights"]
-        offline_history_job_budget_consumes = state["offline_history_job_budget_consumes"]
-        offline_history_job_signficance = state["offline_history_job_significance"]
-        offline_history_job_target_datablock_selected_num = state["offline_history_job_target_datablock_selected_num"]
+        offline_history_job_priority_weights = self.offline_history_job_priority_weights
+        offline_history_job_budget_consumes = self.offline_history_job_budget_consumes
+        offline_history_job_signficance = self.offline_history_job_significance
+        offline_history_job_target_datablock_selected_num = self.offline_history_job_target_selected_num
 
-        online_history_job_priority_weights = state["online_history_job_priority_weights"]
-        online_history_job_budget_consumes = state["online_history_job_budget_consumes"]
-        online_history_job_signficance = state["online_history_job_significance"]
-        online_history_job_target_datablock_selected_num = state["online_history_job_target_datablock_selected_num"]
-
+        online_history_job_priority_weights = self.online_history_job_priority_weights
+        online_history_job_budget_consumes = self.online_history_job_budget_consumes
+        online_history_job_signficance = self.online_history_job_significance
+        online_history_job_target_datablock_selected_num = self.online_history_job_target_selected_num
         # assert target_datablock_select_num == 1
         
         if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < all_job_sequence_num:
@@ -235,3 +252,76 @@ class HISwithCPolicy(Policy):
             (job_id, identifier) for identifier in selected_datablock_identifiers
         ]
         return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
+    
+    def push_offline_history_to_assignment_policy(self, offline_history_job_priority_weights, offline_history_job_budget_consumes,
+            offline_history_job_target_selected_num, offline_history_job_train_dataset_name, offline_history_job_test_dataset_name,
+            offline_history_job_sub_test_key_id, offline_history_job_type_id, offline_history_job_significance):
+        self.offline_history_job_priority_weights = offline_history_job_priority_weights
+        self.offline_history_job_budget_consumes = offline_history_job_budget_consumes
+        self.offline_history_job_target_selected_num = offline_history_job_target_selected_num
+        self.offline_history_job_train_dataset_name = offline_history_job_train_dataset_name
+        self.offline_history_job_test_dataset_name = offline_history_job_test_dataset_name
+        self.offline_history_job_sub_test_key_id = offline_history_job_sub_test_key_id
+        self.offline_history_job_type_id = offline_history_job_type_id
+        self.offline_history_job_significance = offline_history_job_significance
+
+    def push_online_history_to_assignment_policy(self, online_job_priority_weight, online_job_budget_consume, 
+            online_job_datablock_selected_num, online_job_train_dataset_name, online_job_test_dataset_name, 
+            online_job_sub_test_key_id, online_job_type_id, online_job_significance):
+        self.online_history_job_priority_weights.append(online_job_priority_weight)
+        self.online_history_job_budget_consumes.append(online_job_budget_consume)
+        self.online_history_job_target_selected_num.append(online_job_datablock_selected_num)
+        self.online_history_job_train_dataset_name.append(online_job_train_dataset_name)
+        self.online_history_job_test_dataset_name.append(online_job_test_dataset_name)
+        self.online_history_job_sub_test_key_id.append(online_job_sub_test_key_id)
+        self.online_history_job_type_id.append(online_job_type_id)
+        self.online_history_job_significance.append(online_job_significance)
+
+    def pull_offline_history_from_assignment_policy(self, target_keys):
+        result = {}
+        for key in target_keys:
+            if key == "offline_history_job_priority_weights":
+                result[key] = self.offline_history_job_priority_weights
+            if key == "offline_history_job_budget_consumes":
+                result[key] = self.offline_history_job_budget_consumes
+            if key == "offline_history_job_target_selected_num":
+                result[key] = self.offline_history_job_target_selected_num
+            if key == "offline_history_job_train_dataset_name":
+                result[key] = self.offline_history_job_train_dataset_name
+            if key == "offline_history_job_test_dataset_name":
+                result[key] = self.offline_history_job_test_dataset_name
+            if key == "offline_history_job_sub_test_key_id":
+                result[key] = self.offline_history_job_sub_test_key_id
+            if key == "offline_history_job_type_id":
+                result[key] = self.offline_history_job_type_id
+            if key == "offline_history_job_significance":
+                result[key] = self.offline_history_job_significance
+        return result
+
+    def pull_online_history_from_assignment_policy(self, target_keys):
+        result = {}
+        for key in target_keys:
+            if key == "online_history_job_priority_weights":
+                result[key] = self.online_history_job_priority_weights
+            if key == "online_history_job_budget_consumes":
+                result[key] = self.online_history_job_budget_consumes
+            if key == "online_history_job_target_selected_num":
+                result[key] = self.online_history_job_target_selected_num
+            if key == "online_history_job_train_dataset_name":
+                result[key] = self.online_history_job_train_dataset_name
+            if key == "online_history_job_test_dataset_name":
+                result[key] = self.online_history_job_test_dataset_name
+            if key == "online_history_job_sub_test_key_id":
+                result[key] = self.online_history_job_sub_test_key_id
+            if key == "online_history_job_type_id":
+                result[key] = self.online_history_job_type_id
+            if key == "online_history_job_significance":
+                result[key] = self.online_history_job_significance
+        return result
+
+    def update_offline_history_job_significance_to_assignment_policy(self, offline_history_job_significance):
+        self.offline_history_job_significance = offline_history_job_significance
+    
+    def update_online_history_job_significance_to_assignment_policy(self, online_history_job_significance):
+        self.online_history_job_significance = online_history_job_significance
+    

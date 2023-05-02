@@ -309,7 +309,7 @@ def generate_alibaba_jobs(all_num,
             json.dump(jobs, f, cls=NpEncoder)
     return jobs
 
-def generate_alibaba_dataset(num, time_speed_up,
+def generate_alibaba_dataset(num, offline_num, time_speed_up,
                     dataset_names, fix_epsilon, fix_delta,
                     dataset_reconstruct_path="", save_path=""):
     if len(dataset_reconstruct_path) > 0:
@@ -319,7 +319,7 @@ def generate_alibaba_dataset(num, time_speed_up,
             datasets_list = json.load(f)
     else:
         print("check dataset_names: {}".format(dataset_names))
-        offline_num = 10
+        offline_num = offline_num
         online_time_iterval = 3600.0 * 4 / time_speed_up
         datasets_list = {}
         for name in dataset_names:

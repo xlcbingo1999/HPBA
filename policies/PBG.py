@@ -105,4 +105,3 @@ class PBGPolicy(Policy):
             (job_id, identifier) for identifier in selected_datablock_identifiers
         ]
         return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
-

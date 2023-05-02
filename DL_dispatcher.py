@@ -26,7 +26,8 @@ def get_df_config():
     
     parser.add_argument("--simulation_flag", action="store_true")
     parser.add_argument("--simulation_time_speed_up", type=float, default=1.0)
-    parser.add_argument("--simulation_datablock_num", type=int, default=100)
+    parser.add_argument("--simulation_all_datablock_num", type=int, default=100)
+    parser.add_argument("--simulation_offline_datablock_num", type=int, default=100)
     parser.add_argument("--simulation_datablock_require_epsilon_max_ratio", type=float, default=0.1)
 
     parser.add_argument("--base_capacity", type=float, default=10.0)
@@ -75,7 +76,7 @@ def get_df_config():
     return args
 
 class Dispatcher(object):
-    def __init__(self, jobs_list, history_jobs_list, datasets_map, logging_time):
+    def __init__(self, jobs_list, history_jobs_list, datasets_map, logging_time, simulation_flag):
         jobs_list = sorted(jobs_list, key=lambda r: r["time"])
         jobs_id_list = ["job_{}".format(x) for x in range(len(jobs_list))]
         jobs_detail = list(map(lambda x: [x[0], x[1]], zip(jobs_id_list, jobs_list)))
@@ -101,13 +102,49 @@ class Dispatcher(object):
         self.all_start_time = time.time()
         self.current_time = 0
 
-        self.current_test_all_dir = 'schedule-review-%s' % (logging_time)
+        schedule_type = 'simulation' if simulation_flag else 'testbed'
+        self.current_test_all_dir = 'schedule-review-%s-%s' % (schedule_type, logging_time)
         all_logger_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
         dispatcher_logger_path = '{}/DL_dispatcher.log'.format(all_logger_path)
         self.dispatcher_logger = get_logger(dispatcher_logger_path, dispatcher_logger_path, enable_multiprocess=True)
         
-    def end_by_sched(self):
+    def end_and_report_by_sched(self, all_result_map):
+        current_success_num = all_result_map["current_success_num"]
+        current_failed_num = all_result_map["current_failed_num"]
+        current_no_submit_num = all_result_map["current_no_submit_num"]
+        current_no_sche_num = all_result_map["current_no_sche_num"]
+        current_done_sig_num = all_result_map["current_done_sig_num"]
+        current_done_sche_num = all_result_map["current_done_sche_num"]
+        current_running_num = all_result_map["current_running_num"]
+        current_recoming_num = all_result_map["current_recoming_num"]
+        all_train_loss = all_result_map["all_train_loss"]
+        all_train_accuracy = all_result_map["all_train_accuracy"]
+        all_test_loss = all_result_map["all_test_loss"]
+        all_test_accuracy = all_result_map["all_test_accuracy"]
+        all_final_significance = all_result_map["all_final_significance"]
+        self.dispatcher_logger.debug("current_success_num: {}; current_failed_num: {}; current_no_submit_num: {}; current_no_sche_num: {};".format(
+            current_success_num, current_failed_num, current_no_submit_num, current_no_sche_num
+        ))
+        self.dispatcher_logger.debug("current_done_sig_num: {}; current_done_sche_num: {}; current_running_num: {}; current_recoming_num: {};".format(
+            current_done_sig_num, current_done_sche_num, current_running_num, current_recoming_num
+        ))
+        job_sequence_all_num = len(self.jobs_detail)
+        self.dispatcher_logger.debug("all test jobs num: {}".format(job_sequence_all_num))
+        self.dispatcher_logger.debug("all_train_loss: {}".format(all_train_loss / job_sequence_all_num))
+        self.dispatcher_logger.debug("all_train_accuracy: {}".format(all_train_accuracy / job_sequence_all_num))
+        self.dispatcher_logger.debug("all_test_loss: {}".format(all_test_loss / job_sequence_all_num))
+        self.dispatcher_logger.debug("all_test_accuracy: {}".format(all_test_accuracy / job_sequence_all_num))
+        self.dispatcher_logger.debug("all_final_significance: {}".format(all_final_significance / job_sequence_all_num))
+        
+        if current_success_num > 0:
+            self.dispatcher_logger.debug("success_train_loss: {}".format(all_train_loss / current_success_num))
+            self.dispatcher_logger.debug("success_train_accuracy: {}".format(all_train_accuracy / current_success_num))
+            self.dispatcher_logger.debug("success_test_loss: {}".format(all_test_loss / current_success_num))
+            self.dispatcher_logger.debug("success_test_accuracy: {}".format(all_test_accuracy / current_success_num))
+            self.dispatcher_logger.debug("success_final_significance: {}".format(all_final_significance / current_success_num))
+        
         self.all_finished = True
+        
 
     def dispatch_jobs(self, all_decision_num, sched_ip, sched_port, update_timeout):
         def thread_func_timely_dispatch_job(sched_ip, sched_port, update_timeout):
@@ -345,6 +382,7 @@ def testbed_experiment_start(sched_ip, sched_port,
                             logging_time, jobtrace_save_path,
                             all_decision_num, all_history_num, time_interval, need_change_interval):
 
+    simulation_flag = False
     datasets_list = generate_dataset(
         dataset_names=["EMNIST"], 
         fix_epsilon=base_capacity * budget_capacity_ratio, 
@@ -382,7 +420,7 @@ def testbed_experiment_start(sched_ip, sched_port,
 
     processes = []
     try:
-        dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list, logging_time)
+        dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list, logging_time, simulation_flag)
         remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
         processes.append(remote_server_p)
 
@@ -437,11 +475,13 @@ def simulation_experiment_start(sched_ip, sched_port,
                             budget_capacity_ratio, base_capacity,
                             logging_time, jobtrace_save_path,
                             all_decision_num, all_history_num, need_change_interval,
-                            simulation_time_speed_up, simulation_datablock_num, simulation_datablock_require_epsilon_max_ratio
+                            simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, simulation_datablock_require_epsilon_max_ratio
                             ):
+    simulation_flag = True
     min_epsilon_capacity = base_capacity * budget_capacity_ratio
     datasets_list = generate_alibaba_dataset(
-        num=simulation_datablock_num,
+        num=simulation_all_datablock_num,
+        offline_num=simulation_offline_datablock_num,
         time_speed_up=simulation_time_speed_up,
         dataset_names=["EMNIST"],
         fix_epsilon=min_epsilon_capacity,
@@ -477,7 +517,7 @@ def simulation_experiment_start(sched_ip, sched_port,
     
     processes = []
     try:
-        dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list, logging_time)
+        dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list, logging_time, simulation_flag)
         remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
         processes.append(remote_server_p)
 
@@ -545,7 +585,8 @@ if __name__ == "__main__":
     need_change_interval = args.need_change_interval
 
     simulation_time_speed_up = args.simulation_time_speed_up
-    simulation_datablock_num = args.simulation_datablock_num
+    simulation_all_datablock_num = args.simulation_all_datablock_num
+    simulation_offline_datablock_num = args.simulation_offline_datablock_num
     simulation_datablock_require_epsilon_max_ratio = args.simulation_datablock_require_epsilon_max_ratio
 
     global_sleep_time = args.global_sleep_time 
@@ -564,7 +605,7 @@ if __name__ == "__main__":
                             budget_capacity_ratio, base_capacity,
                             logging_time, jobtrace_save_path,
                             all_decision_num, all_history_num, need_change_interval,
-                            simulation_time_speed_up, simulation_datablock_num, simulation_datablock_require_epsilon_max_ratio)
+                            simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, simulation_datablock_require_epsilon_max_ratio)
     else:
         testbed_experiment_start(sched_ip, sched_port,
                             dispatcher_ip, dispatcher_port,
