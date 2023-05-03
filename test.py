@@ -68,6 +68,7 @@ for i in range(n):
     print("i: {}; time: {}".format(i, last_arrival_time))
 '''
 
+'''
 import cvxpy as cp
 import numpy as np
 
@@ -99,3 +100,58 @@ result = prob.solve()
 # Print optimal objective value and binary variables
 print("Optimal objective value:", result)
 print("Binary variables:\n", x.value)
+'''
+'''
+import cvxpy as cp
+import numpy as np
+import time
+
+solver = cp.ECOS
+
+job_num, datablock_num = 250, 100
+sign_matrix = np.random.random((job_num, datablock_num))
+job_privacy_budget_consume_list = np.random.random_sample(size=(job_num, ))
+datablock_privacy_budget_capacity_list = [10.0] * datablock_num
+job_target_datablock_selected_num_list = [1] * job_num
+job_privacy_budget_consume_list = np.array(job_privacy_budget_consume_list)[np.newaxis, :]
+datablock_privacy_budget_capacity_list = np.array(datablock_privacy_budget_capacity_list)[np.newaxis, :]
+job_target_datablock_selected_num_list = np.array(job_target_datablock_selected_num_list)
+
+print("sign_matrix: ", sign_matrix.shape)
+print("job_privacy_budget_consume_list: ", job_privacy_budget_consume_list.shape)
+print("datablock_privacy_budget_capacity_list: ", datablock_privacy_budget_capacity_list.shape)
+print("job_target_datablock_selected_num_list: ", job_target_datablock_selected_num_list.shape)
+
+begin_time = time.time()
+matrix_X = cp.Variable((job_num, datablock_num), nonneg=True)
+print("cp.sum(matrix_X, axis=1): ", cp.sum(matrix_X, axis=1).shape)
+
+objective = cp.Maximize(
+    cp.sum(cp.multiply(sign_matrix, matrix_X))
+)
+
+constraints = [
+    matrix_X >= 0,
+    matrix_X <= 1,
+    cp.sum(matrix_X, axis=1) <= job_target_datablock_selected_num_list,
+    (job_privacy_budget_consume_list @ matrix_X) <= datablock_privacy_budget_capacity_list
+]
+
+print("check job_target_datablock_selected_num_list: {}".format(job_target_datablock_selected_num_list))
+print("check datablock_privacy_budget_capacity_list: {}".format(datablock_privacy_budget_capacity_list))
+print("check sum of job_privacy_budget_consume_list: {}".format(np.sum(job_privacy_budget_consume_list * job_target_datablock_selected_num_list)))
+
+cvxprob = cp.Problem(objective, constraints)
+result = cvxprob.solve(solver)
+print(matrix_X.value)
+if cvxprob.status != "optimal":
+    print('WARNING: Allocation returned by policy not optimal!')
+print("cal time: {} s".format(time.time() - begin_time))
+'''
+
+
+import numpy as np
+a = [1, 2, 3, 5, 6.1]
+sum_a = sum(a)
+res = np.divide(a, sum_a)
+print(res)

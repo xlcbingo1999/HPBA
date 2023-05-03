@@ -68,7 +68,7 @@ class HISPolicy(Policy):
         # self.logger.debug("check job_target_datablock_selected_num_list: {}".format(job_target_datablock_selected_num_list))
         # self.logger.debug("check datablock_privacy_budget_capacity_list: {}".format(datablock_privacy_budget_capacity_list))
         # self.logger.debug("check sum of datablock_privacy_budget_capacity_list: {}".format(np.sum(datablock_privacy_budget_capacity_list)))
-        self.logger.debug("check sum of job_privacy_budget_consume_list: {}".format(np.sum(job_privacy_budget_consume_list * job_target_datablock_selected_num_list)))
+        # self.logger.debug("check sum of job_privacy_budget_consume_list: {}".format(np.sum(job_privacy_budget_consume_list * job_target_datablock_selected_num_list)))
 
         cvxprob = cp.Problem(objective, constraints)
         result = cvxprob.solve(solver)
@@ -165,7 +165,8 @@ class HISPolicy(Policy):
                 if target_epsilon_require > sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier]:
                     current_job_probability[index] = 0.0
 
-        current_job_probability = current_job_probability / sum(current_job_probability)
+        sum_current_job_probability = sum(current_job_probability)
+        current_job_probability = np.divide(current_job_probability, sum_current_job_probability)
         result_select_num = target_datablock_select_num
         if len(waiting_select_indexes) < target_datablock_select_num:
             result_select_num = len(waiting_select_indexes)
@@ -174,7 +175,7 @@ class HISPolicy(Policy):
             result_select_num = probability_enable_num
         # self.logger.debug("check result_select_num: ", result_select_num)
         # self.logger.debug("check waiting_select_indexes: ", waiting_select_indexes)
-        self.logger.debug("check current_job_probability: {}".format(current_job_probability))
+        # self.logger.debug("check current_job_probability: {}".format(current_job_probability))
         temp_result = list(np.random.choice(a=waiting_select_indexes, size=result_select_num, replace=False, p=current_job_probability))
         if null_index in temp_result:
             choose_indexes = copy.deepcopy(temp_result)
@@ -224,12 +225,17 @@ class HISPolicy(Policy):
             sample_history_job_signficances = offline_history_job_signficance + online_history_job_signficance
             sample_history_job_target_datablock_selected_nums = offline_history_job_target_datablock_selected_num + online_history_job_target_datablock_selected_num
         else:
-            select_num_from_offline_history = max(all_job_sequence_num - len(online_history_job_priority_weights) - 1, 0)
-            sample_indexes = random.sample(range(len(offline_history_job_priority_weights)), select_num_from_offline_history)
-            sample_history_job_priority_weights = online_history_job_priority_weights + [offline_history_job_priority_weights[i] for i in sample_indexes]
-            sample_history_job_budget_consumes = online_history_job_budget_consumes + [offline_history_job_budget_consumes[i] for i in sample_indexes]
-            sample_history_job_signficances = online_history_job_signficance + [offline_history_job_signficance[i] for i in sample_indexes]
-            sample_history_job_target_datablock_selected_nums = online_history_job_target_datablock_selected_num + [offline_history_job_target_datablock_selected_num[i] for i in sample_indexes]
+            select_num_from_offline_history = max(self.batch_size_for_one_epoch - len(online_history_job_priority_weights) - 1, 0)
+            offline_sample_indexes = np.random.choice(range(len(offline_history_job_priority_weights)), select_num_from_offline_history, replace=False)
+            
+            if len(online_history_job_priority_weights) > self.batch_size_for_one_epoch - 1:
+                online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.batch_size_for_one_epoch - 1, replace=False)
+            else:
+                online_sample_indexes = range(len(online_history_job_priority_weights))
+            sample_history_job_priority_weights = [online_history_job_priority_weights[i] for i in online_sample_indexes] + [offline_history_job_priority_weights[i] for i in offline_sample_indexes]
+            sample_history_job_budget_consumes = [online_history_job_budget_consumes[i] for i in online_sample_indexes] + [offline_history_job_budget_consumes[i] for i in offline_sample_indexes]
+            sample_history_job_signficances = [online_history_job_signficance[i] for i in online_sample_indexes] + [offline_history_job_signficance[i] for i in offline_sample_indexes]
+            sample_history_job_target_datablock_selected_nums = [online_history_job_target_datablock_selected_num[i] for i in online_sample_indexes] + [offline_history_job_target_datablock_selected_num[i] for i in offline_sample_indexes]
 
         if job_arrival_index < self.beta * all_job_sequence_num:
             self.logger.info("stop due to sample caused by job_arrival_index: {}; self.beta: {}; all_job_sequence_num: {}".format(
