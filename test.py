@@ -151,7 +151,16 @@ print("cal time: {} s".format(time.time() - begin_time))
 
 
 import numpy as np
-a = [1, 2, 3, 5, 6.1]
-sum_a = sum(a)
-res = np.divide(a, sum_a)
-print(res)
+import time
+
+a = np.random.random(size=(1000,))
+b = np.random.choice(range(1000), size=10)
+
+begin = time.time()
+result = a[b]
+print(time.time() - begin)
+
+a_list = list(a)
+begin = time.time()
+result = [a[i] for i in b] + [a[i] for i in b]
+print(time.time() - begin)

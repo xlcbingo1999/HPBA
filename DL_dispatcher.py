@@ -39,7 +39,7 @@ def get_df_config():
     parser.add_argument("--placement_sleep_time", type=float, default=1.0)
     parser.add_argument("--sched_best_serve_sleep_time", type=float, default=1.0)
 
-    parser.add_argument("--waiting_time", type=int, default=10)
+    parser.add_argument("--waiting_time", type=int, default=5)
     parser.add_argument("--update_timeout", type=int, default=500)
     parser.add_argument("--without_start_load_job", action="store_true")
     parser.add_argument("--without_start_load_history_job", action="store_true")
@@ -332,7 +332,7 @@ class Dispatcher(object):
             U_list = args.pbg_Us
             gitta_list = args.pbg_gittas
             assignment_args = (comparison_cost_epsilon_list, comparison_z_threshold_list, L_list, U_list, gitta_list)
-        elif assignment_policy == "HISPolicy" or assignment_policy == "HISwithCPolicy":
+        elif assignment_policy == "HISPolicy" or assignment_policy == "HISwithCPolicy" or assignment_policy == "HISwithOrderPolicy":
             beta_list = args.his_betas
             assignment_args = (beta_list, all_decision_num)
         elif assignment_policy == "IterativeHISPolicy" or assignment_policy == "IterativeHISwithOrderPolicy":

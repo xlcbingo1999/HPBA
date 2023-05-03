@@ -21,6 +21,7 @@ from policies.StreamingwithRemain import StreamingwithRemainPolicy
 from policies.BestFitwithRemain import BestFitwithRemainPolicy
 from policies.HIS import HISPolicy
 from policies.HISwithC import HISwithCPolicy
+from policies.HISwithOrder import HISwithOrderPolicy
 from policies.IterativeHIS import IterativeHISPolicy
 from policies.IterativeHISwithOrder import IterativeHISwithOrderPolicy
 from policies.DPF_HIS_event import DPFHISPolicy
@@ -1321,6 +1322,9 @@ class Scheduler_server(object):
         elif assignment_policy == "HISwithCPolicy":
             beta, job_sequence_all_num = assignment_args
             policy_item = HISwithCPolicy(beta, job_sequence_all_num, self.sched_logger)
+        elif assignment_policy == "HISwithOrderPolicy":
+            beta, job_sequence_all_num = assignment_args
+            policy_item = HISwithOrderPolicy(beta, job_sequence_all_num, self.sched_logger)
         elif assignment_policy == "IterativeHISPolicy":
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
             policy_item = IterativeHISPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.sched_logger)
