@@ -167,7 +167,12 @@ class IterativeHISPolicy(Policy):
                     current_job_probability[index] = 0.0
 
         sum_current_job_probability = sum(current_job_probability)
-        current_job_probability = np.divide(current_job_probability, sum_current_job_probability)
+        if sum_current_job_probability > 1e-17:
+            current_job_probability = np.divide(current_job_probability, sum_current_job_probability)
+        else:
+            current_job_probability[null_index] = 1.0
+            temp_sum_current_job_probability = sum(current_job_probability)
+            current_job_probability = np.divide(current_job_probability, temp_sum_current_job_probability)
         result_select_num = target_datablock_select_num
         if len(waiting_select_indexes) < target_datablock_select_num:
             result_select_num = len(waiting_select_indexes)
@@ -176,7 +181,7 @@ class IterativeHISPolicy(Policy):
             result_select_num = probability_enable_num
         # self.logger.debug("check result_select_num: ", result_select_num)
         # self.logger.debug("check waiting_select_indexes: ", waiting_select_indexes)
-        # self.logger.debug("check current_job_probability: {}".format(current_job_probability))
+        self.logger.debug("check current_job_probability: {}".format(current_job_probability))
         temp_result = list(np.random.choice(a=waiting_select_indexes, size=result_select_num, replace=False, p=current_job_probability))
         if null_index in temp_result:
             choose_indexes = copy.deepcopy(temp_result)

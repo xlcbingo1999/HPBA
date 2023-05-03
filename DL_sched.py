@@ -22,6 +22,7 @@ from policies.BestFitwithRemain import BestFitwithRemainPolicy
 from policies.HIS import HISPolicy
 from policies.HISwithC import HISwithCPolicy
 from policies.IterativeHIS import IterativeHISPolicy
+from policies.IterativeHISwithOrder import IterativeHISwithOrderPolicy
 from policies.DPF_HIS_event import DPFHISPolicy
 from policies.Offline import OfflinePolicy
 from significance_policies.HISOTDD import HISOTDDPolicy
@@ -640,6 +641,7 @@ class Scheduler_server(object):
         state["current_sub_train_datasetidentifier_2_epsilon_remain"] = copy.deepcopy(self.sub_train_datasetidentifier_2_epsilon_remain)
         state["current_sub_train_datasetidentifier_2_epsilon_capcity"] = copy.deepcopy(self.sub_train_datasetidentifier_2_epsilon_capacity)
  
+        self.sched_logger.debug("get state current_sub_train_datasetidentifier_2_epsilon_remain: {}".format(self.sub_train_datasetidentifier_2_epsilon_remain))
         return state
     
     def get_significance_state(self, policy, train_dataset_name, datablock_identifier, test_type, target_epsilon_consume):
@@ -905,7 +907,7 @@ class Scheduler_server(object):
         # 将所有为None的提取出来, 异步请求一下
         async_indexes = [k for k, v in sub_train_index_2_significance.items() if v is None]
         for index in async_indexes:
-            self.sched_logger.warning("[WARNING] enter into get_job_datablock_significance_async!")
+            self.sched_logger.warning("enter into get_job_datablock_significance_async!")
             result_d = self.significance_policy.get_job_datablock_significance_async(type_id, all_significance_state[index], device_index, is_history)
             sub_train_index_2_significance[index] = result_d
         # 最终返回: {sub_train_key_id: value}
@@ -1322,6 +1324,9 @@ class Scheduler_server(object):
         elif assignment_policy == "IterativeHISPolicy":
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
             policy_item = IterativeHISPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.sched_logger)
+        elif assignment_policy == "IterativeHISwithOrderPolicy":
+            beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
+            policy_item = IterativeHISwithOrderPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.sched_logger)
         elif assignment_policy == "DPFHISPolicy":
             beta, waiting_queue_capacity, job_sequence_all_num = assignment_args
             policy_item = DPFHISPolicy(beta, job_sequence_all_num, waiting_queue_capacity, self.sched_logger)

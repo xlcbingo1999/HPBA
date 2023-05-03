@@ -4,7 +4,7 @@ import itertools
 import json
 import os
 import pandas as pd
-from utils.global_variable import RECONSTRUCT_TRACE_PREFIX_PATH, ALIBABA_DP_TRACE_PATH
+from utils.global_variable import ALIBABA_DP_TRACE_PATH, RESULT_PATH
 from utils.global_functions import NpEncoder
 
 waiting_select_model_names = ["CNN", "FF"]
@@ -32,7 +32,7 @@ def get_specific_model_config(model_name):
 def generate_dataset(dataset_names, fix_epsilon=10.0, fix_delta=1e-5, fix_time=0, num=6, dataset_reconstruct_path="", save_path=""):
     if len(dataset_reconstruct_path) > 0:
         print("load from path: {}".format(dataset_reconstruct_path))
-        dataset_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/datasets.json".format(dataset_reconstruct_path)
+        dataset_path = RESULT_PATH + "/{}/datasets.json".format(dataset_reconstruct_path)
         with open(dataset_path, "r+") as f:
             datasets_list = json.load(f)
     else:
@@ -52,7 +52,7 @@ def generate_dataset(dataset_names, fix_epsilon=10.0, fix_delta=1e-5, fix_time=0
                 }
             print(datasets_list[name])
     if len(save_path) > 0:
-        dataset_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/datasets.json".format(save_path)
+        dataset_path = RESULT_PATH + "/{}/datasets.json".format(save_path)
         if not os.path.exists(dataset_path):
             os.makedirs(os.path.dirname(dataset_path), exist_ok=True)
         with open(dataset_path, "w+") as f:
@@ -119,11 +119,11 @@ def generate_jobs(all_num, per_epoch_EPSILONs, EPSILONs_weights,
                 jobtrace_reconstruct_path="", save_path=""):
     if len(jobtrace_reconstruct_path) > 0:
         if is_history:
-            his_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/his_jobs.json".format(jobtrace_reconstruct_path)
+            his_job_path = RESULT_PATH + "/{}/his_jobs.json".format(jobtrace_reconstruct_path)
             with open(his_job_path, "r+") as f:
                 jobs = json.load(f)
         else:
-            test_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/test_jobs.json".format(jobtrace_reconstruct_path)
+            test_job_path = RESULT_PATH + "/{}/test_jobs.json".format(jobtrace_reconstruct_path)
             with open(test_job_path, "r+") as f:
                 jobs = json.load(f)
         current_decision_num = 0
@@ -193,9 +193,9 @@ def generate_jobs(all_num, per_epoch_EPSILONs, EPSILONs_weights,
 
     if len(save_path) > 0:
         if is_history:
-            job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/his_jobs.json".format(save_path)
+            job_path = RESULT_PATH + "/{}/his_jobs.json".format(save_path)
         else:
-            job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/test_jobs.json".format(save_path)
+            job_path = RESULT_PATH + "/{}/test_jobs.json".format(save_path)
         if not os.path.exists(job_path):
             os.makedirs(os.path.dirname(job_path), exist_ok=True)
         with open(job_path, "w+") as f:
@@ -210,11 +210,11 @@ def generate_alibaba_jobs(all_num,
                 jobtrace_reconstruct_path="", save_path=""):
     if len(jobtrace_reconstruct_path) > 0:
         if is_history:
-            his_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/his_jobs.json".format(jobtrace_reconstruct_path)
+            his_job_path = RESULT_PATH + "/{}/his_jobs.json".format(jobtrace_reconstruct_path)
             with open(his_job_path, "r+") as f:
                 jobs = json.load(f)
         else:
-            test_job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/test_jobs.json".format(jobtrace_reconstruct_path)
+            test_job_path = RESULT_PATH + "/{}/test_jobs.json".format(jobtrace_reconstruct_path)
             with open(test_job_path, "r+") as f:
                 jobs = json.load(f)
         current_decision_num = 0
@@ -300,9 +300,9 @@ def generate_alibaba_jobs(all_num,
 
     if len(save_path) > 0:
         if is_history:
-            job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/his_jobs.json".format(save_path)
+            job_path = RESULT_PATH + "/{}/his_jobs.json".format(save_path)
         else:
-            job_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/test_jobs.json".format(save_path)
+            job_path = RESULT_PATH + "/{}/test_jobs.json".format(save_path)
         if not os.path.exists(job_path):
             os.makedirs(os.path.dirname(job_path), exist_ok=True)
         with open(job_path, "w+") as f:
@@ -314,7 +314,7 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
                     dataset_reconstruct_path="", save_path=""):
     if len(dataset_reconstruct_path) > 0:
         print("load from path: {}".format(dataset_reconstruct_path))
-        dataset_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/datasets.json".format(dataset_reconstruct_path)
+        dataset_path = RESULT_PATH + "/{}/datasets.json".format(dataset_reconstruct_path)
         with open(dataset_path, "r+") as f:
             datasets_list = json.load(f)
     else:
@@ -340,7 +340,7 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
                 }
             print(datasets_list[name])
     if len(save_path) > 0:
-        dataset_path = RECONSTRUCT_TRACE_PREFIX_PATH + "/{}/datasets.json".format(save_path)
+        dataset_path = RESULT_PATH + "/{}/datasets.json".format(save_path)
         if not os.path.exists(dataset_path):
             os.makedirs(os.path.dirname(dataset_path), exist_ok=True)
         with open(dataset_path, "w+") as f:

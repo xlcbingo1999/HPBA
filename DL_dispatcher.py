@@ -23,6 +23,7 @@ def get_df_config():
     parser.add_argument("--all_history_num", type=int, default=50)
     parser.add_argument("--time_interval", type=int, default=100) # 100, 500, 1000, 1500 [1/1, 1/2, 1/3, 1/5]
     parser.add_argument("--need_change_interval", action="store_true")
+    parser.add_argument("--need_save_jobtrace_flag", action="store_true")
     
     parser.add_argument("--simulation_flag", action="store_true")
     parser.add_argument("--simulation_time_speed_up", type=float, default=1.0)
@@ -76,7 +77,7 @@ def get_df_config():
     return args
 
 class Dispatcher(object):
-    def __init__(self, jobs_list, history_jobs_list, datasets_map, logging_time, simulation_flag):
+    def __init__(self, jobs_list, history_jobs_list, datasets_map, current_test_all_dir):
         jobs_list = sorted(jobs_list, key=lambda r: r["time"])
         jobs_id_list = ["job_{}".format(x) for x in range(len(jobs_list))]
         jobs_detail = list(map(lambda x: [x[0], x[1]], zip(jobs_id_list, jobs_list)))
@@ -102,8 +103,7 @@ class Dispatcher(object):
         self.all_start_time = time.time()
         self.current_time = 0
 
-        schedule_type = 'simulation' if simulation_flag else 'testbed'
-        self.current_test_all_dir = 'schedule-review-%s-%s' % (schedule_type, logging_time)
+        self.current_test_all_dir = current_test_all_dir
         all_logger_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
         dispatcher_logger_path = '{}/DL_dispatcher.log'.format(all_logger_path)
         self.dispatcher_logger = get_logger(dispatcher_logger_path, dispatcher_logger_path, enable_multiprocess=True)
@@ -315,7 +315,7 @@ class Dispatcher(object):
         client = self.get_zerorpc_client(ip, port)
         client.sched_update_gpu_status_start(init_workerip_2_ports, init_gpuidentifiers, self.current_test_all_dir)
 
-    def sched_init_sched_register(self, ip, port, assignment_policy, significance_policy, all_decision_num, simulation):
+    def sched_init_sched_register(self, ip, port, args, assignment_policy, significance_policy, all_decision_num, simulation):
         client = self.get_zerorpc_client(ip, port)
         client.initialize_simulation_flag(simulation)
         client.initialize_logging_path(self.current_test_all_dir)
@@ -335,7 +335,7 @@ class Dispatcher(object):
         elif assignment_policy == "HISPolicy" or assignment_policy == "HISwithCPolicy":
             beta_list = args.his_betas
             assignment_args = (beta_list, all_decision_num)
-        elif assignment_policy == "IterativeHISPolicy":
+        elif assignment_policy == "IterativeHISPolicy" or assignment_policy == "IterativeHISwithOrderPolicy":
             beta_list = args.his_betas
             batch_size_for_one_epoch_list = args.his_batch_size_for_one_epochs
             assignment_args = (beta_list, batch_size_for_one_epoch_list, all_decision_num)
@@ -348,6 +348,9 @@ class Dispatcher(object):
         client.sched_update_assignment_policy(assignment_policy, assignment_args)
         client.sched_update_significance_policy(significance_policy)
         self.dispatcher_logger.info("sched_init_sched_register finished!")
+        args_message = '\n'.join([f'{k}: {v}' for k, v in vars(args).items()])
+        self.dispatcher_logger.info("===== args_message =====")
+        self.dispatcher_logger.info(args_message)
 
     def sched_init_history_policy(self, ip, port, history_jobs_map):
         client = self.get_zerorpc_client(ip, port)
@@ -379,7 +382,7 @@ def testbed_experiment_start(sched_ip, sched_port,
                             placement_sleep_time, waiting_time,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             budget_capacity_ratio, base_capacity,
-                            logging_time, jobtrace_save_path,
+                            need_save_jobtrace_flag, current_test_all_dir,
                             all_decision_num, all_history_num, time_interval, need_change_interval):
 
     simulation_flag = False
@@ -390,7 +393,7 @@ def testbed_experiment_start(sched_ip, sched_port,
         fix_time=0, 
         num=6, 
         dataset_reconstruct_path=dataset_reconstruct_path, 
-        save_path=jobtrace_save_path
+        save_path=current_test_all_dir
     )
     jobs_list = generate_jobs(
         all_num=all_decision_num, 
@@ -402,7 +405,7 @@ def testbed_experiment_start(sched_ip, sched_port,
         dispatcher_ip=dispatcher_ip, 
         dispatcher_port=dispatcher_port, 
         jobtrace_reconstruct_path=test_jobtrace_reconstruct_path, 
-        save_path=jobtrace_save_path
+        save_path=current_test_all_dir
     )
     history_jobs_list = generate_jobs(
         all_num=all_history_num, 
@@ -414,13 +417,13 @@ def testbed_experiment_start(sched_ip, sched_port,
         dispatcher_ip=dispatcher_ip, 
         dispatcher_port=dispatcher_port, 
         jobtrace_reconstruct_path=history_jobtrace_reconstruct_path, 
-        save_path=jobtrace_save_path
+        save_path=current_test_all_dir
     )
     all_decision_num = len(jobs_list)
 
     processes = []
     try:
-        dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list, logging_time, simulation_flag)
+        dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list, current_test_all_dir)
         remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
         processes.append(remote_server_p)
 
@@ -473,11 +476,10 @@ def simulation_experiment_start(sched_ip, sched_port,
                             worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             budget_capacity_ratio, base_capacity,
-                            logging_time, jobtrace_save_path,
+                            job_dataset_trace_save_path, current_test_all_dir,
                             all_decision_num, all_history_num, need_change_interval,
                             simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, simulation_datablock_require_epsilon_max_ratio
                             ):
-    simulation_flag = True
     min_epsilon_capacity = base_capacity * budget_capacity_ratio
     datasets_list = generate_alibaba_dataset(
         num=simulation_all_datablock_num,
@@ -487,7 +489,7 @@ def simulation_experiment_start(sched_ip, sched_port,
         fix_epsilon=min_epsilon_capacity,
         fix_delta=1e-5,
         dataset_reconstruct_path=dataset_reconstruct_path, 
-        save_path=jobtrace_save_path
+        save_path=job_dataset_trace_save_path
     )
     jobs_list = generate_alibaba_jobs(
         all_num=all_decision_num,
@@ -499,7 +501,7 @@ def simulation_experiment_start(sched_ip, sched_port,
         dispatcher_ip=dispatcher_ip,
         dispatcher_port=dispatcher_port,
         jobtrace_reconstruct_path=test_jobtrace_reconstruct_path,
-        save_path=jobtrace_save_path
+        save_path=job_dataset_trace_save_path
     )
     history_jobs_list = generate_alibaba_jobs(
         all_num=all_history_num,
@@ -511,17 +513,17 @@ def simulation_experiment_start(sched_ip, sched_port,
         dispatcher_ip=dispatcher_ip,
         dispatcher_port=dispatcher_port,
         jobtrace_reconstruct_path=history_jobtrace_reconstruct_path,
-        save_path=jobtrace_save_path
+        save_path=job_dataset_trace_save_path
     )
     all_decision_num = len(jobs_list)
     
     processes = []
     try:
-        dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list, logging_time, simulation_flag)
+        dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list, current_test_all_dir)
         remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
         processes.append(remote_server_p)
 
-        dispatcher.sched_init_sched_register(sched_ip, sched_port, args.assignment_policy, args.significance_policy, all_decision_num, simulation=True)
+        dispatcher.sched_init_sched_register(sched_ip, sched_port, args, args.assignment_policy, args.significance_policy, all_decision_num, simulation=True)
         dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_workerip_2_ports, init_gpuidentifiers)
 
         # 合并成统一的事件队列, 需要等待所有的
@@ -577,7 +579,9 @@ if __name__ == "__main__":
     base_capacity = args.base_capacity
 
     logging_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
-    jobtrace_save_path = 'jobs-datasets-%s' % (logging_time)
+    schedule_type = 'simulation' if args.simulation_flag else 'testbed'
+    current_test_all_dir = 'schedule-review-%s-%s' % (schedule_type, logging_time)
+    job_dataset_trace_save_path = current_test_all_dir if args.need_save_jobtrace_flag else ""
 
     all_decision_num = args.all_decision_num
     all_history_num = args.all_history_num
@@ -603,7 +607,7 @@ if __name__ == "__main__":
                             worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             budget_capacity_ratio, base_capacity,
-                            logging_time, jobtrace_save_path,
+                            job_dataset_trace_save_path, current_test_all_dir,
                             all_decision_num, all_history_num, need_change_interval,
                             simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, simulation_datablock_require_epsilon_max_ratio)
     else:
@@ -615,7 +619,7 @@ if __name__ == "__main__":
                             placement_sleep_time, waiting_time,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             budget_capacity_ratio, base_capacity,
-                            logging_time, jobtrace_save_path,
+                            job_dataset_trace_save_path, current_test_all_dir,
                             all_decision_num, all_history_num, time_interval, need_change_interval)    
     
         
