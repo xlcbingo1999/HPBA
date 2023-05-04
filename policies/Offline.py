@@ -29,10 +29,15 @@ class OfflinePolicy(Policy):
         self.waiting_queue_capacity = waiting_queue_capacity
 
         self.logger = logger  
+        self.initialize_seeds(1234)
     
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
         self.logger.info("policy args: waiting_queue_capacity: {}".format(self.waiting_queue_capacity))
+
+    def initialize_seeds(self, seed):
+        np.random.seed(seed)
+        random.seed(seed+1)
 
     def get_allocation(self, state):
         job_id_2_target_epsilon_require = state["job_id_2_target_epsilon_require"]

@@ -12,10 +12,15 @@ class SagePolicy(Policy):
         self.only_one = True
         self.need_history = False
 
+        self.initialize_seeds(1234)
+
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
         self.logger.info("policy args: None")    
     
+    def initialize_seeds(self, seed):
+        random.seed(seed+1)
+
     def get_allocation(self, state):
         job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]
         assert len(job_id_2_train_dataset_name) == 1

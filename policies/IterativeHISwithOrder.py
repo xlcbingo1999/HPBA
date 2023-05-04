@@ -57,6 +57,8 @@ class IterativeHISwithOrderPolicy(Policy):
         self.online_history_job_sub_test_key_id = []
         self.online_history_job_type_id = []
         self.online_history_job_significance = []
+
+        self.initialize_seeds(1234)
     
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
@@ -65,6 +67,10 @@ class IterativeHISwithOrderPolicy(Policy):
         self.logger.info("policy args: batch_size_for_one_epoch: {}".format(self.batch_size_for_one_epoch))
         # self.logger.info("policy args: delta: {}".format(self.delta))
         # self.logger.info("policy args: only_small: {}".format(self.only_small))
+
+    def initialize_seeds(self, seed):
+        np.random.seed(seed)
+        random.seed(seed+1)
 
     def get_LP_result(self, sign_matrix, datablock_privacy_budget_capacity_list, job_target_datablock_selected_num_list, job_privacy_budget_consume_list, solver=cp.ECOS):
         begin_time = time.time()

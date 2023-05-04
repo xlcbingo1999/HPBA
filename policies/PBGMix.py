@@ -22,12 +22,18 @@ class PBGMixPolicy(Policy):
         self.only_one = True
         self.need_history = False
 
+        self.initialize_seeds(1234)
+
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
         self.logger.info("policy args: comparison_cost_epsilon: {}".format(self.comparison_cost_epsilon))
         self.logger.info("policy args: comparison_z_threshold: {}".format(self.comparison_z_threshold))
         self.logger.info("policy args: L: {}".format(self.L))
         self.logger.info("policy args: U: {}".format(self.U))
+
+    def initialize_seeds(self, seed):
+        np.random.seed(seed)
+        random.seed(seed+1)
 
     def Lap(self, scale):
         return np.random.laplace(loc=0.0, scale=scale)
