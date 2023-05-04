@@ -2,6 +2,8 @@
 DL_shell.txt
 tensorboard_*/
 log_*/
+plots/*.pdf
+plots/*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
