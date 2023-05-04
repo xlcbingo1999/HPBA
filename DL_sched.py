@@ -171,9 +171,6 @@ class Scheduler_server(object):
         np.random.seed(seed)
         random.seed(seed+1)
 
-        self.job_generator = random.Random()
-        self.job_generator.seed(seed+2)
-
     def check_all_finished_or_failed(self):
         return (len(self.status_2_jobid[JOB_STATUS_KEY.SIMULATION_NO_SUMBIT]) <= 0
             and len(self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE]) <= 0 
