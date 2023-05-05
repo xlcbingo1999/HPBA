@@ -170,6 +170,7 @@ class HISwithOrderPolicy(Policy):
             if choice_result == 1:
                 choose_indexes.append(sorted_index)
 
+        self.logger.debug("first choose_indexes: {}".format(choose_indexes))
         for choose_index in choose_indexes:
             datablock_identifier = temp_index_2_datablock_identifier[choose_index]
             if target_epsilon_require <= sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier]:
@@ -246,6 +247,7 @@ class HISwithOrderPolicy(Policy):
         job_2_selected_datablock_identifiers = [
             (job_id, identifier) for identifier in selected_datablock_identifiers
         ]
+        self.logger.debug("from policy [{}] selected_datablock_identifiers: {}".format(self.name , job_2_selected_datablock_identifiers))
         return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
     
     def push_offline_history_to_assignment_policy(self, offline_history_job_priority_weights, offline_history_job_budget_consumes,

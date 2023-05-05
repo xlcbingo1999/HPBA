@@ -1004,7 +1004,6 @@ class Scheduler_server(object):
         success_sched_job_ids = set()
         success_datasetidentifier_2_consume_epsilon = {}
         if len(job_2_selected_datablock_identifiers) > 0:
-            self.sched_logger.info("Jobs selected datablock identifiers: {}".format(job_2_selected_datablock_identifiers))
             for temp_job_id, identifier in job_2_selected_datablock_identifiers:
                 if temp_job_id not in self.jobid_2_sub_train_key_ids:
                     self.jobid_2_sub_train_key_ids[temp_job_id] = []
@@ -1027,6 +1026,7 @@ class Scheduler_server(object):
                     else:
                         self.sub_train_datasetidentifier_2_exhausted_time[dataset_name][identifier] = time.time()
         
+        self.sched_logger.info("final true success Jobs selected datablock identifiers: {}".format(success_sched_job_ids))
         self.push_success_scheduling_result_to_policy(self.assignment_policy, success_datasetidentifier_2_consume_epsilon)
 
         # 不管是否进行数据块的分配, 都应该增加

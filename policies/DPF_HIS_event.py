@@ -93,6 +93,7 @@ class DPFHISPolicy(Policy):
                 sub_train_datasetidentifier_2_epsilon_capcity
             )
         self.waiting_queue = []
+        self.logger.debug("from policy [{}] selected_datablock_identifiers: {}".format(self.name , job_2_selected_datablock_identifiers))
         return job_2_selected_datablock_identifiers, calcu_compare_epsilon
 
     def on_scheduler_time(self, 
