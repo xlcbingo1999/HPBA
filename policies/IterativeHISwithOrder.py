@@ -130,13 +130,13 @@ class IterativeHISwithOrderPolicy(Policy):
         selected_real_sched_epsilon_map = {}
         calcu_compare_epsilon = 0.0
         
-        current_all_job_priority_weights = copy.deepcopy(history_job_priority_weights)
+        current_all_job_priority_weights = history_job_priority_weights
         current_all_job_priority_weights.append(job_priority_weight)
-        current_all_job_budget_consumes = copy.deepcopy(history_job_budget_consumes)
+        current_all_job_budget_consumes = history_job_budget_consumes
         current_all_job_budget_consumes.append(target_epsilon_require)
-        current_all_job_signficances = copy.deepcopy(history_job_signficances)
+        current_all_job_signficances = history_job_signficances
         current_all_job_signficances.append(sub_train_datasetidentifier_2_significance)
-        current_all_job_target_datablock_selected_nums = copy.deepcopy(history_job_target_datablock_selected_nums)
+        current_all_job_target_datablock_selected_nums = history_job_target_datablock_selected_nums
         current_all_job_target_datablock_selected_nums.append(target_datablock_select_num)
 
         sign_matrix, temp_index_2_datablock_identifier = self.get_sign_matrix(
