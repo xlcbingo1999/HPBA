@@ -8,7 +8,7 @@ import math
 import json
 
 class PBGMixPolicy(Policy):
-    def __init__(self, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, logger):
+    def __init__(self, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, seed, logger):
         super().__init__()
         self._name = 'PBGMixPolicy'
         self.comparison_cost_epsilon = comparison_cost_epsilon
@@ -21,8 +21,7 @@ class PBGMixPolicy(Policy):
 
         self.only_one = True
         self.need_history = False
-
-        self.initialize_seeds(1234)
+        self.initialize_seeds(seed)
 
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))

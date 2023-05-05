@@ -153,7 +153,7 @@ class Scheduler_server(object):
         self.assignment_policy = None
         self.significance_policy = None
 
-        self.initialize_seeds(1234)
+        self.seed = 1234
 
     def initialize_simulation_flag(self, simulation):
         self.simulation = simulation
@@ -168,6 +168,7 @@ class Scheduler_server(object):
         self.sched_logger = get_logger(sched_logger_path, sched_logger_path, enable_multiprocess=True)
 
     def initialize_seeds(self, seed):
+        self.seed = seed
         np.random.seed(seed)
         random.seed(seed+1)
 
@@ -642,16 +643,16 @@ class Scheduler_server(object):
         self.sched_logger.debug("get state current_sub_train_datasetidentifier_2_epsilon_remain: {}".format(self.sub_train_datasetidentifier_2_epsilon_remain))
         return state
     
-    def get_significance_state(self, policy, train_dataset_name, datablock_identifier, test_type, target_epsilon_consume):
-        signficance_state = {}
-        signficance_state["train_dataset_name"] = train_dataset_name
-        signficance_state["datablock_identifier"] = datablock_identifier
-        signficance_state["test_type"] = test_type
-        if policy.name == "TempPolicy":
-            signficance_state["epsilon_consume"] = target_epsilon_consume
-        return signficance_state
+    # def get_significance_state(self, policy, train_dataset_name, datablock_identifier, test_type, target_epsilon_consume):
+    #     signficance_state = {}
+    #     signficance_state["train_dataset_name"] = train_dataset_name
+    #     signficance_state["datablock_identifier"] = datablock_identifier
+    #     signficance_state["test_type"] = test_type
+    #     if policy.name == "TempPolicy":
+    #         signficance_state["epsilon_consume"] = target_epsilon_consume
+    #     return signficance_state
     
-    def get_scheduling_datablock_result_from_policy(self, policy, job_id_2_dataset_name, job_id_2_target_epsilon_require, 
+    def get_scheduling_datablock_result_from_policy(self, job_id_2_dataset_name, job_id_2_target_epsilon_require, 
                                         job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
                                         job_id_2_test_dataset_name, job_id_2_sub_test_key_id, 
                                         job_id_2_significance, job_id_2_arrival_index):
@@ -661,12 +662,12 @@ class Scheduler_server(object):
                                     job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
                                     job_id_2_test_dataset_name, job_id_2_sub_test_key_id, 
                                     job_id_2_significance, job_id_2_arrival_index)
-        job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon = policy.get_allocation(state)
+        job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon = self.assignment_policy.get_allocation(state)
         # not_selected_datablock_identifiers = [tu[0] for tu in sub_train_sort[target_datablock_select_num:]]
         return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
 
-    def push_success_scheduling_result_to_policy(self, policy, success_datasetidentifier_2_consume_epsilon):
-        policy.push_success_allocation(success_datasetidentifier_2_consume_epsilon)
+    def push_success_scheduling_result_to_policy(self, success_datasetidentifier_2_consume_epsilon):
+        self.assignment_policy.push_success_allocation(success_datasetidentifier_2_consume_epsilon)
 
     def finished_job_to_dispatcher(self, job_id, origin_info):
         self.sched_logger.info("job_id {} call finished_job_to_dispatcher".format(job_id))
@@ -998,7 +999,7 @@ class Scheduler_server(object):
         
         # 为没有决定分配方案的任务决定分配方案
         job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon = \
-            self.get_scheduling_datablock_result_from_policy(self.assignment_policy, job_id_2_dataset_name, 
+            self.get_scheduling_datablock_result_from_policy(job_id_2_dataset_name, 
                 job_id_2_target_epsilon_require, job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
                 job_id_2_test_dataset_name, job_id_2_sub_test_key_id, job_id_2_significance, job_id_2_arrival_index)
         success_sched_job_ids = set()
@@ -1027,7 +1028,7 @@ class Scheduler_server(object):
                         self.sub_train_datasetidentifier_2_exhausted_time[dataset_name][identifier] = time.time()
         
         self.sched_logger.info("final true success Jobs selected datablock identifiers: {}".format(success_sched_job_ids))
-        self.push_success_scheduling_result_to_policy(self.assignment_policy, success_datasetidentifier_2_consume_epsilon)
+        self.push_success_scheduling_result_to_policy(success_datasetidentifier_2_consume_epsilon)
 
         # 不管是否进行数据块的分配, 都应该增加
         for temp_job_id in all_done_sig_cal_jobs_copy:
@@ -1309,38 +1310,39 @@ class Scheduler_server(object):
     def sched_update_assignment_policy(self, assignment_policy, assignment_args):
         if assignment_policy == "PBGPolicy":
             comparison_cost_epsilon, comparison_z_threshold, L, U = assignment_args
-            policy_item = PBGPolicy(comparison_cost_epsilon, comparison_z_threshold, L, U, self.sched_logger)
+            policy_item = PBGPolicy(comparison_cost_epsilon, comparison_z_threshold, L, U, self.seed, self.sched_logger)
         elif assignment_policy == "PBGMixPolicy":
             comparison_cost_epsilon, comparison_z_threshold, L, U, gitta = assignment_args
-            policy_item = PBGMixPolicy(comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, self.sched_logger)
+            policy_item = PBGMixPolicy(comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, self.seed, self.sched_logger)
         elif assignment_policy == "HISPolicy":
             beta, job_sequence_all_num = assignment_args
-            policy_item = HISPolicy(beta, job_sequence_all_num, self.sched_logger)
+            policy_item = HISPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "HISwithCPolicy":
             beta, job_sequence_all_num = assignment_args
-            policy_item = HISwithCPolicy(beta, job_sequence_all_num, self.sched_logger)
+            policy_item = HISwithCPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "HISwithOrderPolicy":
             beta, job_sequence_all_num = assignment_args
-            policy_item = HISwithOrderPolicy(beta, job_sequence_all_num, self.sched_logger)
+            policy_item = HISwithOrderPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISPolicy":
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
-            policy_item = IterativeHISPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.sched_logger)
+            policy_item = IterativeHISPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISwithOrderPolicy":
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
-            policy_item = IterativeHISwithOrderPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.sched_logger)
+            policy_item = IterativeHISwithOrderPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
         elif assignment_policy == "DPFHISPolicy":
             beta, waiting_queue_capacity, job_sequence_all_num = assignment_args
-            policy_item = DPFHISPolicy(beta, job_sequence_all_num, waiting_queue_capacity, self.sched_logger)
+            policy_item = DPFHISPolicy(beta, job_sequence_all_num, waiting_queue_capacity, self.seed, self.sched_logger)
         elif assignment_policy == "SagePolicy":
-            policy_item = SagePolicy(self.sched_logger)
+            policy_item = SagePolicy(self.seed, self.sched_logger)
         elif assignment_policy == "SagewithRemainPolicy":
-            policy_item = SagewithRemainPolicy(self.sched_logger)
+            policy_item = SagewithRemainPolicy(self.seed, self.sched_logger)
         elif assignment_policy == "StreamingwithRemainPolicy":
-            policy_item = StreamingwithRemainPolicy(self.sched_logger)
+            policy_item = StreamingwithRemainPolicy(self.seed, self.sched_logger)
         elif assignment_policy == "BestFitwithRemainPolicy":
-            policy_item = BestFitwithRemainPolicy(self.sched_logger)
+            policy_item = BestFitwithRemainPolicy(self.seed, self.sched_logger)
         elif assignment_policy == "OfflinePolicy":
-            policy_item = OfflinePolicy(self.sched_logger)
+            job_sequence_all_num = assignment_args
+            policy_item = OfflinePolicy(job_sequence_all_num, self.seed, self.sched_logger)
         self.assignment_policy = policy_item
         self.assignment_policy.report_state()
 

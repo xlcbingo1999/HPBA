@@ -1,6 +1,5 @@
 from policies.BasePolicy import Policy
 import copy
-import random
 import numpy as np
 import math
 import cvxpy as cp
@@ -17,28 +16,22 @@ class WaitingJob(object):
         self.sub_train_datasetidentifier_2_significance = sub_train_datasetidentifier_2_significance
         self.dominant_share = 0.0
 
-        self.only_one = False
-        self.need_history = False
-
 class OfflinePolicy(Policy):
-    def __init__(self, waiting_queue_capacity, logger):
+    def __init__(self, job_sequence_all_num, seed, logger):
         super().__init__()
         self._name = 'OfflinePolicy'
         # 保存一个unlocked的量
         self.waiting_queue = []
-        self.waiting_queue_capacity = waiting_queue_capacity
+        self.waiting_queue_capacity = job_sequence_all_num
+
+        self.only_one = False
+        self.need_history = False
 
         self.logger = logger  
-        self.initialize_seeds(1234)
     
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
-        self.logger.info("policy args: waiting_queue_capacity: {}".format(self.waiting_queue_capacity))
-
-    def initialize_seeds(self, seed):
-        np.random.seed(seed)
-        random.seed(seed+1)
-
+    
     def get_allocation(self, state):
         job_id_2_target_epsilon_require = state["job_id_2_target_epsilon_require"]
         job_id_2_target_datablock_select_num = state["job_id_2_target_datablock_selected_num"]
@@ -47,7 +40,6 @@ class OfflinePolicy(Policy):
         job_id_2_significance = state["job_id_2_significance"]
         # all_job_sequence_num = state["all_job_sequence_num"]
 
-        assert len(job_id_2_train_dataset_name) >= self.waiting_queue_capacity
         set_dataset_name = set(job_id_2_train_dataset_name.values())
         assert len(set_dataset_name) == 1 # 必须保证所有的任务都是针对同一个数据集的
         train_dataset_name = list(set_dataset_name)[0]

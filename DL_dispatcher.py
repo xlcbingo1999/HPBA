@@ -25,6 +25,7 @@ def get_df_config():
     parser.add_argument("--need_change_interval", action="store_true")
     parser.add_argument("--need_save_jobtrace_flag", action="store_true")
     
+    
     parser.add_argument("--simulation_flag", action="store_true")
     parser.add_argument("--simulation_time_speed_up", type=float, default=1.0)
     parser.add_argument("--simulation_all_datablock_num", type=int, default=100)
@@ -39,7 +40,7 @@ def get_df_config():
     parser.add_argument("--placement_sleep_time", type=float, default=1.0)
     parser.add_argument("--sched_best_serve_sleep_time", type=float, default=1.0)
 
-    parser.add_argument("--waiting_time", type=int, default=5)
+    parser.add_argument("--waiting_time", type=int, default=2)
     parser.add_argument("--update_timeout", type=int, default=500)
     parser.add_argument("--without_start_load_job", action="store_true")
     parser.add_argument("--without_start_load_history_job", action="store_true")
@@ -47,6 +48,8 @@ def get_df_config():
     parser.add_argument("--without_finished_clear_job", action="store_true")
     parser.add_argument("--without_finished_clear_dataset", action="store_true")
     parser.add_argument("--without_stop_all", action="store_true")
+
+    parser.add_argument("--seed", type=int, default=1234)
 
     parser.add_argument("--assignment_policy", type=str, default="HISPolicy")
     parser.add_argument("--significance_policy", type=str, default="HISOTDDPolicy")
@@ -317,6 +320,7 @@ class Dispatcher(object):
 
     def sched_init_sched_register(self, ip, port, args, assignment_policy, significance_policy, all_decision_num, simulation):
         client = self.get_zerorpc_client(ip, port)
+        client.initialize_seeds(args.seed)
         client.initialize_simulation_flag(simulation)
         client.initialize_logging_path(self.current_test_all_dir)
         if assignment_policy == "PBGPolicy":
@@ -343,6 +347,8 @@ class Dispatcher(object):
             beta_list = args.dpf_his_betas
             waiting_queue_capacity_list = args.dpf_his_waiting_queue_capacitys
             assignment_args = (beta_list, waiting_queue_capacity_list, all_decision_num)
+        elif assignment_policy == "OfflinePolicy":
+            assignment_args = all_decision_num
         else:
             assignment_args = None
         client.sched_update_assignment_policy(assignment_policy, assignment_args)
@@ -374,7 +380,7 @@ def exit_gracefully(server):
     print("closing server")
     server.close()
 
-def testbed_experiment_start(sched_ip, sched_port,
+def testbed_experiment_start(args, sched_ip, sched_port,
                             dispatcher_ip, dispatcher_port,
                             worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
                             global_sleep_time, update_timeout, scheduler_update_sleep_time, 
@@ -427,7 +433,7 @@ def testbed_experiment_start(sched_ip, sched_port,
         remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
         processes.append(remote_server_p)
 
-        dispatcher.sched_init_sched_register(sched_ip, sched_port, args.assignment_policy, args.significance_policy, all_decision_num, simulation=False)
+        dispatcher.sched_init_sched_register(sched_ip, sched_port, args.seed, args.assignment_policy, args.significance_policy, all_decision_num, simulation=False)
         dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_workerip_2_ports, init_gpuidentifiers)
         if not args.without_start_load_job:
             dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout)
@@ -471,7 +477,7 @@ def testbed_experiment_start(sched_ip, sched_port,
     except Exception as e:
         print("[xlc] Exception: ", e)
 
-def simulation_experiment_start(sched_ip, sched_port,
+def simulation_experiment_start(args, sched_ip, sched_port,
                             dispatcher_ip, dispatcher_port,
                             worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
@@ -602,7 +608,7 @@ if __name__ == "__main__":
     waiting_time = args.waiting_time
 
     if args.simulation_flag:
-        simulation_experiment_start(sched_ip, sched_port,
+        simulation_experiment_start(args, sched_ip, sched_port,
                             dispatcher_ip, dispatcher_port,
                             worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
@@ -611,7 +617,7 @@ if __name__ == "__main__":
                             all_decision_num, all_history_num, need_change_interval,
                             simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, simulation_datablock_require_epsilon_max_ratio)
     else:
-        testbed_experiment_start(sched_ip, sched_port,
+        testbed_experiment_start(args, sched_ip, sched_port,
                             dispatcher_ip, dispatcher_port,
                             worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
                             global_sleep_time, update_timeout, scheduler_update_sleep_time, 

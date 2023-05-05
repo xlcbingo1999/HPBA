@@ -8,7 +8,7 @@ import cvxpy as cp
 import json
 
 class HISwithCPolicy(Policy):
-    def __init__(self, beta, job_sequence_all_num, logger):
+    def __init__(self, beta, job_sequence_all_num, seed, logger):
         super().__init__()
         self._name = 'HISwithCPolicy'
         self.beta = beta
@@ -19,6 +19,8 @@ class HISwithCPolicy(Policy):
         self.waiting_queue_capacity = 1
         self.only_one = True
         self.need_history = True
+        self.initialize_seeds(seed)
+
         self.job_sequence_all_num = job_sequence_all_num
 
         self.offline_history_job_priority_weights = []
@@ -39,7 +41,7 @@ class HISwithCPolicy(Policy):
         self.online_history_job_type_id = []
         self.online_history_job_significance = []
 
-        self.initialize_seeds(1234)
+        
 
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))

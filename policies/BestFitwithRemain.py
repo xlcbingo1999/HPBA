@@ -2,7 +2,7 @@ from policies.BasePolicy import Policy
 
 
 class BestFitwithRemainPolicy(Policy):
-    def __init__(self, logger):
+    def __init__(self, seed, logger):
         super().__init__()
         self._name = 'BestFitwithRemainPolicy'
         self.logger = logger

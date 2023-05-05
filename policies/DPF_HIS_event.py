@@ -19,10 +19,11 @@ class WaitingJob(object):
 
         self.only_one = False
         self.need_history = True
+        self.need_random_seed = True
         
 
 class DPFHISPolicy(Policy):
-    def __init__(self, beta, job_sequence_all_num, waiting_queue_capacity, logger):
+    def __init__(self, beta, job_sequence_all_num, waiting_queue_capacity, seed, logger):
         super().__init__()
         self._name = 'DPFHISPolicy'
         # 保存一个unlocked的量
@@ -34,7 +35,7 @@ class DPFHISPolicy(Policy):
         self.logger = logger    
         self.job_sequence_all_num = job_sequence_all_num    
 
-        self.initialize_seeds(1234)
+        self.initialize_seeds(seed)
     
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))

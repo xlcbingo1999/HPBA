@@ -16,7 +16,7 @@ class QueueItem(object):
         self.significance = significance
 
 class IterativeHISwithOrderPolicy(Policy):
-    def __init__(self, beta, job_sequence_all_num, batch_size_for_one_epoch, logger):
+    def __init__(self, beta, job_sequence_all_num, batch_size_for_one_epoch, seed, logger):
         super().__init__()
         self._name = 'IterativeHISwithOrderPolicy'
         self.beta = beta
@@ -25,6 +25,7 @@ class IterativeHISwithOrderPolicy(Policy):
         
         self.only_one = True
         self.need_history = True
+        self.initialize_seeds(seed)
 
         
         self.job_sequence_all_num = job_sequence_all_num
@@ -57,8 +58,6 @@ class IterativeHISwithOrderPolicy(Policy):
         self.online_history_job_sub_test_key_id = []
         self.online_history_job_type_id = []
         self.online_history_job_significance = []
-
-        self.initialize_seeds(1234)
     
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))

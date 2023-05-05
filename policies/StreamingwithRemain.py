@@ -3,7 +3,7 @@ import random
 
 
 class StreamingwithRemainPolicy(Policy):
-    def __init__(self, logger):
+    def __init__(self, seed, logger):
         super().__init__()
         self._name = 'StreamingwithRemainPolicy'
         self.logger = logger
@@ -11,8 +11,7 @@ class StreamingwithRemainPolicy(Policy):
 
         self.only_one = True
         self.need_history = False
-
-        self.initialize_seeds(1234)
+        self.initialize_seeds(seed)
 
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
