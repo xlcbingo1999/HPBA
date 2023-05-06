@@ -1,0 +1,74 @@
+Timer unit: 1e-06 s
+
+Total time: 11.789 s
+File: DL_sched.py
+Function: thread_func_sched_simulation at line 474
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   474                                                   @profile
+   475                                                   def thread_func_sched_simulation(subtrain_datasetidentifier_info, all_history_jobs_detail, all_jobs_detail):
+   476         1         49.2     49.2      0.0              self.simulation_queue.put(SchedEvent(-0.1, EVENT_KEY.TEST_START, {}))
+   477         1          1.5      1.5      0.0              for dataset_name in subtrain_datasetidentifier_info:
+   478       100         54.7      0.5      0.0                  for sub_train_dataset_identifier in subtrain_datasetidentifier_info[dataset_name]:
+   479       100         80.0      0.8      0.0                      need_submit_time = subtrain_datasetidentifier_info[dataset_name][sub_train_dataset_identifier]["time"]
+   480                                                               # self.sched_logger.info("[add dataset start dataset_name: {}; sub_train_dataset_identifier: {}]  need_submit_time: {}".format(
+   481                                                               #     dataset_name, sub_train_dataset_identifier, need_submit_time
+   482                                                               # ))
+   483                                                               
+   484       100        150.6      1.5      0.0                      event_info = {dataset_name: {sub_train_dataset_identifier: subtrain_datasetidentifier_info[dataset_name][sub_train_dataset_identifier]}}
+   485       100       1356.6     13.6      0.0                      self.simulation_queue.put(SchedEvent(need_submit_time, EVENT_KEY.DATABLOCK_ADD, event_info))
+   486                                                       
+   487         1         14.2     14.2      0.0              self.simulation_queue.put(SchedEvent(-1, EVENT_KEY.HISTORY_JOB_SUBMIT, all_history_jobs_detail))
+   488                                                       
+   489      1000        418.5      0.4      0.0              for index in range(len(all_jobs_detail)):
+   490      1000        749.4      0.7      0.0                  job_id, info = all_jobs_detail[index]
+   491                                                           
+   492      1000        491.8      0.5      0.0                  need_submit_time = info["time"]
+   493                                                           # self.sched_logger.info("[add job start job_id: {}] need_submit_time: {}".format(job_id, need_submit_time))
+   494      1000        581.4      0.6      0.0                  dispatch_jobs_detail = {}
+   495      1000        779.9      0.8      0.0                  dispatch_jobs_detail[job_id] = info
+   496                                                           
+   497      1000       3154.1      3.2      0.0                  self.simulation_preview_no_submit_job(job_id)
+   498      1000      10831.8     10.8      0.1                  self.simulation_queue.put(SchedEvent(need_submit_time, EVENT_KEY.JOB_SUBMIT, dispatch_jobs_detail))
+   499         1        193.5    193.5      0.0              self.sched_logger.info("thread_func_create_priority_queue finished!") 
+   500                                                       
+   501         1         25.5     25.5      0.0              next_event = self.simulation_queue.get()
+   502         1          0.4      0.4      0.0              next_time = next_event.priority 
+   503         1          0.8      0.8      0.0              self.simulation_global_time = next_time
+   504         1          0.3      0.3      0.0              waiting_for_end = False
+   505         1          0.9      0.9      0.0              dispatchers = set()
+   506                                                       while True:
+   507      1102        432.2      0.4      0.0                  if self.all_finished:
+   508         1        131.3    131.3      0.0                      self.sched_logger.info("all_finished")
+   509         1          0.3      0.3      0.0                      break
+   510      1102        321.7      0.3      0.0                  if not waiting_for_end:
+   511      1102      90118.2     81.8      0.8                      self.sched_logger.info("simulation_global_time[{}] next_event: {}".format(self.simulation_global_time, next_event))
+   512      1000       1099.5      1.1      0.0                      if next_event.event_key == EVENT_KEY.JOB_SUBMIT:
+   513      1000    8537150.8   8537.2     72.4                          self.update_jobs(next_event.metadata)
+   514      1000       2082.4      2.1      0.0                          job_id, info = list(next_event.metadata.items())[0]
+   515      1000       1502.0      1.5      0.0                          dispatchers.add((info["dispatcher_ip"], info["dispatcher_port"]))
+   516      1000     779742.2    779.7      6.6                          self.calculate_significance_for_nosched_jobs()
+   517      1000    1282844.9   1282.8     10.9                          self.sched_dataset_for_done_significance_cal_jobs()
+   518      1000     794027.6    794.0      6.7                          self.placement_dispatch_for_allsched_jobs()
+   519       101         63.7      0.6      0.0                      elif next_event.event_key == EVENT_KEY.HISTORY_JOB_SUBMIT:
+   520         1     124042.3 124042.3      1.1                          self.update_history_jobs(next_event.metadata)
+   521       100         89.9      0.9      0.0                      elif next_event.event_key == EVENT_KEY.DATABLOCK_ADD:
+   522       100      20738.8    207.4      0.2                          self.update_dataset(next_event.metadata)
+   523         1          0.6      0.6      0.0                      elif next_event.event_key == EVENT_KEY.TEST_START:
+   524         1         72.3     72.3      0.0                          self.sched_logger.info("============= TEST_START =============")
+   525                                                           
+   526      1101       2975.8      2.7      0.0                  if self.check_all_finished_or_failed():
+   527         1     108154.9 108154.9      0.9                      self.report_status("after check_all_finished_or_failed")
+   528         1         81.0     81.0      0.0                      self.sched_logger.info("check_all_job state: finished_or_failed")
+   529         1          3.4      3.4      0.0                      self.sched_end()
+   530         1       5364.6   5364.6      0.0                      self.end_and_report_dispatchers_by_sched(dispatchers)
+   531                                                           else:
+   532      1101       3549.0      3.2      0.0                      if not self.simulation_queue.empty():
+   533      1101      14392.7     13.1      0.1                          next_event = self.simulation_queue.get()
+   534      1101        401.8      0.4      0.0                          next_time = next_event.priority 
+   535      1101        593.0      0.5      0.0                          self.simulation_global_time = next_time
+   536                                                               else:
+   537                                                                   waiting_for_end = True
+   538         1         81.2     81.2      0.0              self.sched_logger.info("thread_func_sched_simulation finished!") 
+

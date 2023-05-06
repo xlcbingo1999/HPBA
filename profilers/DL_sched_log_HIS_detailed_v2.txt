@@ -1,0 +1,364 @@
+Timer unit: 1e-06 s
+
+Total time: 576.414 s
+File: /home/netlab/DL_lab/opacus_testbed/policies/IterativeHISwithOrder.py
+Function: get_LP_result at line 74
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    74                                               @profile
+    75                                               def get_LP_result(self, sign_matrix, datablock_privacy_budget_capacity_list, job_target_datablock_selected_num_list, job_privacy_budget_consume_list, solver=cp.ECOS):
+    76      1000       1067.0      1.1      0.0          begin_time = time.time()
+    77      1000        874.6      0.9      0.0          job_num, datablock_num = sign_matrix.shape[0], sign_matrix.shape[1]
+    78      1000      85157.4     85.2      0.0          self.logger.debug("job_num: {}; datablock_num: {}".format(job_num, datablock_num))
+    79      1000      19062.5     19.1      0.0          job_privacy_budget_consume_list = np.array(job_privacy_budget_consume_list)[np.newaxis, :]
+    80      1000       3206.1      3.2      0.0          datablock_privacy_budget_capacity_list = np.array(datablock_privacy_budget_capacity_list)[np.newaxis, :]
+    81                                           
+    82      1000      46407.2     46.4      0.0          matrix_X = cp.Variable((job_num, datablock_num), nonneg=True)
+    83      1000      31095.9     31.1      0.0          objective = cp.Maximize(
+    84      1000     135443.3    135.4      0.0              cp.sum(cp.multiply(sign_matrix, matrix_X))
+    85                                                   )
+    86                                           
+    87      1000        489.6      0.5      0.0          constraints = [
+    88      1000     188760.8    188.8      0.0              matrix_X >= 0,
+    89      1000     155543.9    155.5      0.0              matrix_X <= 1,
+    90      1000     144656.8    144.7      0.0              cp.sum(matrix_X, axis=1) <= job_target_datablock_selected_num_list,
+    91      1000     213378.8    213.4      0.0              (job_privacy_budget_consume_list @ matrix_X) <= datablock_privacy_budget_capacity_list
+    92                                                   ]
+    93                                           
+    94                                                   # self.logger.debug("check job_target_datablock_selected_num_list: {}".format(job_target_datablock_selected_num_list))
+    95                                                   # self.logger.debug("check datablock_privacy_budget_capacity_list: {}".format(datablock_privacy_budget_capacity_list))
+    96                                                   # self.logger.debug("check sum of job_privacy_budget_consume_list: {}".format(np.sum(job_privacy_budget_consume_list * job_target_datablock_selected_num_list)))
+    97                                           
+    98      1000      38088.0     38.1      0.0          cvxprob = cp.Problem(objective, constraints)
+    99      1000  575172718.6 575172.7     99.8          result = cvxprob.solve(solver)
+   100                                                   # self.logger.debug(matrix_X.value)
+   101      1000       2022.3      2.0      0.0          if cvxprob.status != "optimal":
+   102                                                       self.logger.info('WARNING: Allocation returned by policy not optimal!')
+   103      1000     174551.1    174.6      0.0          self.logger.debug("LP solver time: {} s".format(time.time() - begin_time))
+   104      1000       1090.3      1.1      0.0          return matrix_X.value
+
+Total time: 18.1809 s
+File: /home/netlab/DL_lab/opacus_testbed/policies/IterativeHISwithOrder.py
+Function: get_sign_matrix at line 106
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   106                                               @profile
+   107                                               def get_sign_matrix(self, current_all_job_priority_weights, current_all_job_significances,
+   108                                                                   sub_train_datasetidentifier_2_epsilon_capcity):
+   109      1000        415.5      0.4      0.0          temp_index_2_datablock_identifier = {}
+   110      1000        291.2      0.3      0.0          sign_matrix = []
+   111    218875      54090.5      0.2      0.3          for job_index, job_priority_weight in enumerate(current_all_job_priority_weights):
+   112    218875      43124.6      0.2      0.2              temp = []
+   113  21887500    4459922.0      0.2     24.5              for datablock_index, datablock_identifier in enumerate(sub_train_datasetidentifier_2_epsilon_capcity):
+   114  21887500    4723565.6      0.2     26.0                  temp_index_2_datablock_identifier[datablock_index] = datablock_identifier
+   115  21887500    7446589.3      0.3     41.0                  temp.append(current_all_job_significances[job_index][datablock_identifier] * job_priority_weight)
+   116    218875      61326.0      0.3      0.3              sign_matrix.append(temp)
+   117      1000    1391091.9   1391.1      7.7          sign_matrix = np.array(sign_matrix)
+   118      1000        489.8      0.5      0.0          return sign_matrix, temp_index_2_datablock_identifier
+
+Total time: 691.569 s
+File: /home/netlab/DL_lab/opacus_testbed/policies/IterativeHISwithOrder.py
+Function: get_allocation_for_small at line 120
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   120                                               @profile
+   121                                               def get_allocation_for_small(self, job_id, history_job_priority_weights, 
+   122                                                                           history_job_budget_consumes, 
+   123                                                                           history_job_signficances, 
+   124                                                                           history_job_target_datablock_selected_nums,
+   125                                                                           sub_train_datasetidentifier_2_significance,
+   126                                                                           sub_train_datasetidentifier_2_epsilon_remain, 
+   127                                                                           sub_train_datasetidentifier_2_epsilon_capcity,
+   128                                                                           target_epsilon_require, 
+   129                                                                           target_datablock_select_num, 
+   130                                                                           job_priority_weight):
+   131                                                   
+   132      1000        448.1      0.4      0.0          selected_datablock_identifiers = []
+   133      1000        296.2      0.3      0.0          selected_real_sched_epsilon_map = {}
+   134      1000        311.5      0.3      0.0          calcu_compare_epsilon = 0.0
+   135                                                   
+   136      1000     347846.1    347.8      0.1          current_all_job_priority_weights = copy.deepcopy(history_job_priority_weights)
+   137      1000        481.3      0.5      0.0          current_all_job_priority_weights.append(job_priority_weight)
+   138      1000     340065.0    340.1      0.0          current_all_job_budget_consumes = copy.deepcopy(history_job_budget_consumes)
+   139      1000        478.0      0.5      0.0          current_all_job_budget_consumes.append(target_epsilon_require)
+   140      1000   66423795.5  66423.8      9.6          current_all_job_signficances = copy.deepcopy(history_job_signficances)
+   141      1000        574.0      0.6      0.0          current_all_job_signficances.append(sub_train_datasetidentifier_2_significance)
+   142      1000     341146.4    341.1      0.0          current_all_job_target_datablock_selected_nums = copy.deepcopy(history_job_target_datablock_selected_nums)
+   143      1000        470.8      0.5      0.0          current_all_job_target_datablock_selected_nums.append(target_datablock_select_num)
+   144                                           
+   145      1000   38722582.2  38722.6      5.6          sign_matrix, temp_index_2_datablock_identifier = self.get_sign_matrix(
+   146      1000        273.5      0.3      0.0              current_all_job_priority_weights,
+   147      1000        209.7      0.2      0.0              current_all_job_signficances,
+   148      1000        192.4      0.2      0.0              sub_train_datasetidentifier_2_epsilon_capcity
+   149                                                   )
+   150                                                   
+   151      1000       2981.6      3.0      0.0          datablock_privacy_budget_capacity_list = np.zeros(shape=sign_matrix.shape[1])
+   152      1000      15967.3     16.0      0.0          job_target_datablock_selected_num_list = np.array(current_all_job_target_datablock_selected_nums)
+   153                                           
+   154    100000      21486.2      0.2      0.0          for temp_index in temp_index_2_datablock_identifier:
+   155    100000      36484.3      0.4      0.0              datablock_privacy_budget_capacity_list[temp_index] = self.datablock_identifier_2_remain_epsilon[temp_index_2_datablock_identifier[temp_index]] + \
+   156    100000      44401.8      0.4      0.0                  sub_train_datasetidentifier_2_epsilon_capcity[temp_index_2_datablock_identifier[temp_index]] / self.datablock_identifier_2_all_epoch_num[temp_index_2_datablock_identifier[temp_index]]
+   157                                                   
+   158      1000  576718394.9 576718.4     83.4          assign_result_matrix = self.get_LP_result(sign_matrix, datablock_privacy_budget_capacity_list, job_target_datablock_selected_num_list, current_all_job_budget_consumes)
+   159      1000       2194.1      2.2      0.0          current_job_probability = assign_result_matrix[-1] # 这里其实相当于算出了一个分数, 如果为了这个分数不被泄露, 可以用指数机制加噪, 该方案被证实为满足DP-差分隐私.
+   160      1000        343.4      0.3      0.0          choose_indexes = []
+   161                                                   
+   162      1000      13862.3     13.9      0.0          current_job_probability_list = list(current_job_probability)
+   163      1000      44276.6     44.3      0.0          current_job_probability_sorted_indexes = sorted(range(len(current_job_probability_list)), key=lambda k: current_job_probability_list[k], reverse=True)
+   164                                                   
+   165    100000      41025.1      0.4      0.0          for sorted_index in current_job_probability_sorted_indexes:
+   166    100000     154728.3      1.5      0.0              prob_true = min(1.0, max(0.0, current_job_probability_list[sorted_index]))
+   167    100000      61132.3      0.6      0.0              prob_false = 1.0 - prob_true
+   168    100000      51049.9      0.5      0.0              prob_vec = [prob_false, prob_true]
+   169    100000    7884759.8     78.8      1.1              choice_result = np.random.choice(a=range(2), size=1, replace=False, p=prob_vec)
+   170     87738     270382.9      3.1      0.0              if choice_result == 1:
+   171     12262       8551.4      0.7      0.0                  choose_indexes.append(sorted_index)
+   172                                           
+   173     12262       3405.8      0.3      0.0          for choose_index in choose_indexes:
+   174     12262       5024.4      0.4      0.0              datablock_identifier = temp_index_2_datablock_identifier[choose_index]
+   175      6810       4580.9      0.7      0.0              if len(selected_datablock_identifiers) < target_datablock_select_num and target_epsilon_require <= sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier]:
+   176      5452       2016.2      0.4      0.0                  selected_datablock_identifiers.append(datablock_identifier)
+   177      5452       2608.8      0.5      0.0                  selected_real_sched_epsilon_map[(job_id, datablock_identifier)] = target_epsilon_require
+   178      1000        343.9      0.3      0.0          return selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
+
+Total time: 692.762 s
+File: /home/netlab/DL_lab/opacus_testbed/policies/IterativeHISwithOrder.py
+Function: get_allocation at line 180
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   180                                               @profile
+   181                                               def get_allocation(self, state):
+   182      1000        640.1      0.6      0.0          job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]
+   183      1000        844.8      0.8      0.0          assert len(job_id_2_train_dataset_name) == 1
+   184      1000       1549.6      1.5      0.0          set_job_id = set(job_id_2_train_dataset_name.keys())
+   185      1000        943.1      0.9      0.0          set_dataset_name = set(job_id_2_train_dataset_name.values())
+   186      1000        500.7      0.5      0.0          assert len(set_dataset_name) == 1 # 必须保证所有的任务都是针对同一个数据集的
+   187      1000       1092.6      1.1      0.0          job_id = list(set_job_id)[0]
+   188      1000        517.6      0.5      0.0          train_dataset_name = list(set_dataset_name)[0]
+   189                                           
+   190      1000        535.6      0.5      0.0          sub_train_datasetidentifier_2_epsilon_remain = state["current_sub_train_datasetidentifier_2_epsilon_remain"][train_dataset_name]
+   191      1000        506.4      0.5      0.0          sub_train_datasetidentifier_2_epsilon_capcity = state["current_sub_train_datasetidentifier_2_epsilon_capcity"][train_dataset_name]
+   192      1000        386.5      0.4      0.0          target_epsilon_require = state["job_id_2_target_epsilon_require"][job_id]
+   193      1000        368.7      0.4      0.0          target_datablock_select_num = state["job_id_2_target_datablock_selected_num"][job_id]
+   194      1000        362.6      0.4      0.0          job_priority_weight = state["job_id_2_job_priority_weight"][job_id]
+   195      1000        325.1      0.3      0.0          sub_train_datasetidentifier_2_significance = state["job_id_2_significance"][job_id]
+   196      1000        341.1      0.3      0.0          job_arrival_index = state["job_id_2_arrival_index"][job_id]
+   197                                                   
+   198      1000        446.9      0.4      0.0          all_job_sequence_num = self.job_sequence_all_num
+   199      1000        433.2      0.4      0.0          offline_history_job_priority_weights = self.offline_history_job_priority_weights
+   200      1000        690.5      0.7      0.0          offline_history_job_budget_consumes = self.offline_history_job_budget_consumes
+   201      1000        533.9      0.5      0.0          offline_history_job_signficance = self.offline_history_job_significance
+   202      1000        437.3      0.4      0.0          offline_history_job_target_datablock_selected_num = self.offline_history_job_target_selected_num
+   203                                           
+   204      1000        354.8      0.4      0.0          online_history_job_priority_weights = self.online_history_job_priority_weights
+   205      1000        313.2      0.3      0.0          online_history_job_budget_consumes = self.online_history_job_budget_consumes
+   206      1000        342.9      0.3      0.0          online_history_job_signficance = self.online_history_job_significance
+   207      1000        337.8      0.3      0.0          online_history_job_target_datablock_selected_num = self.online_history_job_target_selected_num
+   208                                                   
+   209                                                   # 处理一下新来的数据块
+   210    100000      22775.4      0.2      0.0          for sub_train_dataset_identifier in sub_train_datasetidentifier_2_epsilon_capcity:
+   211     99900      27588.1      0.3      0.0              if sub_train_dataset_identifier not in self.datablock_identifier_2_epsilon_G:
+   212       100         37.4      0.4      0.0                  self.datablock_identifier_2_epsilon_G[sub_train_dataset_identifier] = sub_train_datasetidentifier_2_epsilon_capcity[sub_train_dataset_identifier]
+   213       100         51.1      0.5      0.0                  self.datablock_identifier_2_all_epoch_num[sub_train_dataset_identifier] = (self.all_epoch_num - self.current_epoch_index)
+   214       100         53.4      0.5      0.0                  self.datablock_identifier_2_remain_epsilon[sub_train_dataset_identifier] = self.datablock_identifier_2_epsilon_G[sub_train_dataset_identifier] / self.datablock_identifier_2_all_epoch_num[sub_train_dataset_identifier]
+   215                                           
+   216       997       1258.4      1.3      0.0          if self.current_batch_size_for_one_epoch >= self.batch_size_for_one_epoch: # 每个epoch的最后一个batch进行best-effort和remain epsilon budget的计算
+   217         3         17.1      5.7      0.0              self.current_epoch_index += 1
+   218         3          1.0      0.3      0.0              self.current_batch_size_for_one_epoch = 0
+   219                                           
+   220                                                       # TODO(xlc): 计算remain epsilon budget!
+   221       300         65.0      0.2      0.0              for sub_train_dataset_identifier in sub_train_datasetidentifier_2_epsilon_capcity:
+   222       300        203.9      0.7      0.0                  self.datablock_identifier_2_remain_epsilon[sub_train_dataset_identifier] += (self.datablock_identifier_2_epsilon_G[sub_train_dataset_identifier] / self.datablock_identifier_2_all_epoch_num[sub_train_dataset_identifier])
+   223                                                       
+   224         3        497.2    165.7      0.0              self.logger.info("update datablock_identifier_2_remain_epsilon: {}".format(self.datablock_identifier_2_remain_epsilon))
+   225                                           
+   226      1000        821.4      0.8      0.0          self.current_batch_size_for_one_epoch += 1
+   227       750        732.0      1.0      0.0          if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < self.batch_size_for_one_epoch:
+   228       250        381.3      1.5      0.0              sample_history_job_priority_weights = offline_history_job_priority_weights + online_history_job_priority_weights
+   229       250        290.0      1.2      0.0              sample_history_job_budget_consumes = offline_history_job_budget_consumes + online_history_job_budget_consumes
+   230       250        306.9      1.2      0.0              sample_history_job_signficances = offline_history_job_signficance + online_history_job_signficance
+   231       250        289.6      1.2      0.0              sample_history_job_target_datablock_selected_nums = offline_history_job_target_datablock_selected_num + online_history_job_target_datablock_selected_num
+   232                                                   else:
+   233       750       1144.5      1.5      0.0              select_num_from_offline_history = max(self.batch_size_for_one_epoch - len(online_history_job_priority_weights) - 1, 0)
+   234       750      46020.1     61.4      0.0              offline_sample_indexes = np.random.choice(range(len(offline_history_job_priority_weights)), select_num_from_offline_history, replace=False)
+   235                                                       
+   236       750       1113.9      1.5      0.0              if len(online_history_job_priority_weights) > self.batch_size_for_one_epoch - 1:
+   237       750      73566.3     98.1      0.0                  online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.batch_size_for_one_epoch - 1, replace=False)
+   238                                                       else:
+   239                                                           online_sample_indexes = range(len(online_history_job_priority_weights))
+   240       750      52049.9     69.4      0.0              sample_history_job_priority_weights = [online_history_job_priority_weights[i] for i in online_sample_indexes] + [offline_history_job_priority_weights[i] for i in offline_sample_indexes]
+   241       750      46063.3     61.4      0.0              sample_history_job_budget_consumes = [online_history_job_budget_consumes[i] for i in online_sample_indexes] + [offline_history_job_budget_consumes[i] for i in offline_sample_indexes]
+   242       750      41622.7     55.5      0.0              sample_history_job_signficances = [online_history_job_signficance[i] for i in online_sample_indexes] + [offline_history_job_signficance[i] for i in offline_sample_indexes]
+   243       750      31991.5     42.7      0.0              sample_history_job_target_datablock_selected_nums = [online_history_job_target_datablock_selected_num[i] for i in online_sample_indexes] + [offline_history_job_target_datablock_selected_num[i] for i in offline_sample_indexes]
+   244                                           
+   245      1000       2093.7      2.1      0.0          if job_arrival_index % self.batch_size_for_one_epoch < self.beta * self.batch_size_for_one_epoch:
+   246                                                       self.logger.info("stop due to sample caused by job_arrival_index: {}; self.beta: {}; all_job_sequence_num: {}".format(
+   247                                                           job_arrival_index, self.beta, all_job_sequence_num
+   248                                                       ))
+   249                                                       selected_datablock_identifiers = []
+   250                                                       selected_real_sched_epsilon_map = {}
+   251                                                       calcu_compare_epsilon = 0.0
+   252                                                   else:
+   253      1000        704.1      0.7      0.0              selected_datablock_identifiers, selected_real_sched_epsilon_map, \
+   254      1000  692284552.9 692284.6     99.9                  calcu_compare_epsilon = self.get_allocation_for_small(job_id, sample_history_job_priority_weights, 
+   255      1000        309.2      0.3      0.0                                  sample_history_job_budget_consumes, 
+   256      1000        249.4      0.2      0.0                                  sample_history_job_signficances, 
+   257      1000        318.1      0.3      0.0                                  sample_history_job_target_datablock_selected_nums,
+   258      1000        308.8      0.3      0.0                                  sub_train_datasetidentifier_2_significance,
+   259      1000        262.8      0.3      0.0                                  sub_train_datasetidentifier_2_epsilon_remain, 
+   260      1000        246.6      0.2      0.0                                  sub_train_datasetidentifier_2_epsilon_capcity,
+   261      1000        310.8      0.3      0.0                                  target_epsilon_require, target_datablock_select_num, job_priority_weight)
+   262                                              
+   263      1000       2594.0      2.6      0.0          job_2_selected_datablock_identifiers = [
+   264      1000        252.7      0.3      0.0              (job_id, identifier) for identifier in selected_datablock_identifiers
+   265                                                   ]
+   266      1000     107828.7    107.8      0.0          self.logger.debug("from policy [{}] selected_datablock_identifiers: {}".format(self.name , job_2_selected_datablock_identifiers))
+   267      1000        421.5      0.4      0.0          return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
+
+Total time: 0.0101515 s
+File: /home/netlab/DL_lab/opacus_testbed/policies/IterativeHISwithOrder.py
+Function: push_success_allocation at line 269
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   269                                               @profile
+   270                                               def push_success_allocation(self, success_datasetidentifier_2_consume_epsilon):
+   271       566       1201.1      2.1     11.8          if len(success_datasetidentifier_2_consume_epsilon.keys()) <= 0:
+   272       566        141.3      0.2      1.4              return 
+   273       434        239.0      0.6      2.4          assert len(success_datasetidentifier_2_consume_epsilon.keys()) == 1
+   274       434        601.8      1.4      5.9          dataset_name = list(success_datasetidentifier_2_consume_epsilon.keys())[0]
+   275       434        163.2      0.4      1.6          datablock_identifier_2_consume_epsilon = success_datasetidentifier_2_consume_epsilon[dataset_name]
+   276                                                   
+   277      5452       1814.4      0.3     17.9          for datablock_identifier, consume_epsilon in datablock_identifier_2_consume_epsilon.items():
+   278      2954       1579.2      0.5     15.6              if self.datablock_identifier_2_remain_epsilon[datablock_identifier] >= consume_epsilon:
+   279      2954       1485.1      0.5     14.6                  self.datablock_identifier_2_remain_epsilon[datablock_identifier] -= consume_epsilon
+   280                                                       else:
+   281      2498        810.2      0.3      8.0                  self.datablock_identifier_2_remain_epsilon[datablock_identifier] = 0.0
+   282      5452       2116.2      0.4     20.8              if self.datablock_identifier_2_remain_epsilon[datablock_identifier] < 0:
+   283                                                           self.logger.warning("datablock_identifier_2_remain_epsilon[{}] == {}".format(
+   284                                                               datablock_identifier, self.datablock_identifier_2_remain_epsilon[datablock_identifier]
+   285                                                           ))
+
+Total time: 693.688 s
+File: DL_sched.py
+Function: get_scheduling_datablock_result_from_policy at line 655
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   655                                               @profile
+   656                                               def get_scheduling_datablock_result_from_policy(self, job_id_2_dataset_name, job_id_2_target_epsilon_require, 
+   657                                                                                   job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
+   658                                                                                   job_id_2_test_dataset_name, job_id_2_sub_test_key_id, 
+   659                                                                                   job_id_2_significance, job_id_2_arrival_index):
+   660      1000        338.0      0.3      0.0          job_2_selected_datablock_identifiers = []
+   661                                                   # 在这里接入算法?
+   662      1000     802217.3    802.2      0.1          state = self.get_runtime_state(job_id_2_dataset_name, job_id_2_target_epsilon_require, 
+   663      1000        294.5      0.3      0.0                                      job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
+   664      1000        219.3      0.2      0.0                                      job_id_2_test_dataset_name, job_id_2_sub_test_key_id, 
+   665      1000        188.0      0.2      0.0                                      job_id_2_significance, job_id_2_arrival_index)
+   666      1000  692884198.0 692884.2     99.9          job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon = self.assignment_policy.get_allocation(state)
+   667                                                   # not_selected_datablock_identifiers = [tu[0] for tu in sub_train_sort[target_datablock_select_num:]]
+   668      1000        291.0      0.3      0.0          return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
+
+Total time: 694.16 s
+File: DL_sched.py
+Function: sched_dataset_for_done_significance_cal_jobs at line 985
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   985                                               @profile
+   986                                               def sched_dataset_for_done_significance_cal_jobs(self):
+   987      1000      13737.9     13.7      0.0          all_done_sig_cal_jobs_copy = copy.deepcopy(self.status_2_jobid[JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL])
+   988      1000        870.9      0.9      0.0          if len(all_done_sig_cal_jobs_copy) <= 0:
+   989                                                       return
+   990      1000        727.5      0.7      0.0          if self.assignment_policy.only_one:
+   991      1000        546.4      0.5      0.0              all_done_sig_cal_jobs_copy = [all_done_sig_cal_jobs_copy[0]]
+   992                                                   
+   993      1000       2358.8      2.4      0.0          job_id_2_dataset_name = {job_id: self.jobid_2_train_dataset_name[job_id] for job_id in all_done_sig_cal_jobs_copy}
+   994      1000       1691.6      1.7      0.0          job_id_2_target_epsilon_require = {job_id: self.jobid_2_target_epsilon[job_id] for job_id in all_done_sig_cal_jobs_copy}
+   995      1000       1389.5      1.4      0.0          job_id_2_target_datablock_selected_num = {job_id: self.jobid_2_datablock_selected_num[job_id] for job_id in all_done_sig_cal_jobs_copy}
+   996      1000       1661.4      1.7      0.0          job_id_2_job_priority_weight = {job_id: self.jobid_2_priority_weight[job_id] for job_id in all_done_sig_cal_jobs_copy}
+   997      1000       1478.1      1.5      0.0          job_id_2_test_dataset_name = {job_id: self.jobid_2_test_dataset_name[job_id] for job_id in all_done_sig_cal_jobs_copy}
+   998      1000       1390.4      1.4      0.0          job_id_2_sub_test_key_id = {job_id: self.jobid_2_sub_test_key_id[job_id] for job_id in all_done_sig_cal_jobs_copy}
+   999      1000       1523.7      1.5      0.0          job_id_2_significance = {job_id: self.jobid_2_significance[job_id] for job_id in all_done_sig_cal_jobs_copy}
+  1000      1000       1562.8      1.6      0.0          job_id_2_arrival_index = {job_id: self.jobid_2_arrival_index[job_id] for job_id in all_done_sig_cal_jobs_copy}
+  1001                                                   
+  1002                                                   # 为没有决定分配方案的任务决定分配方案
+  1003      1000        379.5      0.4      0.0          job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon = \
+  1004      1000  693703023.5 693703.0     99.9              self.get_scheduling_datablock_result_from_policy(job_id_2_dataset_name, 
+  1005      1000        303.7      0.3      0.0                  job_id_2_target_epsilon_require, job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
+  1006      1000        247.6      0.2      0.0                  job_id_2_test_dataset_name, job_id_2_sub_test_key_id, job_id_2_significance, job_id_2_arrival_index)
+  1007      1000       1333.6      1.3      0.0          success_sched_job_ids = set()
+  1008      1000        312.5      0.3      0.0          success_datasetidentifier_2_consume_epsilon = {}
+  1009       566        484.1      0.9      0.0          if len(job_2_selected_datablock_identifiers) > 0:
+  1010      5452       1669.2      0.3      0.0              for temp_job_id, identifier in job_2_selected_datablock_identifiers:
+  1011      5018       1413.3      0.3      0.0                  if temp_job_id not in self.jobid_2_sub_train_key_ids:
+  1012       434        283.3      0.7      0.0                      self.jobid_2_sub_train_key_ids[temp_job_id] = []
+  1013      5452       2162.0      0.4      0.0                  consume_epsilon = selected_real_sched_epsilon_map[(temp_job_id, identifier)] 
+  1014      5452       2079.3      0.4      0.0                  self.jobid_2_sched_epsilon[temp_job_id] = consume_epsilon
+  1015      5452       1424.5      0.3      0.0                  dataset_name = job_id_2_dataset_name[temp_job_id]
+  1016      5452       2645.4      0.5      0.0                  if self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] >= consume_epsilon:
+  1017      5452       2414.1      0.4      0.0                      self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] -= consume_epsilon # calcu_compare_epsilon
+  1018      5452       2396.2      0.4      0.0                      self.jobid_2_sub_train_key_ids[temp_job_id].append(identifier)
+  1019      5452       1972.0      0.4      0.0                      success_sched_job_ids.add(temp_job_id)
+  1020      5018       1253.2      0.2      0.0                      if dataset_name not in success_datasetidentifier_2_consume_epsilon:
+  1021       434        173.1      0.4      0.0                          success_datasetidentifier_2_consume_epsilon[dataset_name] = {}
+  1022      5452       1806.1      0.3      0.0                      if identifier not in success_datasetidentifier_2_consume_epsilon[dataset_name]:
+  1023      5452       2191.9      0.4      0.0                          success_datasetidentifier_2_consume_epsilon[dataset_name][identifier] = 0.0
+  1024      5452       2215.3      0.4      0.0                      success_datasetidentifier_2_consume_epsilon[dataset_name][identifier] += consume_epsilon
+  1025      5452       1953.4      0.4      0.0                  if self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] <= 0.0:
+  1026                                                               self.sub_train_datasetidentifier_2_dataset_status[dataset_name][identifier] = DATASET_STATUS_KEY.EXHAUST
+  1027                                                               if self.simulation:
+  1028                                                                   self.sub_train_datasetidentifier_2_exhausted_time[dataset_name][identifier] = self.simulation_global_time
+  1029                                                               else:
+  1030                                                                   self.sub_train_datasetidentifier_2_exhausted_time[dataset_name][identifier] = time.time()
+  1031                                                   
+  1032      1000     106280.4    106.3      0.0          self.sched_logger.info("final true success Jobs selected datablock identifiers: {}".format(success_sched_job_ids))
+  1033      1000      32043.6     32.0      0.0          self.push_success_scheduling_result_to_policy(success_datasetidentifier_2_consume_epsilon)
+  1034                                           
+  1035                                                   # 不管是否进行数据块的分配, 都应该增加
+  1036      1000        515.8      0.5      0.0          for temp_job_id in all_done_sig_cal_jobs_copy:
+  1037                                                       # self.jobid_2_current_epochs[temp_job_id] += self.jobid_2_update_sched_epoch_num[temp_job_id]
+  1038      1000      96199.6     96.2      0.0              self.job_add_to_history(temp_job_id)
+  1039                                           
+  1040      1000      16429.5     16.4      0.0          need_failed_job = copy.deepcopy(all_done_sig_cal_jobs_copy)
+  1041      1000        731.8      0.7      0.0          for temp_job_id in success_sched_job_ids:
+  1042       434       3645.7      8.4      0.0              status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "dataset")
+  1043       434       1459.4      3.4      0.0              origin_status_success, target_status_success = self.get_job_status_update_origin_target(status_update_path)
+  1044       434      36402.1     83.9      0.0              self.sche_reflash_job_status(temp_job_id, origin_status_success, target_status_success)
+  1045       434        327.9      0.8      0.0              need_failed_job.remove(temp_job_id)
+  1046                                                       
+  1047                                                       # self.jobid_2_real_sched_epochs[temp_job_id] += self.jobid_2_update_sched_epoch_num[temp_job_id]
+  1048                                           
+  1049      1000        365.6      0.4      0.0          for temp_job_id in need_failed_job:
+  1050       566      45514.1     80.4      0.0              self.sched_logger.info("failed job scheduling [{}] first".format(temp_job_id))
+  1051                                                       # TODO(xlc): 这里不应该直接设置为Failed状态, 而是考虑max_time的情况, 决定是否将任务放到NO_SCHED的状态, 同时需要知道模型的最新保存位置?
+  1052       566       6365.8     11.2      0.0              status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "failed")
+  1053       566        622.2      1.1      0.0              origin_info = self.jobid_2_origininfo[temp_job_id]
+  1054       566       3440.7      6.1      0.0              origin_status_failed, target_status_failed = self.get_job_status_update_origin_target(status_update_path)
+  1055       566      46128.6     81.5      0.0              self.sche_reflash_job_status(temp_job_id, origin_status_failed, target_status_failed)
+  1056       566        352.2      0.6      0.0              if not self.simulation:
+  1057                                                           self.failed_job_to_dispatcher(temp_job_id, origin_info)
+  1058                                                       # self.jobid_2_failed_epochs[temp_job_id] += self.jobid_2_update_sched_epoch_num[temp_job_id]
+  1059                                                       '''
+  1060                                                       if self.jobid_2_real_sched_epochs[temp_job_id] >= self.jobid_2_target_epochs[temp_job_id]:
+  1061                                                           status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "finished")
+  1062                                                           origin_info = self.jobid_2_origininfo[temp_job_id]
+  1063                                                           self.finished_job_to_dispatcher(temp_job_id, origin_info)
+  1064                                                       elif self.jobid_2_current_epochs[temp_job_id] >= self.jobid_2_max_sched_epoch_num[temp_job_id]:
+  1065                                                           status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "failed")
+  1066                                                           origin_info = self.jobid_2_origininfo[temp_job_id]
+  1067                                                           self.failed_job_to_dispatcher(temp_job_id, origin_info)
+  1068                                                       else:
+  1069                                                           self.global_job_arrival_index += 1
+  1070                                                           self.jobid_2_arrival_index[temp_job_id] = self.global_job_arrival_index
+  1071                                                           self.jobid_2_recoming_min_time[temp_job_id] = time.time() + self.recoming_time_interval
+  1072                                                           status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "wait_recoming")
+  1073                                                       '''
+  1074      1000        496.5      0.5      0.0          if not self.simulation:
+  1075                                                       self.report_status("after sched_dataset_for_done_significance_cal_jobs")
+
