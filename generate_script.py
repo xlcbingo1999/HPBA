@@ -1,20 +1,23 @@
 current_ip_index = 4
-current_cmd_index = 4
+current_cmd_index = 3
 
 is_simulation = False
+worker_indexes = [3]
+worker_indexes = [str(index) for index in worker_indexes]
+worker_indexes_str = " ".join(worker_indexes)
 
 assignment_policy = "IterativeHISwithOrderPolicy"
 his_batch_size_for_one_epochs = 10
 significance_policy = "TempPolicy"
 test_jobtrace_reconstruct_path = "schedule-review-testbed-05-08-23-51-56" # "schedule-review-simulation-05-04-00-43-38"
 dataset_reconstruct_path = "schedule-review-testbed-05-08-22-10-45" # "schedule-review-simulation-05-03-19-49-14"
-history_jobtrace_reconstruct_path = "" # "schedule-review-simulation-05-03-19-49-14"
+history_jobtrace_reconstruct_path = "schedule-review-testbed-05-08-23-55-06" # "schedule-review-simulation-05-03-19-49-14"
 all_decision_num = 50
 datablock_require_epsilon_max_ratio = 0.1
-all_history_num = 50
+all_history_num = 25
 his_betas = 0.0
-simulation_all_datablock_num = 100
-simulation_offline_datablock_num = 100
+simulation_all_datablock_num = 6
+simulation_offline_datablock_num = 6
 
 simulation_time = 5
 waiting_time = 2 if is_simulation else 10
@@ -73,6 +76,8 @@ if is_simulation:
     dispatcher_cmds.append(f"--simulation_all_datablock_num {simulation_all_datablock_num}")
     dispatcher_cmds.append(f"--simulation_offline_datablock_num {simulation_offline_datablock_num}")
     dispatcher_cmds.append(f"--simulation_time {simulation_time}")
+else:
+    dispatcher_cmds.append(f"--worker_indexes {worker_indexes_str}")
 
 dispatcher_cmds.append(f"--seed {seed_str}")
 dispatcher_cmds.append(f"--waiting_time {waiting_time}")
