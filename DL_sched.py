@@ -69,11 +69,12 @@ class Scheduler_server(object):
         self.sched_port = sched_port
 
         self.simulation = False
+        self.simulation_index = 0
         self.simulation_queue = PriorityQueue()
         self.simulation_global_time = 0.0
 
         self.all_stop = False
-        self.all_finished = False
+        self.all_finished = True
 
         self.all_testbed_thread = None
         self.sched_thread = None
@@ -154,17 +155,23 @@ class Scheduler_server(object):
         self.significance_policy = None
 
         self.seed = 1234
+        self.model_save_path = ""
+        self.all_logger_path = ""
+        self.summary_writer_path = ""
+        self.sched_logger = None
 
-    def initialize_simulation_flag(self, simulation):
+    def initialize_simulation_flag(self, simulation, simulation_index):
         self.simulation = simulation
+        self.simulation_index = simulation_index
 
-    def initialize_logging_path(self, current_test_all_dir):
+    def initialize_logging_path(self, current_test_all_dir, simulation_index):
         # current_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
         # self.current_test_all_dir = 'schedule-review-%s' % (current_time)
         self.model_save_path = '{}/{}'.format(RESULT_PATH, current_test_all_dir)
         self.all_logger_path = '{}/{}'.format(RESULT_PATH, current_test_all_dir)
-        sched_logger_path = '{}/DL_sched.log'.format(self.all_logger_path)
         self.summary_writer_path = '{}/{}'.format(RESULT_PATH, current_test_all_dir)
+
+        sched_logger_path = '{}/DL_sched_{}.log'.format(self.all_logger_path, simulation_index)
         self.sched_logger = get_logger(sched_logger_path, sched_logger_path, enable_multiprocess=True)
 
     def initialize_seeds(self, seed):
@@ -189,14 +196,40 @@ class Scheduler_server(object):
             self.status_2_jobid[JOB_STATUS_KEY.DONE_ALL_SCHED] + \
             self.status_2_jobid[JOB_STATUS_KEY.RUNNING]
 
-    def clear_all_jobs(self):
-        self.simulation = False
-        self.simulation_queue = PriorityQueue()
-        self.simulation_global_time = 0
+    def clear_all(self):
+        for worker_ip, worker_port in self.workerip_2_ports.items():
+            client = self.get_zerorpc_client(worker_ip, worker_port)
+            self.sched_logger.debug("xlc clear all worker_ip: {} worker_port: {}".format(worker_ip, worker_port))
+            client.clear_all_jobs()
 
+        self.simulation = False
+        self.simulation_index = 0
+        self.simulation_queue = PriorityQueue()
+        self.simulation_global_time = 0.0
+
+        self.all_stop = False
+        self.all_finished = True
+
+        self.all_testbed_thread = None
+        self.sched_thread = None
+        # self.best_serve_thread = None
+        self.cal_significance_thread = None
+        self.placement_thread = None
+        # self.real_recoming_thread = None
+        self.gpu_thread = None
+        
+        self.sub_train_datasetidentifier_2_dataset_status = {} # 这里必须是一个可以伸缩的map
+        self.sub_train_datasetidentifier_2_dataset_metadata = {}
+        self.sub_train_datasetidentifier_2_epsilon_capacity = {}
+        self.sub_train_datasetidentifier_2_epsilon_remain = {}
+        self.sub_train_datasetidentifier_2_submited_time = {}
+        self.sub_train_datasetidentifier_2_exhausted_time = {}
+        self.sub_train_datasetidentifier_2_train_type = {}
+        self.test_datasetname_2_metadata = {}
+        
         self.jobid_2_status = {} # 0: no sche; 1: sched target decide; 2: runnning; 3: success finished; 4: failed;
         self.status_2_jobid = {
-            JOB_STATUS_KEY.SIMULATION_NO_SUMBIT: [],
+            JOB_STATUS_KEY.SIMULATION_NO_SUMBIT: [], 
             JOB_STATUS_KEY.NO_SCHE: [], 
             JOB_STATUS_KEY.RECOMING: [],
             JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL: [],
@@ -205,11 +238,12 @@ class Scheduler_server(object):
             JOB_STATUS_KEY.FINISHED: [],
             JOB_STATUS_KEY.FAILED: []
         }
+        
         self.finished_update_init_history_jobs = False
         self.jobid_2_results = {}
         self.jobid_2_origininfo = {}
         self.jobid_2_gputarget = {}
-        
+
         # self.jobid_2_datasettargetconfig = {}
         self.jobid_2_trainconfig = {}
 
@@ -217,6 +251,10 @@ class Scheduler_server(object):
         self.jobid_2_sched_epsilon = {}
         self.jobid_2_real_epsilon = {}
         self.jobid_2_priority_weight = {}
+
+        self.jobid_2_submited_time = {}
+        self.jobid_2_started_time = {}
+        self.jobid_2_finished_time = {}
         self.jobid_2_train_dataset_name = {}
         self.jobid_2_sub_train_key_ids = {}
         self.jobid_2_datablock_selected_num = {}
@@ -226,6 +264,7 @@ class Scheduler_server(object):
         self.jobid_2_arrival_index = {}
         self.jobid_2_typeid = {}
         # self.jobid_2_recoming_min_time = {}
+        # self.recoming_time_interval = 5
 
         self.jobid_2_target_epochs = {}
         # self.jobid_2_real_sched_epochs = {}
@@ -238,28 +277,17 @@ class Scheduler_server(object):
         self.jobid_2_logging_file_path = {}
         self.jobid_2_summary_writer_key = {}
 
-        self.jobid_2_submited_time = {}
-        self.jobid_2_started_time = {}
-        self.jobid_2_finished_time = {}
-
         self.job_sequence_all_num = 0
+        self.global_job_arrival_index = 0
 
-        for worker_ip, worker_port in self.workerip_2_ports.items():
-            client = self.get_zerorpc_client(worker_ip, worker_port)
-            client.clear_all_jobs()
-        self.sched_logger.info("success clear all jobs")
+        self.assignment_policy = None
+        self.significance_policy = None
 
-    def clear_all_datasets(self):
-        self.sub_train_datasetidentifier_2_dataset_status = {}
-        self.sub_train_datasetidentifier_2_dataset_metadata = {}
-        self.sub_train_datasetidentifier_2_epsilon_capacity = {}
-        self.sub_train_datasetidentifier_2_epsilon_remain = {}
-        self.sub_train_datasetidentifier_2_submited_time = {}
-        self.sub_train_datasetidentifier_2_exhausted_time = {}
-        self.sub_train_datasetidentifier_2_train_type = {}
-        self.test_datasetname_2_metadata = {}
-
-        self.sched_logger.info("success clear all datasets")
+        self.seed = 1234
+        self.model_save_path = ""
+        self.all_logger_path = ""
+        self.summary_writer_path = ""
+        self.sched_logger = None 
 
     def stop_all(self):
         for worker_ip, worker_port in self.workerip_2_ports.items():
@@ -1222,6 +1250,9 @@ class Scheduler_server(object):
         self.sched_logger.info("Thread [thread_func_real_for_recoming_jobs] started!")
     '''
 
+    def restart_sched(self):
+        self.all_finished = False
+
     def sched_end(self):
         self.all_finished = True
         # self.final_job_come = False
@@ -1283,7 +1314,7 @@ class Scheduler_server(object):
             dispatcher_client.connect("tcp://{}:{}".format(ip, port))
             dispatcher_client.end_and_report_by_sched(result_map)
 
-    def sched_update_gpu_status_start(self, init_workerip_2_ports, init_gpuidentifiers, current_test_all_dir):
+    def sched_update_gpu_status_start(self, init_workerip_2_ports, init_gpuidentifiers, current_test_all_dir, simulation_index):
         '''
         def thread_func_timely_update_gpu(init_gpuidentifiers):
             while not self.all_finished:
@@ -1296,14 +1327,12 @@ class Scheduler_server(object):
         '''
         self.sched_logger.info("Thread [thread_func_timely_update_gpu] started!")
         for worker_ip, worker_port in init_workerip_2_ports.items():
-            if worker_ip not in self.workerip_2_ports:
-                self.workerip_2_ports[worker_ip] = worker_port
-                work_client = zerorpc.Client()
-                work_client.connect("tcp://{}:{}".format(worker_ip, worker_port))
-                work_client.initialize_logging_path(current_test_all_dir)
+            self.workerip_2_ports[worker_ip] = worker_port
+            work_client = zerorpc.Client()
+            work_client.connect("tcp://{}:{}".format(worker_ip, worker_port))
+            work_client.initialize_logging_path(current_test_all_dir, simulation_index)
         for gpu_identifier in init_gpuidentifiers:
-            if gpu_identifier not in self.gpuidentifier_2_jobinstances:
-                self.gpuidentifier_2_jobinstances[gpu_identifier] = []
+            self.gpuidentifier_2_jobinstances[gpu_identifier] = []
         self.sched_logger.info("Thread [thread_func_timely_update_gpu] success!")
 
         

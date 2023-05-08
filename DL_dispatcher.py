@@ -27,6 +27,7 @@ def get_df_config():
     
     
     parser.add_argument("--simulation_flag", action="store_true")
+    parser.add_argument("--simulation_time", type=int, default=1)
     parser.add_argument("--simulation_time_speed_up", type=float, default=1.0)
     parser.add_argument("--simulation_all_datablock_num", type=int, default=100)
     parser.add_argument("--simulation_offline_datablock_num", type=int, default=100)
@@ -45,11 +46,10 @@ def get_df_config():
     parser.add_argument("--without_start_load_job", action="store_true")
     parser.add_argument("--without_start_load_history_job", action="store_true")
     parser.add_argument("--without_start_load_dataset", action="store_true")
-    parser.add_argument("--without_finished_clear_job", action="store_true")
-    parser.add_argument("--without_finished_clear_dataset", action="store_true")
+    parser.add_argument("--without_finished_clear_all", action="store_true")
     parser.add_argument("--without_stop_all", action="store_true")
 
-    parser.add_argument("--seed", type=int, default=1234)
+    parser.add_argument("--seeds", type=int, nargs="+", default=[1234])
 
     parser.add_argument("--assignment_policy", type=str, default="HISPolicy")
     parser.add_argument("--significance_policy", type=str, default="HISOTDDPolicy")
@@ -80,7 +80,15 @@ def get_df_config():
     return args
 
 class Dispatcher(object):
-    def __init__(self, jobs_list, history_jobs_list, datasets_map, current_test_all_dir):
+    def __init__(self):
+        self.all_finished = True
+    
+    def restart_dispatcher(self, jobs_list, history_jobs_list, datasets_map, current_test_all_dir, simulation_index):
+        self.current_test_all_dir = current_test_all_dir
+        all_logger_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
+        dispatcher_logger_path = '{}/DL_dispatcher_{}.log'.format(all_logger_path, simulation_index)
+        self.dispatcher_logger = get_logger(dispatcher_logger_path, dispatcher_logger_path, enable_multiprocess=True)
+
         jobs_list = sorted(jobs_list, key=lambda r: r["time"])
         jobs_id_list = ["job_{}".format(x) for x in range(len(jobs_list))]
         jobs_detail = list(map(lambda x: [x[0], x[1]], zip(jobs_id_list, jobs_list)))
@@ -100,17 +108,11 @@ class Dispatcher(object):
             count += len(sub_map)
         self.all_datasets_count = count
         self.dispatch_datasets_count = 0
-        
-        self.all_finished = False
 
         self.all_start_time = time.time()
         self.current_time = 0
+        self.all_finished = False
 
-        self.current_test_all_dir = current_test_all_dir
-        all_logger_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
-        dispatcher_logger_path = '{}/DL_dispatcher.log'.format(all_logger_path)
-        self.dispatcher_logger = get_logger(dispatcher_logger_path, dispatcher_logger_path, enable_multiprocess=True)
-        
     def end_and_report_by_sched(self, all_result_map):
         current_success_num = all_result_map["current_success_num"]
         current_failed_num = all_result_map["current_failed_num"]
@@ -286,13 +288,9 @@ class Dispatcher(object):
         client.connect(tcp_ip_port)
         return client
 
-    def sched_clear_all_jobs(self, ip, port):
+    def sched_clear_all(self, ip, port):
         client = self.get_zerorpc_client(ip, port)
-        client.clear_all_jobs()
-
-    def sched_clear_all_datasets(self, ip, port):
-        client = self.get_zerorpc_client(ip, port)
-        client.clear_all_datasets()
+        client.clear_all()
 
     def stop_all(self, ip, port):
         client = self.get_zerorpc_client(ip, port)
@@ -314,15 +312,16 @@ class Dispatcher(object):
         client = self.get_zerorpc_client(ip, port)
         client.report_status(location)
 
-    def sched_update_gpu_status_start(self, ip, port, init_workerip_2_ports, init_gpuidentifiers):
+    def sched_update_gpu_status_start(self, ip, port, init_workerip_2_ports, init_gpuidentifiers, current_test_all_dir, simulation_index):
         client = self.get_zerorpc_client(ip, port)
-        client.sched_update_gpu_status_start(init_workerip_2_ports, init_gpuidentifiers, self.current_test_all_dir)
+        client.sched_update_gpu_status_start(init_workerip_2_ports, init_gpuidentifiers, current_test_all_dir, simulation_index)
 
-    def sched_init_sched_register(self, ip, port, args, assignment_policy, significance_policy, all_decision_num, simulation):
+    def sched_init_sched_register(self, ip, port, args, seed, assignment_policy, significance_policy, all_decision_num, simulation, simulation_index):
         client = self.get_zerorpc_client(ip, port)
-        client.initialize_seeds(args.seed)
-        client.initialize_simulation_flag(simulation)
-        client.initialize_logging_path(self.current_test_all_dir)
+        client.restart_sched()
+        client.initialize_seeds(seed)
+        client.initialize_simulation_flag(simulation, simulation_index)
+        client.initialize_logging_path(self.current_test_all_dir, simulation_index)
         if assignment_policy == "PBGPolicy":
             comparison_cost_epsilon_list = args.pbg_comparison_cost_epsilons
             comparison_z_threshold_list = args.pbg_comparison_z_thresholds
@@ -388,9 +387,9 @@ def testbed_experiment_start(args, sched_ip, sched_port,
                             placement_sleep_time, waiting_time,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             budget_capacity_ratio, base_capacity,
-                            need_save_jobtrace_flag, current_test_all_dir,
+                            job_dataset_trace_save_path, current_test_all_dir,
                             all_decision_num, all_history_num, time_interval, need_change_interval):
-
+    assert args.simulation_time == 1 and len(args.seeds) == 1
     simulation_flag = False
     datasets_list = generate_dataset(
         dataset_names=["EMNIST"], 
@@ -433,7 +432,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
         remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
         processes.append(remote_server_p)
 
-        dispatcher.sched_init_sched_register(sched_ip, sched_port, args.seed, args.assignment_policy, args.significance_policy, all_decision_num, simulation=False)
+        dispatcher.sched_init_sched_register(sched_ip, sched_port, args, args.seeds[0], args.assignment_policy, args.significance_policy, all_decision_num, simulation=False)
         dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_workerip_2_ports, init_gpuidentifiers)
         if not args.without_start_load_job:
             dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout)
@@ -462,10 +461,8 @@ def testbed_experiment_start(args, sched_ip, sched_port,
         dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
         print("logically all stoped!")
         dispatcher.sched_end(sched_ip, sched_port)
-        if not args.without_finished_clear_job:
-            dispatcher.sched_clear_all_jobs(sched_ip, sched_port)
-        if not args.without_finished_clear_dataset:
-            dispatcher.sched_clear_all_datasets(sched_ip, sched_port)
+        if not args.without_finished_clear_all:
+            dispatcher.sched_clear_all(sched_ip, sched_port)
         print("Stop workers and scheduler")
         time.sleep(waiting_time)
         
@@ -484,7 +481,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
                             budget_capacity_ratio, base_capacity,
                             job_dataset_trace_save_path, current_test_all_dir,
                             all_decision_num, all_history_num, need_change_interval,
-                            simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, simulation_datablock_require_epsilon_max_ratio
+                            simulation_time, simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, simulation_datablock_require_epsilon_max_ratio
                             ):
     min_epsilon_capacity = base_capacity * budget_capacity_ratio
     datasets_list = generate_alibaba_dataset(
@@ -522,41 +519,50 @@ def simulation_experiment_start(args, sched_ip, sched_port,
         save_path=job_dataset_trace_save_path
     )
     all_decision_num = len(jobs_list)
-    
     processes = []
-    try:
-        dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list, current_test_all_dir)
-        remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
-        processes.append(remote_server_p)
+    dispatcher = Dispatcher()
+    remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
+    processes.append(remote_server_p)
+    for simulation_index in range(simulation_time):
+        print("start simulation_index: {}".format(simulation_index))
+        try:
+            dispatcher.restart_dispatcher(jobs_list, history_jobs_list, datasets_list, current_test_all_dir, simulation_index)
+            
+            dispatcher.sched_init_sched_register(
+                sched_ip, sched_port, 
+                args, args.seeds[simulation_index], 
+                args.assignment_policy, args.significance_policy, 
+                all_decision_num, 
+                simulation=True,
+                simulation_index=simulation_index
+            )
+            dispatcher.sched_update_gpu_status_start(
+                sched_ip, sched_port, 
+                init_workerip_2_ports, init_gpuidentifiers, 
+                current_test_all_dir, simulation_index
+            )
 
-        dispatcher.sched_init_sched_register(sched_ip, sched_port, args, args.assignment_policy, args.significance_policy, all_decision_num, simulation=True)
-        dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_workerip_2_ports, init_gpuidentifiers)
+            # 合并成统一的事件队列, 需要等待所有的
+            dispatcher.sched_simulation_start(sched_ip, sched_port) # 同样直接启动一个线程, 完成一大堆队列操作即可
 
-        # 合并成统一的事件队列, 需要等待所有的
-        dispatcher.sched_simulation_start(sched_ip, sched_port) # 同样直接启动一个线程, 完成一大堆队列操作即可
-
-        # 主线程的最后一个操作!
-        while not dispatcher.all_finished:
-            time.sleep(global_sleep_time)
-        dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
-        print("logically all stoped!")
-        dispatcher.all_finished = True
-        dispatcher.sched_end(sched_ip, sched_port)
-        if not args.without_finished_clear_job:
-            dispatcher.sched_clear_all_jobs(sched_ip, sched_port)
-        if not args.without_finished_clear_dataset:
-            dispatcher.sched_clear_all_datasets(sched_ip, sched_port)
-        print("Stop workers and scheduler")
-        time.sleep(waiting_time)
-        
-        if not args.without_stop_all:
-            dispatcher.stop_all(sched_ip, sched_port)
-        print("Waiting for stop threads {} s".format(waiting_time))
-        time.sleep(waiting_time)
-        sys.exit(0)
-    except Exception as e:
-        print("[xlc] Exception: ", e)
-
+            # 主线程的最后一个操作!
+            while not dispatcher.all_finished:
+                time.sleep(global_sleep_time)
+            dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
+            print("logically all stoped!")
+            dispatcher.all_finished = True
+            dispatcher.sched_end(sched_ip, sched_port)
+            if not args.without_finished_clear_all:
+                dispatcher.sched_clear_all(sched_ip, sched_port)
+            print("Stop workers and scheduler")
+            time.sleep(waiting_time)
+        except Exception as e:
+            print("[xlc] Exception: ", e)
+        print("end simulation_index: {}".format(simulation_index))
+    if not args.without_stop_all:
+        dispatcher.stop_all(sched_ip, sched_port)
+    print("Waiting for stop threads {} s".format(waiting_time))
+    time.sleep(waiting_time)
 
 if __name__ == "__main__":
     args = get_df_config()
@@ -594,6 +600,7 @@ if __name__ == "__main__":
     time_interval = args.time_interval
     need_change_interval = args.need_change_interval
 
+    simulation_time = args.simulation_time
     simulation_time_speed_up = args.simulation_time_speed_up
     simulation_all_datablock_num = args.simulation_all_datablock_num
     simulation_offline_datablock_num = args.simulation_offline_datablock_num
@@ -615,7 +622,7 @@ if __name__ == "__main__":
                             budget_capacity_ratio, base_capacity,
                             job_dataset_trace_save_path, current_test_all_dir,
                             all_decision_num, all_history_num, need_change_interval,
-                            simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, simulation_datablock_require_epsilon_max_ratio)
+                            simulation_time, simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, simulation_datablock_require_epsilon_max_ratio)
     else:
         testbed_experiment_start(args, sched_ip, sched_port,
                             dispatcher_ip, dispatcher_port,

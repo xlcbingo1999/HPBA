@@ -125,8 +125,8 @@ class Worker_server(object):
             self.jobid_2_thread[job_id].join()
             del self.jobid_2_thread[job_id]
 
-    def initialize_logging_path(self, current_test_all_dir):
-        logger_path = "{}/{}/DL_worker_{}_{}.log".format(RESULT_PATH, current_test_all_dir, self.local_ip, self.local_port) 
+    def initialize_logging_path(self, current_test_all_dir, simulation_index):
+        logger_path = "{}/{}/DL_worker_{}_{}_{}.log".format(RESULT_PATH, current_test_all_dir, self.local_ip, self.local_port, simulation_index) 
         self.worker_logger = get_logger(logger_path, logger_path, enable_multiprocess=True)
 
     """
