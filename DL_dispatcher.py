@@ -34,7 +34,7 @@ def get_df_config():
     parser.add_argument("--simulation_time_speed_up", type=float, default=1.0)
     parser.add_argument("--simulation_all_datablock_num", type=int, default=100)
     parser.add_argument("--simulation_offline_datablock_num", type=int, default=100)
-    parser.add_argument("--simulation_datablock_require_epsilon_max_ratio", type=float, default=0.1)
+    parser.add_argument("--datablock_require_epsilon_max_ratio", type=float, default=0.1)
 
     parser.add_argument("--base_capacity", type=float, default=10.0)
     parser.add_argument("--budget_capacity_ratio", type=float, default=1)
@@ -86,7 +86,7 @@ class Dispatcher(object):
     def __init__(self):
         self.all_finished = True
     
-    def restart_dispatcher(self, jobs_list, history_jobs_list, datasets_map, current_test_all_dir, simulation_index):
+    def restart_dispatcher(self, jobs_list, history_jobs_list, datasets_map, current_test_all_dir, simulation, simulation_index):
         self.current_test_all_dir = current_test_all_dir
         all_logger_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
         dispatcher_logger_path = '{}/DL_dispatcher_{}.log'.format(all_logger_path, simulation_index)
@@ -427,9 +427,13 @@ def testbed_experiment_start(args, sched_ip, sched_port,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             budget_capacity_ratio, base_capacity,
                             job_dataset_trace_save_path, current_test_all_dir,
-                            all_decision_num, all_history_num, time_interval, need_change_interval):
+                            all_decision_num, all_history_num, time_interval, need_change_interval,
+                            datablock_require_epsilon_max_ratio):
     assert args.simulation_time == 1 and len(args.seeds) == 1
     simulation_flag = False
+    block_global_epsilon = base_capacity * budget_capacity_ratio
+    job_epsilon_ub = block_global_epsilon * datablock_require_epsilon_max_ratio
+    job_epsilon_lb = 0.02
     datasets_list = generate_dataset(
         dataset_names=["EMNIST"], 
         fix_epsilon=base_capacity * budget_capacity_ratio, 
@@ -441,8 +445,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
     )
     jobs_list = generate_jobs(
         all_num=all_decision_num, 
-        per_epoch_EPSILONs=[0.02, 0.1], 
-        EPSILONs_weights=[0.8, 0.2], 
+        per_epoch_EPSILONs=[job_epsilon_lb, job_epsilon_ub], 
         time_interval=time_interval, 
         need_change_interval=need_change_interval, 
         is_history=False, 
@@ -454,7 +457,6 @@ def testbed_experiment_start(args, sched_ip, sched_port,
     history_jobs_list = generate_jobs(
         all_num=all_history_num, 
         per_epoch_EPSILONs=[0.02, 0.1], 
-        EPSILONs_weights=[0.8, 0.2], 
         time_interval=time_interval, 
         need_change_interval=need_change_interval, 
         is_history=True, 
@@ -467,12 +469,30 @@ def testbed_experiment_start(args, sched_ip, sched_port,
 
     processes = []
     try:
-        dispatcher = Dispatcher(jobs_list, history_jobs_list, datasets_list, current_test_all_dir)
+        dispatcher = Dispatcher()
+        dispatcher.restart_dispatcher(
+            jobs_list, 
+            history_jobs_list, 
+            datasets_list, 
+            current_test_all_dir,
+            simulation=False,
+            simulation_index=0
+        )
+        
         remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
         processes.append(remote_server_p)
 
-        dispatcher.sched_init_sched_register(sched_ip, sched_port, args, args.seeds[0], args.assignment_policy, args.significance_policy, all_decision_num, simulation=False)
-        dispatcher.sched_update_gpu_status_start(sched_ip, sched_port, init_workerip_2_ports, init_gpuidentifiers)
+        dispatcher.sched_init_sched_register(
+            sched_ip, sched_port, 
+            args, args.seeds[0], 
+            args.assignment_policy, args.significance_policy, 
+            all_decision_num, 
+            simulation=False, simulation_index=0)
+        dispatcher.sched_update_gpu_status_start(
+            sched_ip, sched_port, 
+            init_workerip_2_ports, init_gpuidentifiers, 
+            current_test_all_dir, simulation_index=0
+        )
         if not args.without_start_load_job:
             dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout)
             processes.append(dataset_p)
@@ -519,7 +539,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
                             budget_capacity_ratio, base_capacity,
                             job_dataset_trace_save_path, current_test_all_dir,
                             all_decision_num, all_history_num, need_change_interval,
-                            simulation_time, simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, simulation_datablock_require_epsilon_max_ratio
+                            simulation_time, simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, datablock_require_epsilon_max_ratio
                             ):
     min_epsilon_capacity = base_capacity * budget_capacity_ratio
     datasets_list = generate_alibaba_dataset(
@@ -537,7 +557,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
         time_speed_up=simulation_time_speed_up,
         need_change_interval=need_change_interval,
         is_history=False,
-        datablock_require_epsilon_max_ratio=simulation_datablock_require_epsilon_max_ratio,
+        datablock_require_epsilon_max_ratio=datablock_require_epsilon_max_ratio,
         min_epsilon_capacity=min_epsilon_capacity,
         dispatcher_ip=dispatcher_ip,
         dispatcher_port=dispatcher_port,
@@ -549,7 +569,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
         time_speed_up=simulation_time_speed_up,
         need_change_interval=need_change_interval,
         is_history=True,
-        datablock_require_epsilon_max_ratio=simulation_datablock_require_epsilon_max_ratio,
+        datablock_require_epsilon_max_ratio=datablock_require_epsilon_max_ratio,
         min_epsilon_capacity=min_epsilon_capacity,
         dispatcher_ip=dispatcher_ip,
         dispatcher_port=dispatcher_port,
@@ -564,7 +584,13 @@ def simulation_experiment_start(args, sched_ip, sched_port,
     for simulation_index in range(simulation_time):
         print("start simulation_index: {}".format(simulation_index))
         try:
-            dispatcher.restart_dispatcher(jobs_list, history_jobs_list, datasets_list, current_test_all_dir, simulation_index)
+            dispatcher.restart_dispatcher(
+                jobs_list, 
+                history_jobs_list, 
+                datasets_list, 
+                current_test_all_dir, 
+                simulation=True, 
+                simulation_index=simulation_index)
             
             dispatcher.sched_init_sched_register(
                 sched_ip, sched_port, 
@@ -643,7 +669,7 @@ if __name__ == "__main__":
     simulation_time_speed_up = args.simulation_time_speed_up
     simulation_all_datablock_num = args.simulation_all_datablock_num
     simulation_offline_datablock_num = args.simulation_offline_datablock_num
-    simulation_datablock_require_epsilon_max_ratio = args.simulation_datablock_require_epsilon_max_ratio
+    datablock_require_epsilon_max_ratio = args.datablock_require_epsilon_max_ratio
 
     global_sleep_time = args.global_sleep_time 
     update_timeout = args.update_timeout 
@@ -661,7 +687,7 @@ if __name__ == "__main__":
                             budget_capacity_ratio, base_capacity,
                             job_dataset_trace_save_path, current_test_all_dir,
                             all_decision_num, all_history_num, need_change_interval,
-                            simulation_time, simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, simulation_datablock_require_epsilon_max_ratio)
+                            simulation_time, simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, datablock_require_epsilon_max_ratio)
     else:
         testbed_experiment_start(args, sched_ip, sched_port,
                             dispatcher_ip, dispatcher_port,
@@ -672,6 +698,7 @@ if __name__ == "__main__":
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             budget_capacity_ratio, base_capacity,
                             job_dataset_trace_save_path, current_test_all_dir,
-                            all_decision_num, all_history_num, time_interval, need_change_interval)    
+                            all_decision_num, all_history_num, time_interval, need_change_interval,
+                            datablock_require_epsilon_max_ratio)    
     
         

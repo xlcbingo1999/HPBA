@@ -57,6 +57,7 @@ def get_df_config():
 
     parser.add_argument("--final_significance", type=float, required=True)
     parser.add_argument("--simulation_flag", action="store_true")
+    parser.add_argument("--model_save_flag", action="store_true")
     args = parser.parse_args()
     return args
 
@@ -116,7 +117,8 @@ def do_calculate_func(job_id, model_name,
                     model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
                     LR, EPSILON, DELTA, MAX_GRAD_NORM, 
                     BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
-                    begin_epoch_num, run_epoch_num, final_significance, simulation_flag):
+                    begin_epoch_num, run_epoch_num, final_significance, 
+                    model_save_flag, simulation_flag):
     begin_time = time.time()
 
     if simulation_flag:
@@ -277,9 +279,10 @@ def do_calculate_func(job_id, model_name,
         summary_writer.add_scalar('{}/total_val_acc'.format(summary_writer_key), np.mean(total_val_acc), begin_epoch_num + epoch)
     
     summary_writer.close()
-    if not os.path.exists(model_save_path):
-        os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
-    torch.save(model._module.state_dict(), model_save_path)
+    if model_save_flag:
+        if not os.path.exists(model_save_path):
+            os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
+        torch.save(model._module.state_dict(), model_save_path)
 
     real_duration_time = time.time() - begin_time
     all_results = {
@@ -335,6 +338,7 @@ if __name__ == "__main__":
 
     begin_epoch_num = args.begin_epoch_num
     run_epoch_num = args.run_epoch_num
+    model_save_flag = args.model_save_flag
 
     job_id, all_results, real_duration_time = do_calculate_func(
         job_id, model_name, 
@@ -344,7 +348,8 @@ if __name__ == "__main__":
         model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
         LR, EPSILON, DELTA, MAX_GRAD_NORM, 
         BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
-        begin_epoch_num, run_epoch_num, final_significance, simulation_flag
+        begin_epoch_num, run_epoch_num, final_significance, 
+        model_save_flag, simulation_flag
     )
     
     tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)

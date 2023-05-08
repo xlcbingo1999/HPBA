@@ -113,7 +113,7 @@ def poisson_arrival_times(last_arrival_time, lambdas):
     arrival_time = last_arrival_time + np.random.exponential(scale=1/lambdas)
     return arrival_time
 
-def generate_jobs(all_num, per_epoch_EPSILONs, EPSILONs_weights, 
+def generate_jobs(all_num, per_epoch_EPSILONs, 
                 time_interval, need_change_interval, is_history, 
                 dispatcher_ip, dispatcher_port,
                 jobtrace_reconstruct_path="", save_path=""):
@@ -152,6 +152,8 @@ def generate_jobs(all_num, per_epoch_EPSILONs, EPSILONs_weights,
         jobs = []
         current_decision_num = 0
         last_arrival_time = 0.0
+        epsilon_data = np.random.uniform(per_epoch_EPSILONs[0], per_epoch_EPSILONs[1], size=all_num)
+        epsilon_samples = np.random.choice(epsilon_data, size=all_num, replace=True)
         while current_decision_num < all_num:
             model_name_index_list = [i for i, _ in enumerate(models)]
             model_name_i = random.choices(model_name_index_list, weights=models_weights)[0]
@@ -171,12 +173,8 @@ def generate_jobs(all_num, per_epoch_EPSILONs, EPSILONs_weights,
             datablock_select_nums_index_list = [i for i, _ in enumerate(datablock_select_nums)]
             datablock_select_num_i = random.choices(datablock_select_nums_index_list, weights=datablock_select_nums_weights)[0]
             datablock_select_num = datablock_select_nums[datablock_select_num_i]
-
-
-            EPSILON_index_list = [i for i, _ in enumerate(per_epoch_EPSILONs)]
-            EPSILON_i = random.choices(EPSILON_index_list, weights=EPSILONs_weights)[0]
-            EPSILON = per_epoch_EPSILONs[EPSILON_i]
-
+            
+            EPSILON = epsilon_samples[current_decision_num]
             DELTA = 1e-8
 
             if current_decision_num > 0:

@@ -244,3 +244,26 @@ def final_operate_data(current_test_all_dir):
 
 final_operate_data(current_test_all_dir)
 '''
+
+import numpy as np
+
+# 定义区间和参数
+def sample(xmin, xmax, size):
+    # 生成符合条件的随机数列表
+    data = np.random.uniform(xmin, xmax, size=size)
+    samples = np.random.choice(data, size=size, replace=True)
+
+    return samples
+
+num = 100000
+L = 0.02
+R = 0.8
+all_results = sample_28(L, R, num)
+
+# 计算分布情况
+hist, bin_edges = np.histogram(all_results, bins=5)
+
+# 输出结果
+print("元素分布情况：")
+for i in range(len(hist)):
+    print("[{:.2f}, {:.2f}): {}".format(bin_edges[i], bin_edges[i+1], hist[i]))
