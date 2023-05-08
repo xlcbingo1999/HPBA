@@ -165,6 +165,8 @@ class HISwithOrderPolicy(Policy):
         
         for sorted_index in current_job_probability_sorted_indexes:
             prob_true = min(1.0, max(0.0, current_job_probability_list[sorted_index]))
+            if sub_train_datasetidentifier_2_epsilon_remain[temp_index_2_datablock_identifier[sorted_index]] < target_epsilon_require:
+                prob_true = 0.0
             prob_false = 1.0 - prob_true
             prob_vec = [prob_false, prob_true]
             choice_result = np.random.choice(a=range(2), size=1, replace=False, p=prob_vec)

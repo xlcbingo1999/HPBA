@@ -1,13 +1,13 @@
 current_ip_index = 5
-current_cmd_index = 1
+current_cmd_index = 9
 
 assignment_policy = "IterativeHISwithOrderPolicy"
-his_batch_size_for_one_epochs = 10
+his_batch_size_for_one_epochs = 50
 significance_policy = "TempPolicy"
-test_jobtrace_reconstruct_path = "schedule-review-simulation-05-04-00-39-24"
+test_jobtrace_reconstruct_path = "schedule-review-simulation-05-04-00-43-38"
 dataset_reconstruct_path = "schedule-review-simulation-05-03-19-49-14"
 history_jobtrace_reconstruct_path = "schedule-review-simulation-05-03-19-49-14"
-all_decision_num = 3000
+all_decision_num = 4000
 simulation_datablock_require_epsilon_max_ratio = 0.1
 all_history_num = 0
 his_betas = 0.0

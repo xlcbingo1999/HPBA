@@ -8,9 +8,12 @@ import sys
 import argparse
 import json
 import copy
+import os
+import numpy as np
 from queue import PriorityQueue
 from utils.logging_tools import get_logger
 from utils.generate_tools import generate_dataset, generate_jobs, generate_alibaba_jobs, generate_alibaba_dataset
+from utils.data_operator import read_DL_dispatcher_result_func
 
 def get_df_config():
     parser = argparse.ArgumentParser(
@@ -361,6 +364,40 @@ class Dispatcher(object):
         client = self.get_zerorpc_client(ip, port)
         client.update_history_jobs(history_jobs_map)
 
+    def final_operate_data(self, current_test_all_dir):
+        trace_save_path = "{}/{}".format(RESULT_PATH, current_test_all_dir)
+        final_used_num, success_num_arr, failed_num_arr, all_final_significance_arr, success_final_significance_arr = read_DL_dispatcher_result_func(trace_save_path)
+        
+        # 新建一个全新的log进行保存
+        all_result_path = "{}/all_result.log".format(trace_save_path)
+        with open(all_result_path, "w+") as f:
+            print("final_used_num: {}".format(final_used_num))
+            print("final_used_num: {}".format(final_used_num), file=f)
+            print("success_num_mean: {} ; success_num_min: {} ; success_num_max: {}".format(
+                np.mean(success_num_arr), min(success_num_arr), max(success_num_arr)
+            ))
+            print("success_num_mean: {} ; success_num_min: {} ; success_num_max: {}".format(
+                np.mean(success_num_arr), min(success_num_arr), max(success_num_arr)
+            ), file=f)
+            print("failed_num_mean: {} ; failed_num_min: {} ; failed_num_max: {}".format(
+                np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr)
+            ))
+            print("failed_num_mean: {} ; failed_num_min: {} ; failed_num_max: {}".format(
+                np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr)
+            ), file=f)
+            print("all_final_significance_mean: {} ; all_final_significance_min: {} ; all_final_significance_max: {}".format(
+                np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr)
+            ))
+            print("all_final_significance_mean: {} ; all_final_significance_min: {} ; all_final_significance_max: {}".format(
+                np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr)
+            ), file=f)
+            print("success_final_significance_mean: {} ; success_final_significance_min: {} ; success_final_significance_max: {}".format(
+                np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr)
+            ))
+            print("success_final_significance_mean: {} ; success_final_significance_min: {} ; success_final_significance_max: {}".format(
+                np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr)
+            ), file=f)
+
 def scheduler_listener_func(dispatcher_server_item, port):
     def dispatcher_func_timely(dispatcher_server_item, port):
         dispatcher_server = zerorpc.Server(dispatcher_server_item)
@@ -378,6 +415,8 @@ def exit_gracefully(server):
     server.stop()
     print("closing server")
     server.close()
+
+
 
 def testbed_experiment_start(args, sched_ip, sched_port,
                             dispatcher_ip, dispatcher_port,
@@ -470,7 +509,6 @@ def testbed_experiment_start(args, sched_ip, sched_port,
             dispatcher.stop_all(sched_ip, sched_port)
         print("Waiting for stop threads {} s".format(waiting_time))
         time.sleep(waiting_time)
-        sys.exit(0)
     except Exception as e:
         print("[xlc] Exception: ", e)
 
@@ -561,6 +599,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
         print("end simulation_index: {}".format(simulation_index))
     if not args.without_stop_all:
         dispatcher.stop_all(sched_ip, sched_port)
+    dispatcher.final_operate_data(current_test_all_dir) # 执行数据的处理和绘图操作
     print("Waiting for stop threads {} s".format(waiting_time))
     time.sleep(waiting_time)
 

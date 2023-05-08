@@ -149,7 +149,7 @@ if cvxprob.status != "optimal":
 print("cal time: {} s".format(time.time() - begin_time))
 '''
 
-
+'''
 import numpy as np
 import time
 
@@ -164,3 +164,83 @@ a_list = list(a)
 begin = time.time()
 result = [a[i] for i in b] + [a[i] for i in b]
 print(time.time() - begin)
+'''
+
+'''
+import os
+import re
+import numpy as np
+from utils.global_variable import RESULT_PATH
+
+current_test_all_dir = "schedule-review-simulation-05-08-12-38-15"
+
+def result_read_func(trace_save_path):
+    all_need_iter_paths = []
+    for file_dir in os.listdir(trace_save_path):
+        if "DL_dispatcher" in file_dir:
+            result_read_file_dir = os.path.join(trace_save_path, file_dir)
+            # print(file_dir)
+            all_need_iter_paths.append(result_read_file_dir)
+    success_fail_num_pattern = r'current_success_num:\s*(?P<success>\d+);\s+current_failed_num:\s*(?P<failed>\d+);\s+current_no_submit_num:\s*(?P<no_submit>\d+);\s+current_no_sche_num:\s*(?P<no_sche>\d+);'
+    all_final_significance_pattern = r'all_final_significance:\s*(?P<all_final_significance>\d+\.\d+)'
+    success_final_significance_pattern = r'success_final_significance:\s*(?P<success_final_significance>\d+\.\d+)'
+
+    success_num = []
+    failed_num = []
+    all_final_significance_arr = []
+    success_final_significance_arr = []
+    for file_path in all_need_iter_paths:
+        with open(file_path, "r+") as f:
+            lines = f.readlines()
+            for index, line in enumerate(lines):
+                if "current_success_num" in line:
+                    match = re.search(success_fail_num_pattern, line)
+                    if match:
+                        success = int(match.group('success'))
+                        failed = int(match.group('failed'))
+                        success_num.append(success)
+                        failed_num.append(failed)
+                    else:
+                        print('No match')
+                if "all_final_significance" in line:
+                    match = re.search(all_final_significance_pattern, line)
+                    if match:
+                        all_final_significance = float(match.group('all_final_significance'))
+                        all_final_significance_arr.append(all_final_significance)
+                    else:
+                        print('No match')
+                if "success_final_significance" in line:
+                    match = re.search(success_final_significance_pattern, line)
+                    if match:
+                        success_final_significance = float(match.group('success_final_significance'))
+                        success_final_significance_arr.append(success_final_significance)
+                    else:
+                        print('No match')
+    return success_num, failed_num, all_final_significance_arr, success_final_significance_arr
+    
+
+# success_num, failed_num, all_final_significance_arr, success_final_significance_arr = result_read_func(current_test_all_dir)
+
+def final_operate_data(current_test_all_dir):
+    trace_save_path = "{}/{}".format(RESULT_PATH, current_test_all_dir)
+    success_num_arr, failed_num_arr, all_final_significance_arr, success_final_significance_arr = result_read_func(trace_save_path)
+    
+    # 新建一个全新的log进行保存
+    all_result_path = "{}/all_result.log".format(trace_save_path)
+    print("all_result_path: ", all_result_path)
+    with open(all_result_path, "w+") as f:
+        print("success_num_mean: {}; success_num_min: {}; success_num_max: {}".format(
+            np.mean(success_num_arr), min(success_num_arr), max(success_num_arr)
+        ), file=f)
+        print("failed_num_mean: {}; failed_num_min: {}; failed_num_max: {}".format(
+            np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr)
+        ), file=f)
+        print("all_final_significance_mean: {}; all_final_significance_min: {}; all_final_significance_max: {}".format(
+            np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr)
+        ), file=f)
+        print("success_final_significance_mean: {}; success_final_significance_min: {}; success_final_significance_max: {}".format(
+            np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr)
+        ), file=f)
+
+final_operate_data(current_test_all_dir)
+'''
