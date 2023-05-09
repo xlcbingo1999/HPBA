@@ -484,7 +484,7 @@ class Scheduler_server(object):
             result_d_map = self.get_job_datablock_significance_sync(type_id, all_significance_state)
             offline_history_job_significance.append(result_d_map)
                 
-        self.sched_logger.info("success add all offline history jobs")
+        self.sched_logger.info("success add all offline history jobs len(history_jobs_map): {}".format(len(history_jobs_map)))
         if self.assignment_policy.need_history:
             self.assignment_policy.push_offline_history_to_assignment_policy(
                 offline_history_job_priority_weights,
