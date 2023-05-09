@@ -245,6 +245,7 @@ def final_operate_data(current_test_all_dir):
 final_operate_data(current_test_all_dir)
 '''
 
+'''
 import numpy as np
 
 # 定义区间和参数
@@ -267,3 +268,16 @@ hist, bin_edges = np.histogram(all_results, bins=5)
 print("元素分布情况：")
 for i in range(len(hist)):
     print("[{:.2f}, {:.2f}): {}".format(bin_edges[i], bin_edges[i+1], hist[i]))
+'''
+
+import numpy as np
+li = [
+    7.6519257353104955,
+    7.798196379215965,
+    7.590180827383737,
+    7.489382511445238,
+    7.4520007703541715
+]
+print("mean: ", np.mean(li))
+print("min: ", min(li))
+print("max: ", max(li))
