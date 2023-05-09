@@ -1,24 +1,26 @@
-current_ip_index = 4
-current_cmd_index = 3
+current_ip_index = 5
+current_cmd_index = 0
 
-is_simulation = False
+is_simulation = True
+need_save_jobtrace_flag = False
 worker_indexes = [3]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 
 assignment_policy = "IterativeHISwithOrderPolicy"
-his_batch_size_for_one_epochs = 10
+his_batch_size_for_one_epochs = 100
 significance_policy = "TempPolicy"
-test_jobtrace_reconstruct_path = "schedule-review-testbed-05-08-23-51-56" # "schedule-review-simulation-05-04-00-43-38"
-dataset_reconstruct_path = "schedule-review-testbed-05-08-22-10-45" # "schedule-review-simulation-05-03-19-49-14"
-history_jobtrace_reconstruct_path = "schedule-review-testbed-05-08-23-55-06" # "schedule-review-simulation-05-03-19-49-14"
-all_decision_num = 50
+test_jobtrace_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
+dataset_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
+history_jobtrace_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
+all_decision_num = 2000
 datablock_require_epsilon_max_ratio = 0.1
-all_history_num = 25
+change_job_epsilon_max_times = 1.0
+all_history_num = 0
 his_betas = 0.0
-simulation_all_datablock_num = 6
-simulation_offline_datablock_num = 6
-
+simulation_all_datablock_num = 100
+simulation_offline_datablock_num = 100
+change_datablock_epsilon_max_times = 1.0
 simulation_time = 5
 waiting_time = 2 if is_simulation else 10
 seeds = [1234, 2345, 3456, 6789, 7890] if is_simulation else [1234]
@@ -68,6 +70,8 @@ if len(history_jobtrace_reconstruct_path) > 0:
 
 dispatcher_cmds.append(f"--all_decision_num {all_decision_num}")
 dispatcher_cmds.append(f"--datablock_require_epsilon_max_ratio {datablock_require_epsilon_max_ratio}")
+dispatcher_cmds.append(f"--change_job_epsilon_max_times {change_job_epsilon_max_times}")
+dispatcher_cmds.append(f"--change_datablock_epsilon_max_times {change_datablock_epsilon_max_times}")
 dispatcher_cmds.append(f"--all_history_num {all_history_num}")
 dispatcher_cmds.append(f"--his_betas {his_betas}")
 
@@ -78,6 +82,9 @@ if is_simulation:
     dispatcher_cmds.append(f"--simulation_time {simulation_time}")
 else:
     dispatcher_cmds.append(f"--worker_indexes {worker_indexes_str}")
+
+if need_save_jobtrace_flag:
+    dispatcher_cmds.append(f"--need_save_jobtrace_flag")
 
 dispatcher_cmds.append(f"--seed {seed_str}")
 dispatcher_cmds.append(f"--waiting_time {waiting_time}")

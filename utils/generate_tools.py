@@ -29,12 +29,19 @@ def get_specific_model_config(model_name):
             "TARGET_EPOCHS": 50
         }
 
-def generate_dataset(dataset_names, fix_epsilon=10.0, fix_delta=1e-5, fix_time=0, num=6, dataset_reconstruct_path="", save_path=""):
+def generate_dataset(dataset_names, 
+                     fix_epsilon=10.0, fix_delta=1e-5, change_datablock_epsilon_max_times=1.0,
+                     fix_time=0, num=6, 
+                     dataset_reconstruct_path="", save_path=""):
     if len(dataset_reconstruct_path) > 0:
         print("load from path: {}".format(dataset_reconstruct_path))
         dataset_path = RESULT_PATH + "/{}/datasets.json".format(dataset_reconstruct_path)
         with open(dataset_path, "r+") as f:
             datasets_list = json.load(f)
+        for name in datasets_list:
+            for sub_datablock_name in datasets_list[name]:
+                origin_datablock_espilon_global = datasets_list[name][sub_datablock_name]["epsilon_capacity"]
+                datasets_list[name][sub_datablock_name] = change_epsilon_G(datasets_list[name][sub_datablock_name], origin_datablock_espilon_global*change_datablock_epsilon_max_times)
     else:
         print("check dataset_names: {}".format(dataset_names))
         datasets_list = {}
@@ -75,6 +82,16 @@ def change_arrival_time(job_detail, arrival_time):
     job_detail["time"] = arrival_time
     return job_detail
 
+def change_epsilon(job_detail, new_epsilon):
+    print("origin job_detail[EPSILON]: {} vs. new_epsilon: {}".format(job_detail["EPSILON"], new_epsilon))
+    job_detail["EPSILON"] = new_epsilon
+    return job_detail
+
+def change_epsilon_G(datablock_detail, new_epsilon):
+    print("origin datablock_detail[epsilon_capacity]: {} vs. new_epsilon: {}".format(datablock_detail["epsilon_capacity"], new_epsilon))
+    datablock_detail["epsilon_capacity"] = new_epsilon
+    return datablock_detail
+
 def generate_normal_one_job(time, model_name, train_dataset_name, test_dataset_name, datablock_select_num, 
                             BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPSILON, DELTA, 
                             TARGET_EPOCHS, dispatcher_ip, dispatcher_port,
@@ -113,7 +130,8 @@ def poisson_arrival_times(last_arrival_time, lambdas):
     arrival_time = last_arrival_time + np.random.exponential(scale=1/lambdas)
     return arrival_time
 
-def generate_jobs(all_num, per_epoch_EPSILONs, 
+def generate_jobs(all_num, 
+                per_epoch_EPSILONs, datablock_require_epsilon_max_ratio, change_job_epsilon_max_times, 
                 time_interval, need_change_interval, is_history, 
                 dispatcher_ip, dispatcher_port,
                 jobtrace_reconstruct_path="", save_path=""):
@@ -126,16 +144,18 @@ def generate_jobs(all_num, per_epoch_EPSILONs,
             test_job_path = RESULT_PATH + "/{}/test_jobs.json".format(jobtrace_reconstruct_path)
             with open(test_job_path, "r+") as f:
                 jobs = json.load(f)
+        jobs = jobs[0:all_num] if all_num < len(jobs) else jobs
         current_decision_num = 0
         last_arrival_time = 0.0
-        for job_detail in jobs:
-            job_detail = change_dispatcher_ip_port(job_detail, dispatcher_ip, dispatcher_port)
+        for job_detail_index, job_detail in enumerate(jobs):
+            jobs[job_detail_index] = change_dispatcher_ip_port(job_detail, dispatcher_ip, dispatcher_port)
+            jobs[job_detail_index] = change_epsilon(job_detail, job_detail["EPSILON"] * change_job_epsilon_max_times)
             if need_change_interval:
                 if current_decision_num > 0:
                     current_lambda = 1 / time_interval
                     last_arrival_time = poisson_arrival_times(last_arrival_time, current_lambda)
-                job_detail = change_arrival_time(job_detail, last_arrival_time)
-                current_decision_num += 1
+                jobs[job_detail_index] = change_arrival_time(job_detail, last_arrival_time)
+            current_decision_num += 1
     else:
         # 从一大堆里面生成
         models = ["CNN", "FF"]
@@ -203,7 +223,7 @@ def generate_jobs(all_num, per_epoch_EPSILONs,
 
 def generate_alibaba_jobs(all_num, 
                 time_speed_up, need_change_interval, is_history,
-                datablock_require_epsilon_max_ratio, min_epsilon_capacity,
+                datablock_require_epsilon_max_ratio, min_epsilon_capacity, change_job_epsilon_max_times,
                 dispatcher_ip, dispatcher_port,
                 jobtrace_reconstruct_path="", save_path=""):
     if len(jobtrace_reconstruct_path) > 0:
@@ -215,14 +235,19 @@ def generate_alibaba_jobs(all_num,
             test_job_path = RESULT_PATH + "/{}/test_jobs.json".format(jobtrace_reconstruct_path)
             with open(test_job_path, "r+") as f:
                 jobs = json.load(f)
+
+        jobs = jobs[0:all_num] if all_num < len(jobs) else jobs
         current_decision_num = 0
-        for job_detail in jobs:
-            job_detail = change_dispatcher_ip_port(job_detail, dispatcher_ip, dispatcher_port)
+        print("change_job_epsilon_max_times: ", change_job_epsilon_max_times)
+        for job_detail_index, job_detail in enumerate(jobs):
+            jobs[job_detail_index] = change_dispatcher_ip_port(job_detail, dispatcher_ip, dispatcher_port)
+            jobs[job_detail_index] = change_epsilon(job_detail, job_detail["EPSILON"] * change_job_epsilon_max_times)
             if need_change_interval:
                 old_time = job_detail["time"]
                 new_arrival_time = old_time / time_speed_up
-                job_detail = change_arrival_time(job_detail, new_arrival_time)
-                current_decision_num += 1
+                jobs[job_detail_index] = change_arrival_time(job_detail, new_arrival_time)
+                
+            current_decision_num += 1
     else:
         alibaba_dp_trace_path = ALIBABA_DP_TRACE_PATH + "/privacy_tasks_30_days.csv"
         df = pd.read_csv(alibaba_dp_trace_path)
@@ -308,13 +333,17 @@ def generate_alibaba_jobs(all_num,
     return jobs
 
 def generate_alibaba_dataset(num, offline_num, time_speed_up,
-                    dataset_names, fix_epsilon, fix_delta,
+                    dataset_names, fix_epsilon, fix_delta, change_datablock_epsilon_max_times,
                     dataset_reconstruct_path="", save_path=""):
     if len(dataset_reconstruct_path) > 0:
         print("load from path: {}".format(dataset_reconstruct_path))
         dataset_path = RESULT_PATH + "/{}/datasets.json".format(dataset_reconstruct_path)
         with open(dataset_path, "r+") as f:
             datasets_list = json.load(f)
+        for name in datasets_list:
+            for sub_datablock_name in datasets_list[name]:
+                origin_datablock_espilon_global = datasets_list[name][sub_datablock_name]["epsilon_capacity"]
+                datasets_list[name][sub_datablock_name] = change_epsilon_G(datasets_list[name][sub_datablock_name], origin_datablock_espilon_global*change_datablock_epsilon_max_times)
     else:
         print("check dataset_names: {}".format(dataset_names))
         offline_num = offline_num
