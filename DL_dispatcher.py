@@ -376,29 +376,29 @@ class Dispatcher(object):
         with open(all_result_path, "w+") as f:
             print("final_used_num: {}".format(final_used_num))
             print("final_used_num: {}".format(final_used_num), file=f)
-            print("success_num_mean: {} ; success_num_min: {} ; success_num_max: {}".format(
-                np.mean(success_num_arr), min(success_num_arr), max(success_num_arr)
+            print("[success_info] {}({}-{}) === success_num_mean: {} ; success_num_min: {} ; success_num_max: {}".format(
+                np.mean(success_num_arr), min(success_num_arr), max(success_num_arr), np.mean(success_num_arr), min(success_num_arr), max(success_num_arr)
             ))
-            print("success_num_mean: {} ; success_num_min: {} ; success_num_max: {}".format(
-                np.mean(success_num_arr), min(success_num_arr), max(success_num_arr)
+            print("[success_info] {}({}-{}) === success_num_mean: {} ; success_num_min: {} ; success_num_max: {}".format(
+                np.mean(success_num_arr), min(success_num_arr), max(success_num_arr), np.mean(success_num_arr), min(success_num_arr), max(success_num_arr)
             ), file=f)
-            print("failed_num_mean: {} ; failed_num_min: {} ; failed_num_max: {}".format(
-                np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr)
+            print("[failed_info] {}({}-{}) === failed_num_mean: {} ; failed_num_min: {} ; failed_num_max: {}".format(
+                np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr), np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr)
             ))
-            print("failed_num_mean: {} ; failed_num_min: {} ; failed_num_max: {}".format(
-                np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr)
+            print("[failed_info] {}({}-{}) === failed_num_mean: {} ; failed_num_min: {} ; failed_num_max: {}".format(
+                np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr), np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr)
             ), file=f)
-            print("all_final_significance_mean: {} ; all_final_significance_min: {} ; all_final_significance_max: {}".format(
-                np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr)
+            print("[allsig_info] {}({}-{}) === all_final_significance_mean: {} ; all_final_significance_min: {} ; all_final_significance_max: {}".format(
+                np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr), np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr)
             ))
-            print("all_final_significance_mean: {} ; all_final_significance_min: {} ; all_final_significance_max: {}".format(
-                np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr)
+            print("[allsig_info] {}({}-{}) === all_final_significance_mean: {} ; all_final_significance_min: {} ; all_final_significance_max: {}".format(
+                np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr), np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr)
             ), file=f)
-            print("success_final_significance_mean: {} ; success_final_significance_min: {} ; success_final_significance_max: {}".format(
-                np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr)
+            print("[successsig_info] {}({}-{}) === success_final_significance_mean: {} ; success_final_significance_min: {} ; success_final_significance_max: {}".format(
+                np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr), np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr)
             ))
-            print("success_final_significance_mean: {} ; success_final_significance_min: {} ; success_final_significance_max: {}".format(
-                np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr)
+            print("[successsig_info] {}({}-{}) === success_final_significance_mean: {} ; success_final_significance_min: {} ; success_final_significance_max: {}".format(
+                np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr), np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr)
             ), file=f)
 
 def scheduler_listener_func(dispatcher_server_item, port):

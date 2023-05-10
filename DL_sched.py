@@ -131,7 +131,8 @@ class Scheduler_server(object):
         self.jobid_2_datablock_selected_num = {}
         self.jobid_2_test_dataset_name = {}
         self.jobid_2_sub_test_key_id = {}
-        self.jobid_2_significance = {}
+        self.jobid_2_target_significance = {}
+        self.jobid_2_real_significance = {}
         self.jobid_2_arrival_index = {}
         self.jobid_2_typeid = {}
         # self.jobid_2_recoming_min_time = {}
@@ -260,7 +261,8 @@ class Scheduler_server(object):
         self.jobid_2_datablock_selected_num = {}
         self.jobid_2_test_dataset_name = {}
         self.jobid_2_sub_test_key_id = {}
-        self.jobid_2_significance = {}
+        self.jobid_2_target_significance = {}
+        self.jobid_2_real_significance = {}
         self.jobid_2_arrival_index = {}
         self.jobid_2_typeid = {}
         # self.jobid_2_recoming_min_time = {}
@@ -586,7 +588,7 @@ class Scheduler_server(object):
         self.sche_timely_update_history_job(self.jobid_2_priority_weight[job_id], self.jobid_2_target_epsilon[job_id],
                                             self.jobid_2_train_dataset_name[job_id], self.jobid_2_datablock_selected_num[job_id],
                                             self.jobid_2_test_dataset_name[job_id], self.jobid_2_sub_test_key_id[job_id], 
-                                            self.jobid_2_typeid[job_id], self.jobid_2_significance[job_id])
+                                            self.jobid_2_typeid[job_id], self.jobid_2_target_significance[job_id])
 
     def report_status(self, location):
         self.sched_logger.debug("======== Scheduler Status in {} ========".format(location))
@@ -654,7 +656,7 @@ class Scheduler_server(object):
 
     def get_runtime_state(self, job_id_2_train_dataset_name, job_id_2_target_epsilon_require, 
                         job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
-                        job_id_2_test_dataset_name, job_id_2_sub_test_key_id, job_id_2_significance, job_id_2_arrival_index):
+                        job_id_2_test_dataset_name, job_id_2_sub_test_key_id, job_id_2_target_significance, job_id_2_arrival_index):
         state = {}
         state["job_id_2_train_dataset_name"] = job_id_2_train_dataset_name
         state["job_id_2_target_epsilon_require"] = job_id_2_target_epsilon_require
@@ -662,7 +664,7 @@ class Scheduler_server(object):
         state["job_id_2_job_priority_weight"] = job_id_2_job_priority_weight
         state["job_id_2_test_dataset_name"] = job_id_2_test_dataset_name
         state["job_id_2_sub_test_key_id"] = job_id_2_sub_test_key_id
-        state["job_id_2_significance"] = job_id_2_significance
+        state["job_id_2_significance"] = job_id_2_target_significance
         state["job_id_2_arrival_index"] = job_id_2_arrival_index
 
         state["current_sub_train_datasetidentifier_2_epsilon_remain"] = copy.deepcopy(self.sub_train_datasetidentifier_2_epsilon_remain)
@@ -683,13 +685,13 @@ class Scheduler_server(object):
     def get_scheduling_datablock_result_from_policy(self, job_id_2_dataset_name, job_id_2_target_epsilon_require, 
                                         job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
                                         job_id_2_test_dataset_name, job_id_2_sub_test_key_id, 
-                                        job_id_2_significance, job_id_2_arrival_index):
+                                        job_id_2_target_significance, job_id_2_arrival_index):
         job_2_selected_datablock_identifiers = []
         # 在这里接入算法?
         state = self.get_runtime_state(job_id_2_dataset_name, job_id_2_target_epsilon_require, 
                                     job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
                                     job_id_2_test_dataset_name, job_id_2_sub_test_key_id, 
-                                    job_id_2_significance, job_id_2_arrival_index)
+                                    job_id_2_target_significance, job_id_2_arrival_index)
         job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon = self.assignment_policy.get_allocation(state)
         # not_selected_datablock_identifiers = [tu[0] for tu in sub_train_sort[target_datablock_select_num:]]
         return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
@@ -721,7 +723,8 @@ class Scheduler_server(object):
         self.jobid_2_gputarget[job_id] = None
         if job_id in self.gpuidentifier_2_jobinstances[gpu_identifier]:
             self.gpuidentifier_2_jobinstances[gpu_identifier].remove(job_id)
-        del self.jobid_2_significance[job_id] 
+        del self.jobid_2_target_significance[job_id] 
+        del self.jobid_2_real_significance[job_id]
         del self.jobid_2_sub_train_key_ids[job_id]
         
         # TODO(xlc): 需要确定这里是否会出bug
@@ -775,7 +778,8 @@ class Scheduler_server(object):
         self.jobid_2_gputarget[job_id] = None
         if job_id in self.gpuidentifier_2_jobinstances[gpu_identifier]:
             self.gpuidentifier_2_jobinstances[gpu_identifier].remove(job_id)
-        del self.jobid_2_significance[job_id] 
+        del self.jobid_2_target_significance[job_id] 
+        del self.jobid_2_real_significance[job_id]
         del self.jobid_2_sub_train_key_ids[job_id]
 
         '''
@@ -987,7 +991,7 @@ class Scheduler_server(object):
         if len(all_no_sche_jobs_copy) <= 0:
             return 
         for job_id in all_no_sche_jobs_copy:
-            if job_id in self.jobid_2_significance and self.jobid_2_significance[job_id] is None:
+            if job_id in self.jobid_2_target_significance and self.jobid_2_target_significance[job_id] is None:
                 continue
             test_dataset_name = self.jobid_2_test_dataset_name[job_id]
             sub_test_key_id = self.jobid_2_sub_test_key_id[job_id]
@@ -1006,7 +1010,8 @@ class Scheduler_server(object):
                     }
                     all_significance_state.append(significance_state)
             type_id = self.jobid_2_typeid[job_id]
-            self.jobid_2_significance[job_id] = self.get_job_datablock_significance_sync(type_id, all_significance_state)
+            self.jobid_2_target_significance[job_id] = self.get_job_datablock_significance_sync(type_id, all_significance_state)
+            self.jobid_2_real_significance[job_id] = copy.deepcopy(self.jobid_2_target_significance[job_id])
             self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.NO_SCHE, JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL)
 
     def sched_dataset_for_done_significance_cal_jobs(self):
@@ -1022,26 +1027,28 @@ class Scheduler_server(object):
         job_id_2_job_priority_weight = {job_id: self.jobid_2_priority_weight[job_id] for job_id in all_done_sig_cal_jobs_copy}
         job_id_2_test_dataset_name = {job_id: self.jobid_2_test_dataset_name[job_id] for job_id in all_done_sig_cal_jobs_copy}
         job_id_2_sub_test_key_id = {job_id: self.jobid_2_sub_test_key_id[job_id] for job_id in all_done_sig_cal_jobs_copy}
-        job_id_2_significance = {job_id: self.jobid_2_significance[job_id] for job_id in all_done_sig_cal_jobs_copy}
+        job_id_2_target_significance = {job_id: self.jobid_2_target_significance[job_id] for job_id in all_done_sig_cal_jobs_copy}
         job_id_2_arrival_index = {job_id: self.jobid_2_arrival_index[job_id] for job_id in all_done_sig_cal_jobs_copy}
         
         # 为没有决定分配方案的任务决定分配方案
         job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon = \
             self.get_scheduling_datablock_result_from_policy(job_id_2_dataset_name, 
                 job_id_2_target_epsilon_require, job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
-                job_id_2_test_dataset_name, job_id_2_sub_test_key_id, job_id_2_significance, job_id_2_arrival_index)
+                job_id_2_test_dataset_name, job_id_2_sub_test_key_id, job_id_2_target_significance, job_id_2_arrival_index)
         success_sched_job_ids = set()
         success_datasetidentifier_2_consume_epsilon = {}
         if len(job_2_selected_datablock_identifiers) > 0:
             for temp_job_id, identifier in job_2_selected_datablock_identifiers:
-                if temp_job_id not in self.jobid_2_sub_train_key_ids:
-                    self.jobid_2_sub_train_key_ids[temp_job_id] = []
                 consume_epsilon = selected_real_sched_epsilon_map[(temp_job_id, identifier)] 
-                self.jobid_2_sched_epsilon[temp_job_id] = consume_epsilon
                 dataset_name = job_id_2_dataset_name[temp_job_id]
                 if self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] >= consume_epsilon:
                     self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] -= consume_epsilon # calcu_compare_epsilon
+                    self.jobid_2_sched_epsilon[temp_job_id] = consume_epsilon
+                    self.jobid_2_real_significance[temp_job_id][identifier] = (self.jobid_2_sched_epsilon[temp_job_id] / self.jobid_2_target_epsilon[temp_job_id]) * self.jobid_2_target_significance[temp_job_id][identifier]
+                    if temp_job_id not in self.jobid_2_sub_train_key_ids:
+                        self.jobid_2_sub_train_key_ids[temp_job_id] = []
                     self.jobid_2_sub_train_key_ids[temp_job_id].append(identifier)
+                    
                     success_sched_job_ids.add(temp_job_id)
                     if dataset_name not in success_datasetidentifier_2_consume_epsilon:
                         success_datasetidentifier_2_consume_epsilon[dataset_name] = {}
@@ -1138,7 +1145,7 @@ class Scheduler_server(object):
 
                 final_significance = 0.0
                 for sub_train_key_id in self.jobid_2_sub_train_key_ids[job_id]:
-                    final_significance += self.jobid_2_significance[job_id][sub_train_key_id]
+                    final_significance += self.jobid_2_real_significance[job_id][sub_train_key_id]
                 # begin_epoch_num = self.jobid_2_real_sched_epochs[job_id]
                 # update_sched_epoch_num = self.jobid_2_update_sched_epoch_num[job_id]
                 

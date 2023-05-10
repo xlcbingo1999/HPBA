@@ -44,7 +44,7 @@ class PBGMixPolicy(Policy):
             return math.pow(self.U * math.exp(1) / self.L, datablock_z) * self.L / math.exp(1)
         return self.L
 
-    def filter_by_threshold(self, target_epsilon_consume, datablock_epsilon_capacity, epsilon_star):
+    def filter_by_threshold(self, target_epsilon_consume, datablock_epsilon_remain, epsilon_star):
         if self.comparison_cost_epsilon > 0.0:
             if epsilon_star + self.Lap(4.0/self.comparison_cost_epsilon) >= self.gitta * target_epsilon_consume + self.Lap(2.0/self.comparison_cost_epsilon):
                 is_select = True
@@ -59,7 +59,9 @@ class PBGMixPolicy(Policy):
             else:
                 is_select = False
                 compare_epsilon = 0.0
-        real_sched_epsilon = min(epsilon_star, datablock_epsilon_capacity - compare_epsilon, target_epsilon_consume)
+        real_sched_epsilon = min(epsilon_star, datablock_epsilon_remain - compare_epsilon, target_epsilon_consume)
+        if real_sched_epsilon <= 0.0:
+            is_select = False
         return is_select, real_sched_epsilon, compare_epsilon
         
     def get_allocation(self, state):
@@ -90,7 +92,7 @@ class PBGMixPolicy(Policy):
         while count < target_datablock_select_num and len(temp_datasetidentifier_2_epsilon_z.keys()) > 0:
             # 获取随机一个数据集
             datasetidentifier = random.choice(list(temp_datasetidentifier_2_epsilon_z.keys()))
-            datablock_epsilon_capacity = sub_train_datasetidentifier_2_epsilon_capcity[datasetidentifier]
+            datablock_epsilon_remain = sub_train_datasetidentifier_2_epsilon_remain[datasetidentifier]
             datablock_z = temp_datasetidentifier_2_epsilon_z[datasetidentifier]
             significance_plus_weight = job_priority_weight * sub_train_datasetidentifier_2_significance[datasetidentifier]
             T = self.U / (1 + np.log(self.U / self.L))
@@ -99,7 +101,7 @@ class PBGMixPolicy(Policy):
             else:
                 epsilon_star = significance_plus_weight / T
             
-            is_select, real_sched_epsilon, compare_epsilon = self.filter_by_threshold(target_epsilon_require, datablock_epsilon_capacity, epsilon_star)
+            is_select, real_sched_epsilon, compare_epsilon = self.filter_by_threshold(target_epsilon_require, datablock_epsilon_remain, epsilon_star)
             if is_select:
                 count += 1
                 selected_datablock_identifiers.append(datasetidentifier)
