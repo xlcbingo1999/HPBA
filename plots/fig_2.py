@@ -7,7 +7,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 # plt.rcParams['font.sans-serif'] = ['Arial']  # 如果要显示中文字体,则在此处设为：SimHei
 plt.rcParams['axes.unicode_minus'] = False  # 显示负号
 
-henzuobiaos = np.array([1000, 2000, 3000, 4000])
+henzuobiaos = np.array([0.1, 0.4, 0.7, 1.0])
 
 zhongzuobiao_type = "significance_success" # "job_num", "significance_all" "significance_success"
 
@@ -19,32 +19,32 @@ zhongzuobiao_type = "significance_success" # "job_num", "significance_all" "sign
 # best_fit = np.array([376, 287, 350, 380])
 
 if zhongzuobiao_type == "job_num":
-    iterative_his_gamma_0_0 = np.array([459.4, 646, 641, 639])
-    iterative_his_gamma_0_0_min = np.array([453, 646, 641, 639])
-    iterative_his_gamma_0_0_max = np.array([471, 646, 641, 639])
+    iterative_his_gamma_0_0 = np.array([459.4, 301, 296, 285])
+    # iterative_his_gamma_0_0_min = np.array([453, 646, 641, 639])
+    # iterative_his_gamma_0_0_max = np.array([471, 646, 641, 639])
 
     # his_gamma_0_0 = np.array([407, 286, 300, 390])
     # his_gamma_0_0_min = np.array([308, 286, 300, 390])
     # his_gamma_0_0_max = np.array([308, 286, 300, 390])
 
-    pbg = np.array([379, 292, 329, 435])
+    pbg = np.array([379, 158, 135, 180])
     # pbg_min = np.array([381, 292, 350, 380])
     # pbg_max = np.array([381, 292, 350, 380])
 
-    pbg_mix = np.array([423, 384, 379, 505])
+    pbg_mix = np.array([423, 220, 211, 253])
     # pbg_mix_min = np.array([434, 384, 460, 500])
     # pbg_mix_max = np.array([434, 384, 460, 500])
 
-    sage = np.array([379, 298, 337, 437])
+    sage = np.array([379, 157, 126, 180])
     # sage_min = np.array([383, 298, 350, 380])
     # sage_max = np.array([383, 298, 350, 380])
 
-    best_fit = np.array([376, 287, 323, 422])
+    best_fit = np.array([376, 182, 156, 227])
     # best_fit_min = np.array([376, 287, 350, 380])
     # best_fit_max = np.array([376, 287, 350, 380])
     
 elif zhongzuobiao_type == "significance_all":
-    iterative_his_gamma_0_0 = np.array([3.535938795146002, 2.3935149486104024, 1.9638429415343266, 1.4755733102266904])
+    iterative_his_gamma_0_0 = np.array([3.535938795146002, 1.668098056480535, 1.5392849081070703, 1.734900686795597])
     # iterative_his_gamma_0_0_min = np.array([460, 646, 641, 639])
     # iterative_his_gamma_0_0_max = np.array([460, 646, 641, 639])
 
@@ -52,24 +52,24 @@ elif zhongzuobiao_type == "significance_all":
     # his_gamma_0_0_min = np.array([308, 286, 300, 390])
     # his_gamma_0_0_max = np.array([308, 286, 300, 390])
 
-    pbg = np.array([2.5805945344518455, 1.0067507564357072, 0.8057246627390711, 0.6167341228547648])
+    pbg = np.array([2.5805945344518455, 1.078856661436988, 0.7753441902535858, 1.1795184746413931])
     # pbg_min = np.array([381, 292, 350, 380])
     # pbg_max = np.array([381, 292, 350, 380])
 
-    pbg_mix = np.array([2.6477434042008205, 1.0509979228035369, 0.8460165882214832, 0.6327319676133453])
+    pbg_mix = np.array([2.6477434042008205, 1.1530471391521513, 0.9277808737832992, 1.2845103019339146])
     # pbg_mix_min = np.array([434, 384, 460, 500])
     # pbg_mix_max = np.array([434, 384, 460, 500])
 
-    sage = np.array([2.6028358334400648, 1.013429247246415, 0.8101928203978823, 0.6161615150326591])
+    sage = np.array([2.6028358334400648, 1.0703841332607578, 0.745426685771004, 1.172191774462089])
     # sage_min = np.array([383, 298, 350, 380])
     # sage_max = np.array([383, 298, 350, 380])
 
-    best_fit = np.array([2.68622938012295, 1.0255629202420589, 0.8316688519253763, 0.6294322809938524])
+    best_fit = np.array([2.68622938012295, 1.2593551005379096, 0.8903225537909832, 1.5123030705686467])
     # best_fit_min = np.array([376, 287, 350, 380])
     # best_fit_max = np.array([376, 287, 350, 380])
     
 elif zhongzuobiao_type == "significance_success":
-    iterative_his_gamma_0_0 = np.array([7.697777133886605, 7.410262998793815, 9.191152612485148, 9.236765635221849])
+    iterative_his_gamma_0_0 = np.array([7.697777133886605, 5.54185400824098, 5.200286851713075, 6.087370830861744])
     # iterative_his_gamma_0_0_min = np.array([460, 646, 641, 639])
     # iterative_his_gamma_0_0_max = np.array([460, 646, 641, 639])
 
@@ -77,19 +77,19 @@ elif zhongzuobiao_type == "significance_success":
     # his_gamma_0_0_min = np.array([308, 286, 300, 390])
     # his_gamma_0_0_max = np.array([308, 286, 300, 390])
 
-    pbg = np.array([6.808956555281914, 6.895553126271968, 7.347033398836515, 5.671118371078297])
+    pbg = np.array([6.808956555281914, 6.828206717955621, 5.74329029817471, 5.671118371078297])
     # pbg_min = np.array([381, 292, 350, 380])
     # pbg_max = np.array([381, 292, 350, 380])
 
-    pbg_mix = np.array([6.259440671869552, 5.473947514601754, 6.696701226027571, 5.011738357333428])
+    pbg_mix = np.array([6.259440671869552, 5.241123359782505, 6.696701226027571, 5.077115817920611])
     # pbg_mix_min = np.array([434, 384, 460, 500])
     # pbg_mix_max = np.array([434, 384, 460, 500])
 
-    sage = np.array([6.867640721477743, 6.801538572123591, 7.212398994639902, 5.63992233439505])
+    sage = np.array([6.867640721477743, 6.817733332871069, 5.9160848077063815, 6.512176524789384])
     # sage_min = np.array([383, 298, 350, 380])
     # sage_max = np.array([383, 298, 350, 380])
 
-    best_fit = np.array([7.144227074795079, 7.146779932000411, 7.724478500854889, 5.9661827582355675])
+    best_fit = np.array([7.144227074795079, 6.919533519439063, 5.707195857634508, 6.66212806417906])
     # best_fit_min = np.array([376, 287, 350, 380])
     # best_fit_max = np.array([376, 287, 350, 380])
 
@@ -105,8 +105,8 @@ ax.spines['right'].set_visible(False)  # 去掉右边框
 
 
 plt.plot(henzuobiaos, iterative_his_gamma_0_0, marker='o', color="r", label=r"IterativeHIS:$\gamma$-0.0", linewidth=1.5)
-if zhongzuobiao_type == "job_num":
-    plt.fill_between(henzuobiaos, iterative_his_gamma_0_0_min, iterative_his_gamma_0_0_max, color="r", alpha=0.5)
+# if zhongzuobiao_type == "job_num":
+#     plt.fill_between(henzuobiaos, iterative_his_gamma_0_0_min, iterative_his_gamma_0_0_max, color="r", alpha=0.5)
 
 
 # plt.plot(henzuobiaos, his_gamma_0_0, marker='o', color="g", label=r"HIS:$\gamma$-0.0", linewidth=1.5)
@@ -130,7 +130,7 @@ group_labels = list(str(hen) for hen in henzuobiaos)  # x轴刻度的标识
 plt.xticks(henzuobiaos, group_labels, fontsize=12, fontweight='bold')  # 默认字体大小为10
 plt.yticks(fontsize=12, fontweight='bold')
 # plt.title("example", fontsize=12, fontweight='bold')  # 默认字体大小为12
-plt.xlabel(r"Number of test jobs $n$", fontsize=13, fontweight='bold')
+plt.xlabel(r"Require-supply Ratio $\lambda$", fontsize=13, fontweight='bold')
 if zhongzuobiao_type == "job_num":
     plt.ylabel("Number of allocated jobs", fontsize=13, fontweight='bold')
 elif zhongzuobiao_type == "significance_all":
@@ -148,7 +148,7 @@ plt.setp(ltext, fontsize=12, fontweight='bold')  # 设置图例字体的大小�
 plt.legend(loc=2, bbox_to_anchor=(0.98,1.0),borderaxespad = 0.)
 plt.subplots_adjust(left=0.1, right=0.88)
 
-path = '/home/netlab/DL_lab/opacus_testbed/plots/fig_change_online_job_num_{}'.format(zhongzuobiao_type)
+path = '/home/netlab/DL_lab/opacus_testbed/plots/fig2{}'.format(zhongzuobiao_type)
 plt.savefig(path + '.png', format='png')  # 建议保存为svg格式,再用inkscape转为矢量图emf后插入word中
 plt.show()
 pp = PdfPages(path + '.pdf')
