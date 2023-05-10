@@ -1,5 +1,5 @@
 current_ip_index = 5
-current_cmd_index = 0
+current_cmd_index = 7
 
 is_simulation = True
 need_save_jobtrace_flag = False
@@ -7,7 +7,7 @@ worker_indexes = [3]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 
-assignment_policy = "PBGMixPolicy"
+assignment_policy = "HISPolicy"
 his_batch_size_for_one_epochs = 100
 significance_policy = "TempPolicy"
 test_jobtrace_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
