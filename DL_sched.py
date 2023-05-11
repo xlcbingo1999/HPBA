@@ -692,9 +692,9 @@ class Scheduler_server(object):
                                     job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
                                     job_id_2_test_dataset_name, job_id_2_sub_test_key_id, 
                                     job_id_2_target_significance, job_id_2_arrival_index)
-        job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon = self.assignment_policy.get_allocation(state)
+        job_2_selected_datablock_identifiers, waiting_job_ids, selected_real_sched_epsilon_map, calcu_compare_epsilon = self.assignment_policy.get_allocation(state)
         # not_selected_datablock_identifiers = [tu[0] for tu in sub_train_sort[target_datablock_select_num:]]
-        return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
+        return job_2_selected_datablock_identifiers, waiting_job_ids, selected_real_sched_epsilon_map, calcu_compare_epsilon
 
     def push_success_scheduling_result_to_policy(self, success_datasetidentifier_2_consume_epsilon):
         self.assignment_policy.push_success_allocation(success_datasetidentifier_2_consume_epsilon)
@@ -1031,7 +1031,7 @@ class Scheduler_server(object):
         job_id_2_arrival_index = {job_id: self.jobid_2_arrival_index[job_id] for job_id in all_done_sig_cal_jobs_copy}
         
         # 为没有决定分配方案的任务决定分配方案
-        job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon = \
+        job_2_selected_datablock_identifiers, waiting_job_ids, selected_real_sched_epsilon_map, calcu_compare_epsilon = \
             self.get_scheduling_datablock_result_from_policy(job_id_2_dataset_name, 
                 job_id_2_target_epsilon_require, job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
                 job_id_2_test_dataset_name, job_id_2_sub_test_key_id, job_id_2_target_significance, job_id_2_arrival_index)
@@ -1076,8 +1076,11 @@ class Scheduler_server(object):
             origin_status_success, target_status_success = self.get_job_status_update_origin_target(status_update_path)
             self.sche_reflash_job_status(temp_job_id, origin_status_success, target_status_success)
             need_failed_job.remove(temp_job_id)
-            
-            # self.jobid_2_real_sched_epochs[temp_job_id] += self.jobid_2_update_sched_epoch_num[temp_job_id]
+
+        self.sched_logger.info("waiting_job_ids: {}".format(waiting_job_ids))
+        for temp_job_id in waiting_job_ids:
+            # 保持仍然为DONE_SIGNIFICANCE_CAL的状态
+            need_failed_job.remove(temp_job_id)
 
         for temp_job_id in need_failed_job:
             self.sched_logger.info("failed job scheduling [{}] first".format(temp_job_id))

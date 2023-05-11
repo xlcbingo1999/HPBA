@@ -339,11 +339,20 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
         print("load from path: {}".format(dataset_reconstruct_path))
         dataset_path = RESULT_PATH + "/{}/datasets.json".format(dataset_reconstruct_path)
         with open(dataset_path, "r+") as f:
-            datasets_list = json.load(f)
-        for name in datasets_list:
-            for sub_datablock_name in datasets_list[name]:
-                origin_datablock_espilon_global = datasets_list[name][sub_datablock_name]["epsilon_capacity"]
-                datasets_list[name][sub_datablock_name] = change_epsilon_G(datasets_list[name][sub_datablock_name], origin_datablock_espilon_global*change_datablock_epsilon_max_times)
+            temp_datasets_list = json.load(f)
+        datasets_list = {}
+        current_num = 0
+        for name in temp_datasets_list:
+            if name not in datasets_list:
+                datasets_list[name] = {}
+            for sub_datablock_name in temp_datasets_list[name]:
+                origin_datablock_espilon_global = temp_datasets_list[name][sub_datablock_name]["epsilon_capacity"]
+                datasets_list[name][sub_datablock_name] = change_epsilon_G(temp_datasets_list[name][sub_datablock_name], origin_datablock_espilon_global*change_datablock_epsilon_max_times)
+                current_num += 1
+                if current_num > num:
+                    break
+            if current_num > num:
+                break
     else:
         print("check dataset_names: {}".format(dataset_names))
         offline_num = offline_num

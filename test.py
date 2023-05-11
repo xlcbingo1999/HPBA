@@ -270,6 +270,7 @@ for i in range(len(hist)):
     print("[{:.2f}, {:.2f}): {}".format(bin_edges[i], bin_edges[i+1], hist[i]))
 '''
 
+'''
 import numpy as np
 li = [
     7.6519257353104955,
@@ -281,3 +282,121 @@ li = [
 print("mean: ", np.mean(li))
 print("min: ", min(li))
 print("max: ", max(li))
+'''
+
+'''
+import cvxpy as cp
+import numpy as np
+
+def get_LP_result(sign_matrix, datablock_privacy_budget_capacity_list, job_target_datablock_selected_num_list, job_privacy_budget_consume_list, solver=cp.CBC):
+    job_num, datablock_num = sign_matrix.shape[0], sign_matrix.shape[1]
+    print(f"job_num: {job_num}; datablock_num: {datablock_num}")
+    job_target_datablock_selected_num_list = np.array(job_target_datablock_selected_num_list)[np.newaxis, :]
+    job_privacy_budget_consume_list = np.array(job_privacy_budget_consume_list)[np.newaxis, :]
+    datablock_privacy_budget_capacity_list = np.array(datablock_privacy_budget_capacity_list)[np.newaxis, :]
+
+    print(f"job_target_datablock_selected_num_list: {job_target_datablock_selected_num_list}")
+    print(f"job_privacy_budget_consume_list: {job_privacy_budget_consume_list}")
+    print(f"datablock_privacy_budget_capacity_list: {datablock_privacy_budget_capacity_list}")
+
+    matrix_X = cp.Variable((job_num, datablock_num), nonneg=True)
+    objective = cp.Maximize(
+        cp.sum(cp.multiply(sign_matrix, matrix_X))
+    )
+
+    # print(f"========= multiply ========")
+    # print(np.sum(np.multiply(sign_matrix, matrix_X)))
+    print(f"========= sign_matrix.value [{sign_matrix.shape}]=========")
+    print(sign_matrix)
+    print(f"========= job_target_datablock_selected_num_list.value [{job_target_datablock_selected_num_list.shape}] [{np.squeeze(job_target_datablock_selected_num_list).shape}]=========")
+    print(job_target_datablock_selected_num_list)
+    print(f"========= job_privacy_budget_consume_list.value [{job_privacy_budget_consume_list.shape}]=========")
+    print(job_privacy_budget_consume_list)
+    print(f"========= datablock_privacy_budget_capacity_list.value [{datablock_privacy_budget_capacity_list.shape}]=========")
+    print(datablock_privacy_budget_capacity_list)
+    print(f"========= job_privacy_budget_consume_list @ matrix_X [{(job_privacy_budget_consume_list @ matrix_X).shape}]=========")
+
+    constraints = [
+        matrix_X >= 0,
+        matrix_X <= 1,
+        cp.sum(matrix_X, axis=1) <= np.squeeze(job_target_datablock_selected_num_list),
+        (job_privacy_budget_consume_list @ matrix_X) <= datablock_privacy_budget_capacity_list
+    ]
+
+    cvxprob = cp.Problem(objective, constraints)
+    result = cvxprob.solve(solver, verbose=False)
+    # print(matrix_X.value)
+    if cvxprob.status != "optimal":
+        print('WARNING: Allocation returned by policy not optimal!')
+
+    print("========= matrix_X.value =========")
+    print(matrix_X.value)
+    if matrix_X.value is None:
+        result = np.zeros(shape=(job_num, datablock_num))
+    else:
+        result = matrix_X.value
+    for job_index in range(job_num):
+        print(np.sum(result[job_index]))
+    return result
+
+sign_matrix = np.array([[0.71558818, 0.7281234 , 0.64447522, 0.71558818, 0.70829598, 0.7281234,
+                        0.64447522, 0.70829598, 0.71558818, 0.69991515, 0.57958984, 0.7281234, 
+                        0.71558818, 0.69991515, 0.7281234 , 0.57958984, 0.71558818, 0.57958984, 
+                        0.69991515, 0.64447522, 0.71558818],
+                        [0.71558818, 0.7281234 , 0.64447522, 0.71558818, 0.70829598, 0.7281234, 
+                        0.64447522, 0.70829598, 0.71558818, 0.69991515, 0.57958984, 0.7281234, 
+                        0.71558818, 0.69991515, 0.7281234 , 0.57958984, 0.71558818, 0.57958984, 
+                        0.69991515, 0.64447522, 0.71558818]])
+datablock_privacy_budget_capacity_list = np.array([10., 10., 10., 10., 10., 10., 
+                                                    10., 10., 10., 10., 10., 10., 
+                                                    10., 10., 10., 10., 10., 10., 
+                                                    10., 10., 10.])
+job_target_datablock_selected_num_list = np.array([8, 7])
+job_privacy_budget_consume_list = np.array([0.2423561,  0.10008523])
+
+get_LP_result(sign_matrix, datablock_privacy_budget_capacity_list, job_target_datablock_selected_num_list, job_privacy_budget_consume_list)
+'''
+
+import gurobipy
+
+
+def assignment(cost_matrix):
+	# 保存行列标签
+	index = cost_matrix.index
+	columns = cost_matrix.columns
+
+	# 创建模型
+	model = gurobipy.Model('Assignment')
+	x = model.addVars(index, columns, vtype=gurobipy.GRB.BINARY)
+	model.update()
+
+	# 设置目标函数
+	model.setObjective(gurobipy.quicksum(x[i, j] * cost_matrix.at[i, j] for i in index for j in columns))
+
+	# 添加约束条件
+	model.addConstr(gurobipy.quicksum(x[i, j] for i in index for j in columns) == min([len(index), len(columns)]))
+	model.addConstrs(gurobipy.quicksum(x[i, j] for j in columns) <= 1 for i in index)
+	model.addConstrs(gurobipy.quicksum(x[i, j] for i in index) <= 1 for j in columns)
+
+	# 执行最优化
+	model.optimize()
+
+	# 输出信息
+	result = cost_matrix * 0
+	if model.status == gurobipy.GRB.Status.OPTIMAL:
+		solution = [k for k, v in model.getAttr('x', x).items() if v == 1]
+		for i, j in solution:
+			print(f"{i} -> {j}: {cost_matrix.at[i,j]}")
+			result.at[i, j] = 1
+	return result
+
+
+if __name__ == '__main__':
+	import pandas as pd
+
+	cost_matrix = pd.DataFrame(
+			[[4, 8, 7, 15, 12], [7, 9, 17, 14, 10], [6, 9, 12, 8, 7], [6, 7, 14, 6, 10], [6, 9, 12, 10, 6],
+				[5, 8, 13, 11, 10]],
+			index=['A1', 'A2', 'A3', 'A4', 'A5', 'A6'], columns=['B1', 'B2', 'B3', 'B4', 'B5'])
+
+	assignment(cost_matrix)

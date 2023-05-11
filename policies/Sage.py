@@ -62,5 +62,6 @@ class SagePolicy(Policy):
         job_2_selected_datablock_identifiers = [
             (job_id, identifier) for identifier in selected_datablock_identifiers
         ]
+        waiting_job_ids = []
         self.logger.debug("from policy [{}] selected_datablock_identifiers: {}".format(self.name , job_2_selected_datablock_identifiers))
-        return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
+        return job_2_selected_datablock_identifiers, waiting_job_ids, selected_real_sched_epsilon_map, calcu_compare_epsilon
