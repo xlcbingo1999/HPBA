@@ -986,22 +986,22 @@ class Scheduler_server(object):
     '''
                 
     def calculate_significance_for_nosched_jobs(self):
-        all_no_sche_jobs_copy = copy.deepcopy(self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE])
-        all_current_dataset_status_copy = copy.deepcopy(self.sub_train_datasetidentifier_2_dataset_status)
-        if len(all_no_sche_jobs_copy) <= 0:
+        all_no_sche_jobs = self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE]
+        if len(all_no_sche_jobs) <= 0:
             return 
-        for job_id in all_no_sche_jobs_copy:
+        for job_id in all_no_sche_jobs:
             if job_id in self.jobid_2_target_significance and self.jobid_2_target_significance[job_id] is None:
                 continue
             test_dataset_name = self.jobid_2_test_dataset_name[job_id]
             sub_test_key_id = self.jobid_2_sub_test_key_id[job_id]
 
             job_target_train_dataset_name = self.jobid_2_train_dataset_name[job_id]
-
+            # self.sched_logger.debug(f"job[{job_id}] target_train_dataset_name: {job_target_train_dataset_name}")
+            # self.sched_logger.debug(f"sub_train_datasetidentifier_2_dataset_status: {self.sub_train_datasetidentifier_2_dataset_status}")
             
-            if job_target_train_dataset_name in all_current_dataset_status_copy:
+            if job_target_train_dataset_name in self.sub_train_datasetidentifier_2_dataset_status:
                 all_significance_state = []
-                for sub_train_key_id in all_current_dataset_status_copy[job_target_train_dataset_name]:
+                for sub_train_key_id in self.sub_train_datasetidentifier_2_dataset_status[job_target_train_dataset_name]:
                     significance_state = {
                         "test_dataset_name": test_dataset_name,
                         "sub_test_key_id": sub_test_key_id,
@@ -1009,6 +1009,8 @@ class Scheduler_server(object):
                         "sub_train_key_id": sub_train_key_id
                     }
                     all_significance_state.append(significance_state)
+            else:
+                all_significance_state = []
             type_id = self.jobid_2_typeid[job_id]
             self.jobid_2_target_significance[job_id] = self.get_job_datablock_significance_sync(type_id, all_significance_state)
             self.jobid_2_real_significance[job_id] = copy.deepcopy(self.jobid_2_target_significance[job_id])

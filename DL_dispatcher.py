@@ -94,6 +94,7 @@ class Dispatcher(object):
         all_logger_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
         dispatcher_logger_path = '{}/DL_dispatcher_{}.log'.format(all_logger_path, simulation_index)
         self.dispatcher_logger = get_logger(dispatcher_logger_path, dispatcher_logger_path, enable_multiprocess=True)
+        self.dispatcher_logger.info("***************** current_test_all_dir: {} *****************".format(self.current_test_all_dir))
 
         jobs_list = sorted(jobs_list, key=lambda r: r["time"])
         jobs_id_list = ["job_{}".format(x) for x in range(len(jobs_list))]
