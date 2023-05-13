@@ -15,10 +15,10 @@ class QueueItem(object):
         self.datablock_identifier = datablock_identifier 
         self.significance = significance
 
-class IterativeHISwithOrderPolicy(Policy):
+class IterativeHISwithOrderProVersionPolicy(Policy):
     def __init__(self, beta, job_sequence_all_num, batch_size_for_one_epoch, seed, logger):
         super().__init__()
-        self._name = 'IterativeHISwithOrderPolicy'
+        self._name = 'IterativeHISwithOrderProVersionPolicy'
         self.beta = beta
         self.logger = logger
         self.waiting_queue_capacity = 1

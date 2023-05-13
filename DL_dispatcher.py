@@ -68,6 +68,7 @@ def get_df_config():
 
     parser.add_argument('--his_betas', type=float, default=0.0)
     parser.add_argument('--his_batch_size_for_one_epochs', type=int, default=25)
+    parser.add_argument('--his_comparison_z_threshold_list', type=float, default=0.7)
 
     parser.add_argument('--dpf_his_betas', type=float, default=0.01)
     parser.add_argument('--dpf_his_waiting_queue_capacitys', type=int, default=10)
@@ -345,10 +346,15 @@ class Dispatcher(object):
         elif assignment_policy == "HISPolicy" or assignment_policy == "HISwithCPolicy" or assignment_policy == "HISwithOrderPolicy":
             beta_list = args.his_betas
             assignment_args = (beta_list, all_decision_num)
-        elif assignment_policy == "IterativeHISPolicy" or assignment_policy == "IterativeHISwithOrderPolicy":
+        elif assignment_policy == "IterativeHISPolicy" or assignment_policy == "IterativeHISwithOrderProVersionPolicy":
             beta_list = args.his_betas
             batch_size_for_one_epoch_list = args.his_batch_size_for_one_epochs
             assignment_args = (beta_list, batch_size_for_one_epoch_list, all_decision_num)
+        elif assignment_policy == "IterativeHISwithOrderRemainVersionPolicy":
+            beta_list = args.his_betas
+            his_comparison_z_threshold_list = args.his_comparison_z_threshold_list
+            batch_size_for_one_epoch_list = args.his_batch_size_for_one_epochs
+            assignment_args = (beta_list, his_comparison_z_threshold_list, batch_size_for_one_epoch_list, all_decision_num)
         elif assignment_policy == "DPFHISPolicy":
             beta_list = args.dpf_his_betas
             waiting_queue_capacity_list = args.dpf_his_waiting_queue_capacitys

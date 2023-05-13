@@ -23,7 +23,8 @@ from policies.HIS import HISPolicy
 from policies.HISwithC import HISwithCPolicy
 from policies.HISwithOrder import HISwithOrderPolicy
 from policies.IterativeHIS import IterativeHISPolicy
-from policies.IterativeHISwithOrder import IterativeHISwithOrderPolicy
+from policies.IterativeHISwithOrderProVersion import IterativeHISwithOrderProVersionPolicy
+from policies.IterativeHISwithOrderRemainVersion import IterativeHISwithOrderRemainVersionPolicy
 from policies.DPF_HIS_event import DPFHISPolicy
 from policies.Offline import OfflinePolicy
 from significance_policies.HISOTDD import HISOTDDPolicy
@@ -1367,9 +1368,12 @@ class Scheduler_server(object):
         elif assignment_policy == "IterativeHISPolicy":
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
             policy_item = IterativeHISPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
-        elif assignment_policy == "IterativeHISwithOrderPolicy":
+        elif assignment_policy == "IterativeHISwithOrderProVersionPolicy":
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
-            policy_item = IterativeHISwithOrderPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
+            policy_item = IterativeHISwithOrderProVersionPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
+        elif assignment_policy == "IterativeHISwithOrderRemainVersionPolicy":
+            beta, z0, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
+            policy_item = IterativeHISwithOrderRemainVersionPolicy(beta, z0, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
         elif assignment_policy == "DPFHISPolicy":
             beta, waiting_queue_capacity, job_sequence_all_num = assignment_args
             policy_item = DPFHISPolicy(beta, job_sequence_all_num, waiting_queue_capacity, self.seed, self.sched_logger)

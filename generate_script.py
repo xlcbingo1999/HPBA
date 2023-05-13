@@ -1,5 +1,5 @@
 current_ip_index = 5
-current_cmd_index = 7
+current_cmd_index = 3
 
 is_simulation = True
 need_save_jobtrace_flag = False
@@ -7,14 +7,14 @@ worker_indexes = [3]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 
-assignment_policy = "HISPolicy"
+assignment_policy = "OfflinePolicy"
 his_batch_size_for_one_epochs = 100
 significance_policy = "TempPolicy"
 test_jobtrace_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
-dataset_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
+dataset_reconstruct_path = "schedule-review-simulation-05-11-17-09-28" # "schedule-review-simulation-05-03-19-49-14"
 history_jobtrace_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
 all_decision_num = 1000
-datablock_require_epsilon_max_ratio = 0.1
+datablock_require_epsilon_max_ratio = 0.025
 change_job_epsilon_max_times = 1.0
 all_history_num = 0
 his_betas = 0.0

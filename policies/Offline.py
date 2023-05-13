@@ -103,22 +103,22 @@ class OfflinePolicy(Policy):
         job_privacy_budget_consume_list = np.array(job_privacy_budget_consume_list)[np.newaxis, :]
         datablock_privacy_budget_capacity_list = np.array(datablock_privacy_budget_capacity_list)[np.newaxis, :]
 
-        matrix_X = cp.Variable((job_num, datablock_num), integer=True)
+        matrix_X = cp.Variable((job_num, datablock_num), nonneg=True)
         objective = cp.Maximize(
             cp.sum(cp.multiply(sign_matrix, matrix_X))
         )
 
-        self.logger.debug(f"========= multiply ========")
-        self.logger.debug(np.sum(np.multiply(sign_matrix, matrix_X)))
-        self.logger.debug(f"========= sign_matrix.value [{sign_matrix.shape}]=========")
-        self.logger.debug(sign_matrix)
-        self.logger.debug(f"========= job_target_datablock_selected_num_list.value [{job_target_datablock_selected_num_list.shape}] [{np.squeeze(job_target_datablock_selected_num_list).shape}]=========")
-        self.logger.debug(job_target_datablock_selected_num_list)
-        self.logger.debug(f"========= job_privacy_budget_consume_list.value [{job_privacy_budget_consume_list.shape}]=========")
-        self.logger.debug(job_privacy_budget_consume_list)
-        self.logger.debug(f"========= datablock_privacy_budget_capacity_list.value [{datablock_privacy_budget_capacity_list.shape}]=========")
-        self.logger.debug(datablock_privacy_budget_capacity_list)
-        self.logger.debug(f"========= job_privacy_budget_consume_list @ matrix_X [{(job_privacy_budget_consume_list @ matrix_X).shape}]=========")
+        # self.logger.debug(f"========= multiply ========")
+        # self.logger.debug(np.sum(np.multiply(sign_matrix, matrix_X)))
+        # self.logger.debug(f"========= sign_matrix.value [{sign_matrix.shape}]=========")
+        # self.logger.debug(sign_matrix)
+        # self.logger.debug(f"========= job_target_datablock_selected_num_list.value [{job_target_datablock_selected_num_list.shape}] [{np.squeeze(job_target_datablock_selected_num_list).shape}]=========")
+        # self.logger.debug(job_target_datablock_selected_num_list)
+        # self.logger.debug(f"========= job_privacy_budget_consume_list.value [{job_privacy_budget_consume_list.shape}]=========")
+        # self.logger.debug(job_privacy_budget_consume_list)
+        # self.logger.debug(f"========= datablock_privacy_budget_capacity_list.value [{datablock_privacy_budget_capacity_list.shape}]=========")
+        # self.logger.debug(datablock_privacy_budget_capacity_list)
+        # self.logger.debug(f"========= job_privacy_budget_consume_list @ matrix_X [{(job_privacy_budget_consume_list @ matrix_X).shape}]=========")
 
         constraints = [
             matrix_X >= 0,
@@ -186,41 +186,20 @@ class OfflinePolicy(Policy):
         job_2_selected_datablock_identifiers = []
         selected_real_sched_epsilon_map = {}
         
+        pairs = []
         for job_row_index in range(job_num):
             for datablock_col_index in range(datablock_num):
-                if assign_result_matrix[job_row_index][datablock_col_index] > 0.9:
-                    job_item = self.waiting_queue[job_row_index]
-                    datablock_identifier = temp_index_2_datablock_identifier[datablock_col_index]
-                    job_2_selected_datablock_identifiers.append((job_item.job_id, datablock_identifier))
-                    selected_real_sched_epsilon_map[(job_item.job_id, datablock_identifier)] = job_item.target_epsilon_require
-        
-        # waiting_job_selected_datablock_identifiers = []
-        # waiting_job_selected_sign = []
-        # for index, job_id in enumerate(self.waiting_queue):
-        #     job_item = self.waiting_queue[job_id]
-        #     temp_selected_datablock_identifiers = []
-        #     temp_selected_probability = []
-
-        #     current_job_probability = list(assign_result_matrix[-(len(self.waiting_queue) - index)]) # 这里其实相当于算出了一个分数, 如果为了这个分数不被泄露, 可以用指数机制加噪, 该方案被证实为满足DP-差分隐私.
+                pairs.append((job_row_index, datablock_col_index, assign_result_matrix[job_row_index][datablock_col_index]))
+        sorted_pairs = sorted(pairs, key=lambda x: x[2], reverse=True)
+        job_current_selected_datablock_count = [0] * job_num
+        for pair in sorted_pairs:
+            job_index, datablock_index = pair[0], pair[1]
+            job_item = self.waiting_queue[job_index]
+            datablock_identifier = temp_index_2_datablock_identifier[datablock_index]
             
-        #     result_select_num = job_item.target_datablock_select_num
-        #     temp_result = heapq.nlargest(result_select_num, range(len(current_job_probability)), current_job_probability.__getitem__)
-        #     choose_indexes = [index for index in temp_result if current_job_probability[index]]
-        #     for choose_index in choose_indexes:
-        #         datablock_identifier = temp_index_2_datablock_identifier[choose_index]
-        #         temp_selected_datablock_identifiers.append(datablock_identifier)
-        #         temp_selected_probability.append(current_job_probability[choose_index])
-        #     waiting_job_selected_datablock_identifiers.append(temp_selected_datablock_identifiers)
-        #     waiting_job_selected_sign.append(temp_selected_probability)
-        # scheduler_order = self.get_schedule_order(waiting_job_selected_sign)
-        # job_2_selected_datablock_identifiers = []
-        # selected_real_sched_epsilon_map = {}
-        # for x, y in scheduler_order:
-        #     job = self.waiting_queue[x]
-        #     datablock_identifier = waiting_job_selected_datablock_identifiers[x][y]
-        #     if job.target_epsilon_require <= sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier]:
-        #         job_2_selected_datablock_identifiers.append((job.job_id, datablock_identifier))
-        #         selected_real_sched_epsilon_map[(job.job_id, datablock_identifier)] = job.target_epsilon_require
-        #         sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier] -= job.target_epsilon_require
-
+            if job_current_selected_datablock_count[job_index] < job_item.target_datablock_select_num:
+                job_2_selected_datablock_identifiers.append((job_item.job_id, datablock_identifier))
+                selected_real_sched_epsilon_map[(job_item.job_id, datablock_identifier)] = job_item.target_epsilon_require
+                job_current_selected_datablock_count[job_index] += 1
+    
         return job_2_selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
