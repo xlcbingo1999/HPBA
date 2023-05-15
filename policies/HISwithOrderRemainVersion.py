@@ -155,17 +155,24 @@ class HISwithOrderRemainVersionPolicy(Policy):
         )
         
         datablock_privacy_budget_capacity_list = np.zeros(shape=sign_matrix.shape[1])
+        datablock_privacy_budget_remain_list = np.zeros(shape=sign_matrix.shape[1])
         job_target_datablock_selected_num_list = np.array(current_all_job_target_datablock_selected_nums)
         for temp_index in temp_index_2_datablock_identifier:
             datablock_privacy_budget_capacity_list[temp_index] = sub_train_datasetidentifier_2_epsilon_capcity[temp_index_2_datablock_identifier[temp_index]]
+        for temp_index, datablock_identifier in temp_index_2_datablock_identifier.items():
+            datablock_privacy_budget_remain_list[temp_index] = sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier]
+        
         assign_result_matrix = self.get_LP_result(sign_matrix, datablock_privacy_budget_capacity_list, job_target_datablock_selected_num_list, current_all_job_budget_consumes)
         current_job_probability = assign_result_matrix[-1] # 这里其实相当于算出了一个分数, 如果为了这个分数不被泄露, 可以用指数机制加噪, 该方案被证实为满足DP-差分隐私.
         choose_indexes = []
         
         current_job_probability_list = list(current_job_probability)
-        current_job_probability_sorted_indexes = sorted(range(len(current_job_probability_list)), key=lambda k: current_job_probability_list[k], reverse=True)
+        waiting_sort_indexes = range(sign_matrix.shape[1])
+        current_job_probability_sorted_indexes = sorted(waiting_sort_indexes, key=lambda k: (datablock_privacy_budget_remain_list[k], current_job_probability_list[k]), reverse=True)
         
         for sorted_index in current_job_probability_sorted_indexes:
+            if sorted_index in choose_indexes:
+                continue
             prob_true = min(1.0, max(0.0, current_job_probability_list[sorted_index]))
             if sub_train_datasetidentifier_2_epsilon_remain[temp_index_2_datablock_identifier[sorted_index]] < target_epsilon_require:
                 prob_true = 0.0
@@ -175,15 +182,18 @@ class HISwithOrderRemainVersionPolicy(Policy):
             if choice_result == 1:
                 choose_indexes.append(sorted_index)
 
+            self.logger.debug(f"(job_id[{job_id}], datablock_identifier[{temp_index_2_datablock_identifier[sorted_index]}]) => remain: {datablock_privacy_budget_remain_list[sorted_index]}; pro: {current_job_probability_list[sorted_index]}; choice_result: {choice_result}")
         # best-effort
+        self.logger.debug(f"z0: {(job_arrival_index + 1) / all_job_sequence_num}")
         z_bigger_than_z0_indexes = []
         current_z = []
         sub_job_probability_list = []
         for temp_index in temp_index_2_datablock_identifier:
-            if target_epsilon_require <= ((job_arrival_index + 1) / all_job_sequence_num) * sub_train_datasetidentifier_2_epsilon_remain[temp_index_2_datablock_identifier[temp_index]]:
-                current_z.append(target_epsilon_require / sub_train_datasetidentifier_2_epsilon_remain[temp_index_2_datablock_identifier[temp_index]])
+            if target_epsilon_require <= ((job_arrival_index + 1) / all_job_sequence_num) * datablock_privacy_budget_remain_list[temp_index]:
+                current_z.append(target_epsilon_require / datablock_privacy_budget_remain_list[temp_index])
                 z_bigger_than_z0_indexes.append(temp_index)
                 sub_job_probability_list.append(current_job_probability_list[temp_index])
+        self.logger.debug(f"z_bigger_than_z0_indexes: {z_bigger_than_z0_indexes}")
 
         assert len(current_z) == len(z_bigger_than_z0_indexes) == len(sub_job_probability_list)
         current_z_sorted_secondary_indexes = sorted(range(len(z_bigger_than_z0_indexes)), key=lambda k: (sub_job_probability_list[k], current_z[k]), reverse=True)
@@ -191,8 +201,9 @@ class HISwithOrderRemainVersionPolicy(Policy):
             z_bigger_than_z0_index = z_bigger_than_z0_indexes[temp_secondary_index]
             if z_bigger_than_z0_index not in choose_indexes:
                 choose_indexes.append(z_bigger_than_z0_index)
+                self.logger.debug(f"job_id[{job_id}] add datablock identifier caused by z0: {temp_index_2_datablock_identifier[z_bigger_than_z0_index]}")
 
-        self.logger.debug(f"job_id[{job_id}] choose_indexes: {choose_indexes}")
+        self.logger.debug(f"job_id[{job_id}] step[pro and z0]: choose_indexes: {choose_indexes}")
 
         for choose_index in choose_indexes:
             datablock_identifier = temp_index_2_datablock_identifier[choose_index]
@@ -237,11 +248,11 @@ class HISwithOrderRemainVersionPolicy(Policy):
             sample_history_job_signficances = offline_history_job_signficance + online_history_job_signficance
             sample_history_job_target_datablock_selected_nums = offline_history_job_target_datablock_selected_num + online_history_job_target_datablock_selected_num
         else:
-            select_num_from_offline_history = max(self.batch_size_for_one_epoch - len(online_history_job_priority_weights) - 1, 0)
+            select_num_from_offline_history = max(self.job_sequence_all_num - len(online_history_job_priority_weights) - 1, 0)
             offline_sample_indexes = np.random.choice(range(len(offline_history_job_priority_weights)), select_num_from_offline_history, replace=False)
             
-            if len(online_history_job_priority_weights) > self.batch_size_for_one_epoch - 1:
-                online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.batch_size_for_one_epoch - 1, replace=False)
+            if len(online_history_job_priority_weights) > self.job_sequence_all_num - 1:
+                online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.job_sequence_all_num - 1, replace=False)
             else:
                 online_sample_indexes = range(len(online_history_job_priority_weights))
             sample_history_job_priority_weights = [online_history_job_priority_weights[i] for i in online_sample_indexes] + [offline_history_job_priority_weights[i] for i in offline_sample_indexes]

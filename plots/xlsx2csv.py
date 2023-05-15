@@ -1,12 +1,13 @@
 import pandas as pd
 
 file_name = '20230510_privacy_new'
-sheet_name = 'fig1_online_job_num'
+result_file_name = 'fig_2'
+sheet_name = 'fig3_max_min_ratio'
 # 定义输入的 Excel 文件路径
 input_excel_file = '{}.xlsx'.format(file_name)
 
 # 定义输出的 CSV 文件路径
-output_csv_file = '{}.csv'.format(file_name)
+output_csv_file = '{}.csv'.format(result_file_name)
 
 # 读取 Excel 文件中的数据
 data_frame = pd.read_excel(input_excel_file, sheet_name=sheet_name)

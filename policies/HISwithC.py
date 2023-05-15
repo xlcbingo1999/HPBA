@@ -237,11 +237,11 @@ class HISwithCPolicy(Policy):
             sample_history_job_signficances = offline_history_job_signficance + online_history_job_signficance
             sample_history_job_target_datablock_selected_nums = offline_history_job_target_datablock_selected_num + online_history_job_target_datablock_selected_num
         else:
-            select_num_from_offline_history = max(self.batch_size_for_one_epoch - len(online_history_job_priority_weights) - 1, 0)
+            select_num_from_offline_history = max(self.job_sequence_all_num - len(online_history_job_priority_weights) - 1, 0)
             offline_sample_indexes = np.random.choice(range(len(offline_history_job_priority_weights)), select_num_from_offline_history, replace=False)
             
-            if len(online_history_job_priority_weights) > self.batch_size_for_one_epoch - 1:
-                online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.batch_size_for_one_epoch - 1, replace=False)
+            if len(online_history_job_priority_weights) > self.job_sequence_all_num - 1:
+                online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.job_sequence_all_num - 1, replace=False)
             else:
                 online_sample_indexes = range(len(online_history_job_priority_weights))
             sample_history_job_priority_weights = [online_history_job_priority_weights[i] for i in online_sample_indexes] + [offline_history_job_priority_weights[i] for i in offline_sample_indexes]

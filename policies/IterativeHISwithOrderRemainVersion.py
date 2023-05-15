@@ -179,6 +179,7 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
             self.logger.debug(f"(job_id[{job_id}], datablock_identifier[{temp_index_2_datablock_identifier[sorted_index]}]) => remain: {datablock_privacy_budget_remain_list[sorted_index]}; pro: {current_job_probability_list[sorted_index]}; choice_result: {choice_result}")
 
         # best-effort
+        self.logger.debug(f"z0: {(self.current_batch_size_for_one_epoch + 1) / self.batch_size_for_one_epoch}")
         z_bigger_than_z0_indexes = []
         current_z = []
         sub_job_probability_list = []
@@ -187,6 +188,7 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
                 current_z.append(target_epsilon_require / self.datablock_identifier_2_remain_epsilon[temp_index_2_datablock_identifier[temp_index]])
                 z_bigger_than_z0_indexes.append(temp_index)
                 sub_job_probability_list.append(current_job_probability_list[temp_index])
+        self.logger.debug(f"z_bigger_than_z0_indexes: {z_bigger_than_z0_indexes}")
 
         assert len(current_z) == len(z_bigger_than_z0_indexes) == len(sub_job_probability_list)
         current_z_sorted_secondary_indexes = sorted(range(len(z_bigger_than_z0_indexes)), key=lambda k: (sub_job_probability_list[k], current_z[k]), reverse=True)
@@ -194,8 +196,9 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
             z_bigger_than_z0_index = z_bigger_than_z0_indexes[temp_secondary_index]
             if z_bigger_than_z0_index not in choose_indexes:
                 choose_indexes.append(z_bigger_than_z0_index)
+                elf.logger.debug(f"job_id[{job_id}] add datablock identifier caused by z0: {temp_index_2_datablock_identifier[z_bigger_than_z0_index]}")
 
-        self.logger.debug(f"job_id[{job_id}] choose_indexes: {choose_indexes}")
+        self.logger.debug(f"job_id[{job_id}] step[pro and z0]: choose_indexes: {choose_indexes}")
 
         for choose_index in choose_indexes:
             datablock_identifier = temp_index_2_datablock_identifier[choose_index]

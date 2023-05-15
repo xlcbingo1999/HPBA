@@ -22,6 +22,7 @@ from policies.BestFitwithRemain import BestFitwithRemainPolicy
 from policies.HIS import HISPolicy
 from policies.HISwithC import HISwithCPolicy
 from policies.HISwithOrderRemainVersion import HISwithOrderRemainVersionPolicy
+from policies.HISwithOrderProVersion import HISwithOrderProVersionPolicy
 from policies.IterativeHIS import IterativeHISPolicy
 from policies.IterativeHISwithOrderProVersion import IterativeHISwithOrderProVersionPolicy
 from policies.IterativeHISwithOrderRemainVersion import IterativeHISwithOrderRemainVersionPolicy
@@ -1377,6 +1378,9 @@ class Scheduler_server(object):
         elif assignment_policy == "HISwithOrderRemainVersionPolicy":
             beta, job_sequence_all_num = assignment_args
             policy_item = HISwithOrderRemainVersionPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
+        elif assignment_policy == "HISwithOrderProVersionPolicy":
+            beta, job_sequence_all_num = assignment_args
+            policy_item = HISwithOrderProVersionPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISPolicy":
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
             policy_item = IterativeHISPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
