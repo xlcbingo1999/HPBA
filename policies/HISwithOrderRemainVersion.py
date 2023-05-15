@@ -7,10 +7,10 @@ from scipy.optimize import linear_sum_assignment
 import cvxpy as cp
 import json
 
-class HISwithOrderPolicy(Policy):
+class HISwithOrderRemainVersionPolicy(Policy):
     def __init__(self, beta, job_sequence_all_num, seed, logger):
         super().__init__()
-        self._name = 'HISwithOrderPolicy'
+        self._name = 'HISwithOrderRemainVersionPolicy'
         self.beta = beta
         # self.gamma = gamma
         # self.delta = delta
@@ -131,7 +131,9 @@ class HISwithOrderPolicy(Policy):
                                 sub_train_datasetidentifier_2_epsilon_capcity,
                                 target_epsilon_require, 
                                 target_datablock_select_num, 
-                                job_priority_weight):
+                                job_priority_weight,
+                                job_arrival_index, 
+                                all_job_sequence_num):
         
         selected_datablock_identifiers = []
         selected_real_sched_epsilon_map = {}
@@ -173,7 +175,25 @@ class HISwithOrderPolicy(Policy):
             if choice_result == 1:
                 choose_indexes.append(sorted_index)
 
-        self.logger.debug("first choose_indexes: {}".format(choose_indexes))
+        # best-effort
+        z_bigger_than_z0_indexes = []
+        current_z = []
+        sub_job_probability_list = []
+        for temp_index in temp_index_2_datablock_identifier:
+            if target_epsilon_require <= ((job_arrival_index + 1) / all_job_sequence_num) * sub_train_datasetidentifier_2_epsilon_remain[temp_index_2_datablock_identifier[temp_index]]:
+                current_z.append(target_epsilon_require / sub_train_datasetidentifier_2_epsilon_remain[temp_index_2_datablock_identifier[temp_index]])
+                z_bigger_than_z0_indexes.append(temp_index)
+                sub_job_probability_list.append(current_job_probability_list[temp_index])
+
+        assert len(current_z) == len(z_bigger_than_z0_indexes) == len(sub_job_probability_list)
+        current_z_sorted_secondary_indexes = sorted(range(len(z_bigger_than_z0_indexes)), key=lambda k: (sub_job_probability_list[k], current_z[k]), reverse=True)
+        for temp_secondary_index in current_z_sorted_secondary_indexes:
+            z_bigger_than_z0_index = z_bigger_than_z0_indexes[temp_secondary_index]
+            if z_bigger_than_z0_index not in choose_indexes:
+                choose_indexes.append(z_bigger_than_z0_index)
+
+        self.logger.debug(f"job_id[{job_id}] choose_indexes: {choose_indexes}")
+
         for choose_index in choose_indexes:
             datablock_identifier = temp_index_2_datablock_identifier[choose_index]
             if target_epsilon_require <= sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier]:
@@ -245,7 +265,8 @@ class HISwithOrderPolicy(Policy):
                                 sub_train_datasetidentifier_2_significance,
                                 sub_train_datasetidentifier_2_epsilon_remain, 
                                 sub_train_datasetidentifier_2_epsilon_capcity,
-                                target_epsilon_require, target_datablock_select_num, job_priority_weight)
+                                target_epsilon_require, target_datablock_select_num, job_priority_weight,
+                                job_arrival_index, all_job_sequence_num)
    
         job_2_selected_datablock_identifiers = [
             (job_id, identifier) for identifier in selected_datablock_identifiers

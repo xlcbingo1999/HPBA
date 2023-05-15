@@ -16,11 +16,11 @@ class QueueItem(object):
         self.significance = significance
 
 class IterativeHISwithOrderRemainVersionPolicy(Policy):
-    def __init__(self, beta, z0, job_sequence_all_num, batch_size_for_one_epoch, seed, logger):
+    def __init__(self, beta, job_sequence_all_num, batch_size_for_one_epoch, seed, logger):
         super().__init__()
         self._name = 'IterativeHISwithOrderRemainVersionPolicy'
         self.beta = beta
-        self.z0 = z0
+        # self.z0 = z0
         self.logger = logger
         self.waiting_queue_capacity = 1
         
@@ -63,7 +63,7 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
         self.logger.info("policy args: beta: {}".format(self.beta))
-        self.logger.info("policy args: z0: {}".format(self.z0))
+        # self.logger.info("policy args: z0: {}".format(self.z0))
         self.logger.info("policy args: all_epoch_num: {}".format(self.all_epoch_num))
         self.logger.info("policy args: batch_size_for_one_epoch: {}".format(self.batch_size_for_one_epoch))
         # self.logger.info("policy args: delta: {}".format(self.delta))
@@ -183,7 +183,7 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
         current_z = []
         sub_job_probability_list = []
         for temp_index in temp_index_2_datablock_identifier:
-            if target_epsilon_require <= self.z0 * self.datablock_identifier_2_remain_epsilon[temp_index_2_datablock_identifier[temp_index]]:
+            if target_epsilon_require <= ((self.current_batch_size_for_one_epoch + 1) / self.batch_size_for_one_epoch) * self.datablock_identifier_2_remain_epsilon[temp_index_2_datablock_identifier[temp_index]]:
                 current_z.append(target_epsilon_require / self.datablock_identifier_2_remain_epsilon[temp_index_2_datablock_identifier[temp_index]])
                 z_bigger_than_z0_indexes.append(temp_index)
                 sub_job_probability_list.append(current_job_probability_list[temp_index])
@@ -277,7 +277,8 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
             calcu_compare_epsilon = 0.0
         else:
             selected_datablock_identifiers, selected_real_sched_epsilon_map, \
-                calcu_compare_epsilon = self.get_allocation_for_small(job_id, sample_history_job_priority_weights, 
+                calcu_compare_epsilon = self.get_allocation_for_small(job_id,
+                                sample_history_job_priority_weights, 
                                 sample_history_job_budget_consumes, 
                                 sample_history_job_signficances, 
                                 sample_history_job_target_datablock_selected_nums,

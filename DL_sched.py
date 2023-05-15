@@ -21,7 +21,7 @@ from policies.StreamingwithRemain import StreamingwithRemainPolicy
 from policies.BestFitwithRemain import BestFitwithRemainPolicy
 from policies.HIS import HISPolicy
 from policies.HISwithC import HISwithCPolicy
-from policies.HISwithOrder import HISwithOrderPolicy
+from policies.HISwithOrderRemainVersion import HISwithOrderRemainVersionPolicy
 from policies.IterativeHIS import IterativeHISPolicy
 from policies.IterativeHISwithOrderProVersion import IterativeHISwithOrderProVersionPolicy
 from policies.IterativeHISwithOrderRemainVersion import IterativeHISwithOrderRemainVersionPolicy
@@ -136,6 +136,8 @@ class Scheduler_server(object):
         self.jobid_2_real_significance = {}
         self.jobid_2_arrival_index = {}
         self.jobid_2_typeid = {}
+        self.min_significance_epsilon_ratio = float('inf')
+        self.max_significance_epsilon_ratio = -float('inf')
         # self.jobid_2_recoming_min_time = {}
         # self.recoming_time_interval = 5
 
@@ -282,6 +284,8 @@ class Scheduler_server(object):
 
         self.job_sequence_all_num = 0
         self.global_job_arrival_index = 0
+        self.min_significance_epsilon_ratio = float('inf')
+        self.max_significance_epsilon_ratio = -float('inf')
 
         self.assignment_policy = None
         self.significance_policy = None
@@ -647,7 +651,10 @@ class Scheduler_server(object):
         for datasetname in temp_iter_datasetidentifier_remain:
             for datasetidentifier in temp_iter_datasetidentifier_remain[datasetname]:
                 self.sched_logger.debug("sub_train_datasetidentifier_2_epsilon_remain[{}][{}]: {}".format(datasetname, datasetidentifier, temp_iter_datasetidentifier_remain[datasetname][datasetidentifier]))
-        # self.sched_logger.debug("======== job duration status =========")
+        
+        self.sched_logger.debug("======== PBG significance budget ratio =========")
+        self.sched_logger.debug("min_significance_epsilon_ratio(L): {}".format(self.min_significance_epsilon_ratio))
+        self.sched_logger.debug("max_significance_epsilon_ratio(U): {}".format(self.max_significance_epsilon_ratio))
         # for job_id in self.jobid_2_target_epochs:
         #     self.sched_logger.debug("job [{}] max epoch num: {}".format(job_id, self.jobid_2_target_epochs[job_id]))
         #     self.sched_logger.debug("job [{}] real sched epoch num: {}".format(job_id, self.jobid_2_real_sched_epochs[job_id]))
@@ -1014,6 +1021,11 @@ class Scheduler_server(object):
                 all_significance_state = []
             type_id = self.jobid_2_typeid[job_id]
             self.jobid_2_target_significance[job_id] = self.get_job_datablock_significance_sync(type_id, all_significance_state)
+            
+            if min(self.jobid_2_target_significance[job_id].values()) / self.jobid_2_target_epsilon[job_id] < self.min_significance_epsilon_ratio:
+                self.min_significance_epsilon_ratio = min(self.jobid_2_target_significance[job_id].values()) / self.jobid_2_target_epsilon[job_id]
+            if max(self.jobid_2_target_significance[job_id].values()) / self.jobid_2_target_epsilon[job_id] > self.max_significance_epsilon_ratio:
+                self.max_significance_epsilon_ratio = max(self.jobid_2_target_significance[job_id].values()) / self.jobid_2_target_epsilon[job_id]
             self.jobid_2_real_significance[job_id] = copy.deepcopy(self.jobid_2_target_significance[job_id])
             self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.NO_SCHE, JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL)
 
@@ -1362,9 +1374,9 @@ class Scheduler_server(object):
         elif assignment_policy == "HISwithCPolicy":
             beta, job_sequence_all_num = assignment_args
             policy_item = HISwithCPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
-        elif assignment_policy == "HISwithOrderPolicy":
+        elif assignment_policy == "HISwithOrderRemainVersionPolicy":
             beta, job_sequence_all_num = assignment_args
-            policy_item = HISwithOrderPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
+            policy_item = HISwithOrderRemainVersionPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISPolicy":
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
             policy_item = IterativeHISPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
@@ -1372,8 +1384,8 @@ class Scheduler_server(object):
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
             policy_item = IterativeHISwithOrderProVersionPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISwithOrderRemainVersionPolicy":
-            beta, z0, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
-            policy_item = IterativeHISwithOrderRemainVersionPolicy(beta, z0, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
+            beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
+            policy_item = IterativeHISwithOrderRemainVersionPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
         elif assignment_policy == "DPFHISPolicy":
             beta, waiting_queue_capacity, job_sequence_all_num = assignment_args
             policy_item = DPFHISPolicy(beta, job_sequence_all_num, waiting_queue_capacity, self.seed, self.sched_logger)
