@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 file_name = '20230510_privacy_new'
 result_file_name = 'fig_2'
@@ -14,7 +15,7 @@ data_frame = pd.read_excel(input_excel_file, sheet_name=sheet_name)
 
 # 去除所有格式
 data_frame = data_frame.applymap(str)
-data_frame = data_frame.replace({'\n': ' ', '"': ''}, regex=True)
+data_frame = data_frame.replace({'\n': ' ', '"': '', pd.notna: ''}, regex=True)
 
 # 将数据保存为 CSV 文件
 data_frame.to_csv(output_csv_file, index=False)

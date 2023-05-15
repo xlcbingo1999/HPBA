@@ -20,7 +20,7 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
         super().__init__()
         self._name = 'IterativeHISwithOrderRemainVersionPolicy'
         self.beta = beta
-        # self.z0 = z0
+        self.z0 = 0.1
         self.logger = logger
         self.waiting_queue_capacity = 1
         
@@ -63,7 +63,7 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
         self.logger.info("policy args: beta: {}".format(self.beta))
-        # self.logger.info("policy args: z0: {}".format(self.z0))
+        self.logger.info("policy args: z0: {}".format(self.z0))
         self.logger.info("policy args: all_epoch_num: {}".format(self.all_epoch_num))
         self.logger.info("policy args: batch_size_for_one_epoch: {}".format(self.batch_size_for_one_epoch))
         # self.logger.info("policy args: delta: {}".format(self.delta))
@@ -126,7 +126,9 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
                                 sub_train_datasetidentifier_2_epsilon_capcity,
                                 target_epsilon_require, 
                                 target_datablock_select_num, 
-                                job_priority_weight):
+                                job_priority_weight,
+                                job_arrival_index, 
+                                all_job_sequence_num):
         
         selected_datablock_identifiers = []
         selected_real_sched_epsilon_map = {}
@@ -179,7 +181,8 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
             self.logger.debug(f"(job_id[{job_id}], datablock_identifier[{temp_index_2_datablock_identifier[sorted_index]}]) => remain: {datablock_privacy_budget_remain_list[sorted_index]}; pro: {current_job_probability_list[sorted_index]}; choice_result: {choice_result}")
 
         # best-effort
-        self.logger.debug(f"z0: {(self.current_batch_size_for_one_epoch + 1) / self.batch_size_for_one_epoch}")
+        '''
+        self.logger.debug(f"remain03 === z0: {(self.current_batch_size_for_one_epoch + 1) / self.batch_size_for_one_epoch}")
         z_bigger_than_z0_indexes = []
         current_z = []
         sub_job_probability_list = []
@@ -189,6 +192,30 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
                 z_bigger_than_z0_indexes.append(temp_index)
                 sub_job_probability_list.append(current_job_probability_list[temp_index])
         self.logger.debug(f"z_bigger_than_z0_indexes: {z_bigger_than_z0_indexes}")
+        '''
+        '''
+        self.logger.debug(f"remain02 === z0: {job_arrival_index / all_job_sequence_num}")
+        z_bigger_than_z0_indexes = []
+        current_z = []
+        sub_job_probability_list = []
+        for temp_index in temp_index_2_datablock_identifier:
+            if target_epsilon_require <= (job_arrival_index / all_job_sequence_num) * datablock_privacy_budget_remain_list[temp_index]:
+                current_z.append(target_epsilon_require / datablock_privacy_budget_remain_list[temp_index])
+                z_bigger_than_z0_indexes.append(temp_index)
+                sub_job_probability_list.append(current_job_probability_list[temp_index])
+        self.logger.debug(f"z_bigger_than_z0_indexes: {z_bigger_than_z0_indexes}")
+        '''
+        self.logger.debug(f"remain01 === z0: {self.z0}")
+        z_bigger_than_z0_indexes = []
+        current_z = []
+        sub_job_probability_list = []
+        for temp_index in temp_index_2_datablock_identifier:
+            if target_epsilon_require <= self.z0 * datablock_privacy_budget_remain_list[temp_index]:
+                current_z.append(target_epsilon_require / datablock_privacy_budget_remain_list[temp_index])
+                z_bigger_than_z0_indexes.append(temp_index)
+                sub_job_probability_list.append(current_job_probability_list[temp_index])
+        self.logger.debug(f"z_bigger_than_z0_indexes: {z_bigger_than_z0_indexes}")
+
 
         assert len(current_z) == len(z_bigger_than_z0_indexes) == len(sub_job_probability_list)
         current_z_sorted_secondary_indexes = sorted(range(len(z_bigger_than_z0_indexes)), key=lambda k: (sub_job_probability_list[k], current_z[k]), reverse=True)
@@ -196,7 +223,7 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
             z_bigger_than_z0_index = z_bigger_than_z0_indexes[temp_secondary_index]
             if z_bigger_than_z0_index not in choose_indexes:
                 choose_indexes.append(z_bigger_than_z0_index)
-                elf.logger.debug(f"job_id[{job_id}] add datablock identifier caused by z0: {temp_index_2_datablock_identifier[z_bigger_than_z0_index]}")
+                self.logger.debug(f"job_id[{job_id}] add datablock identifier caused by z0: {temp_index_2_datablock_identifier[z_bigger_than_z0_index]}")
 
         self.logger.debug(f"job_id[{job_id}] step[pro and z0]: choose_indexes: {choose_indexes}")
 
@@ -288,7 +315,8 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
                                 sub_train_datasetidentifier_2_significance,
                                 sub_train_datasetidentifier_2_epsilon_remain, 
                                 sub_train_datasetidentifier_2_epsilon_capcity,
-                                target_epsilon_require, target_datablock_select_num, job_priority_weight)
+                                target_epsilon_require, target_datablock_select_num, job_priority_weight,
+                                job_arrival_index, all_job_sequence_num)
    
         job_2_selected_datablock_identifiers = [
             (job_id, identifier) for identifier in selected_datablock_identifiers

@@ -37,7 +37,7 @@ def add_df_with_min_max(df):
     return df
 
 current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
-path = current_dir + "/20230510_privacy_new.csv"
+path = current_dir + "/fig_1.csv"
 df = pd.read_csv(path)
 
 keys_str = ["policy", "Online job num"]
