@@ -357,6 +357,7 @@ job_privacy_budget_consume_list = np.array([0.2423561,  0.10008523])
 get_LP_result(sign_matrix, datablock_privacy_budget_capacity_list, job_target_datablock_selected_num_list, job_privacy_budget_consume_list)
 '''
 
+'''
 import gurobipy
 
 
@@ -400,3 +401,31 @@ if __name__ == '__main__':
 			index=['A1', 'A2', 'A3', 'A4', 'A5', 'A6'], columns=['B1', 'B2', 'B3', 'B4', 'B5'])
 
 	assignment(cost_matrix)
+'''
+
+import re
+import ast
+
+# string = "2023-05-16(Tue)10:38:31 [INFO] at [process_id: 2159268] DL_sched.py,397: dispatcher init job_all_seq_num: 1000"
+
+# match = re.search(r'dispatcher init job_all_seq_num: (?P<test_job_num>\d+)', string)
+
+# if match:
+#     map_string = match.group('test_job_num')
+#     print(map_string)
+    # job_map = ast.literal_eval(map_string)
+    # print(job_map['job_11'])
+# ('job_10', 'train_sub_42'), ('job_10', 'train_sub_72'), ('job_10', 'train_sub_70'), ('job_10', 'train_sub_49'), ('job_10', 'train_sub_37'), ('job_10', 'train_sub_84'), ('job_10', 'train_sub_96'), ('job_10', 'train_sub_27'), ('job_10', 'train_sub_61'), ('job_10', 'train_sub_1'), ('job_10', 'train_sub_83'), ('job_10', 'train_sub_32'), ('job_10', 'train_sub_47')
+string = "from policy [HISwithOrderProVersionPolicy] selected_datablock_identifiers: []"
+
+policy_match = re.search(r"from policy (\[(?P<policy_name>(.*?))\]) selected_datablock_identifiers: (?P<selected_list>\[.*?\])", string)
+
+if policy_match:
+    policy = policy_match.group('policy_name')
+    datablock_identifiers = policy_match.group('selected_list')
+    datablock_identifiers_list = ast.literal_eval(datablock_identifiers)
+
+    print("Policy:", policy)
+    print("Datablock Identifiers:", datablock_identifiers_list)
+    for item in datablock_identifiers_list:
+        print(f"datablock_identifier_item: {item}")

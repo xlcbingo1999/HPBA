@@ -50,13 +50,13 @@ print("---- df.info ----")
 df_with_key.info()
 test_jobs_num_groups = [1000, 2000, 3000, 4000]
 policy_groups = {
+    "OfflinePolicy": "Ground Truth",
+    "HISwithOrderProVersionPolicy": "HIS", 
     "IterativeHISwithOrderPolicy(100)": "IterativeHIS", 
-    # "HISPolicy": "HIS", 
     "PBGPolicy": "PBG",
     "PBGMixPolicy": "PBGMix", 
     "SagewithRemainPolicy": "Sage",
-    "BestFitwithRemainPolicy": "BestFit",
-    "OfflinePolicy": "Ground Truth"
+    "BestFitwithRemainPolicy": "BestFit"
 }
 marks = ['o'] * len(policy_groups)
 colors = ["#3b6291", "#943c39", "#779043", "#624c7c", "#388498", "#bf7334", "#3f6899", "#9c403d",

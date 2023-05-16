@@ -732,9 +732,9 @@ class Scheduler_server(object):
         self.jobid_2_gputarget[job_id] = None
         if job_id in self.gpuidentifier_2_jobinstances[gpu_identifier]:
             self.gpuidentifier_2_jobinstances[gpu_identifier].remove(job_id)
-        del self.jobid_2_target_significance[job_id] 
-        del self.jobid_2_real_significance[job_id]
-        del self.jobid_2_sub_train_key_ids[job_id]
+        # del self.jobid_2_target_significance[job_id] 
+        # del self.jobid_2_real_significance[job_id]
+        # del self.jobid_2_sub_train_key_ids[job_id]
         
         # TODO(xlc): 需要确定这里是否会出bug
         '''
@@ -787,9 +787,9 @@ class Scheduler_server(object):
         self.jobid_2_gputarget[job_id] = None
         if job_id in self.gpuidentifier_2_jobinstances[gpu_identifier]:
             self.gpuidentifier_2_jobinstances[gpu_identifier].remove(job_id)
-        del self.jobid_2_target_significance[job_id] 
-        del self.jobid_2_real_significance[job_id]
-        del self.jobid_2_sub_train_key_ids[job_id]
+        # del self.jobid_2_target_significance[job_id] 
+        # del self.jobid_2_real_significance[job_id]
+        # del self.jobid_2_sub_train_key_ids[job_id]
 
         '''
         if self.jobid_2_real_sched_epochs[job_id] >= self.jobid_2_target_epochs[job_id]:
@@ -1088,6 +1088,7 @@ class Scheduler_server(object):
 
         need_failed_job = copy.deepcopy(all_done_sig_cal_jobs_copy)
         for temp_job_id in success_sched_job_ids:
+            self.sched_logger.debug(f"final true success jobid_2_sub_train_key_ids [{temp_job_id}] <=> [{self.jobid_2_sub_train_key_ids[temp_job_id]}]")
             status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "dataset")
             origin_status_success, target_status_success = self.get_job_status_update_origin_target(status_update_path)
             self.sche_reflash_job_status(temp_job_id, origin_status_success, target_status_success)
@@ -1318,6 +1319,14 @@ class Scheduler_server(object):
             if "final_significance" in job_res:
                 all_final_significance += job_res["final_significance"]
         
+        all_target_datablock_num = 0
+        all_success_datablock_num = 0
+        for _, target_selected_num in self.jobid_2_datablock_selected_num.items():
+            all_target_datablock_num += target_selected_num
+        for _, success_selected_datablocks in self.jobid_2_sub_train_key_ids.items():
+            all_success_datablock_num += len(success_selected_datablocks)
+        all_failed_datablock_num = all_target_datablock_num - all_success_datablock_num
+
         result_map = {
             "current_success_num": current_success_num,
             "current_failed_num": current_failed_num,
@@ -1331,7 +1340,10 @@ class Scheduler_server(object):
             "all_train_accuracy": all_train_accuracy,
             "all_test_loss": all_test_loss,
             "all_test_accuracy": all_test_accuracy,
-            "all_final_significance": all_final_significance
+            "all_final_significance": all_final_significance,
+            "all_target_datablock_num": all_target_datablock_num,
+            "all_success_datablock_num": all_success_datablock_num,
+            "all_failed_datablock_num": all_failed_datablock_num
         }
 
         for dis in dispatchers:
@@ -1370,9 +1382,11 @@ class Scheduler_server(object):
             comparison_cost_epsilon, comparison_z_threshold, L, U, gitta = assignment_args
             policy_item = PBGMixPolicy(comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, self.seed, self.sched_logger)
         elif assignment_policy == "HISPolicy":
+            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, job_sequence_all_num = assignment_args
             policy_item = HISPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "HISwithCPolicy":
+            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, job_sequence_all_num = assignment_args
             policy_item = HISwithCPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "HISwithOrderRemainVersionPolicy":
@@ -1382,6 +1396,7 @@ class Scheduler_server(object):
             beta, job_sequence_all_num = assignment_args
             policy_item = HISwithOrderProVersionPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISPolicy":
+            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
             policy_item = IterativeHISPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISwithOrderProVersionPolicy":
@@ -1391,13 +1406,16 @@ class Scheduler_server(object):
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
             policy_item = IterativeHISwithOrderRemainVersionPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
         elif assignment_policy == "DPFHISPolicy":
+            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, waiting_queue_capacity, job_sequence_all_num = assignment_args
             policy_item = DPFHISPolicy(beta, job_sequence_all_num, waiting_queue_capacity, self.seed, self.sched_logger)
         elif assignment_policy == "SagePolicy":
+            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             policy_item = SagePolicy(self.seed, self.sched_logger)
         elif assignment_policy == "SagewithRemainPolicy":
             policy_item = SagewithRemainPolicy(self.seed, self.sched_logger)
         elif assignment_policy == "StreamingwithRemainPolicy":
+            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             policy_item = StreamingwithRemainPolicy(self.seed, self.sched_logger)
         elif assignment_policy == "BestFitwithRemainPolicy":
             policy_item = BestFitwithRemainPolicy(self.seed, self.sched_logger)

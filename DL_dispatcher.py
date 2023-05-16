@@ -18,9 +18,11 @@ from utils.data_operator import read_DL_dispatcher_result_func
 def get_df_config():
     parser = argparse.ArgumentParser(
                 description="Sweep through lambda values")
-    parser.add_argument("--dataset_reconstruct_path", type=str, default="") # jobs-datasets-03-31-14-38-02
-    parser.add_argument("--test_jobtrace_reconstruct_path", type=str, default="") # jobs-datasets-03-31-14-38-02
+    parser.add_argument("--dataset_reconstruct_path", type=str, default="")
+    parser.add_argument("--test_jobtrace_reconstruct_path", type=str, default="")
     parser.add_argument("--history_jobtrace_reconstruct_path", type=str, default="")
+    parser.add_argument("--save_to_origin_trace_path", type=str, default="")
+
     parser.add_argument("--global_sleep_time", type=int, default=5)
     parser.add_argument("--all_decision_num", type=int, default=50)
     parser.add_argument("--all_history_num", type=int, default=50)
@@ -90,10 +92,13 @@ class Dispatcher(object):
     def __init__(self):
         self.all_finished = True
     
-    def restart_dispatcher(self, jobs_list, history_jobs_list, datasets_map, current_test_all_dir, simulation, simulation_index):
+    def restart_dispatcher(self, jobs_list, history_jobs_list, datasets_map, current_test_all_dir, simulation, simulation_index, restart_trace):
         self.current_test_all_dir = current_test_all_dir
         all_logger_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
-        dispatcher_logger_path = '{}/DL_dispatcher_{}.log'.format(all_logger_path, simulation_index)
+        if restart_trace:
+            dispatcher_logger_path = '{}/DL_dispatcher_restart_{}.log'.format(all_logger_path, simulation_index)
+        else:
+            dispatcher_logger_path = '{}/DL_dispatcher_{}.log'.format(all_logger_path, simulation_index)
         self.dispatcher_logger = get_logger(dispatcher_logger_path, dispatcher_logger_path, enable_multiprocess=True)
         self.dispatcher_logger.info("***************** current_test_all_dir: {} *****************".format(self.current_test_all_dir))
 
@@ -135,6 +140,10 @@ class Dispatcher(object):
         all_test_loss = all_result_map["all_test_loss"]
         all_test_accuracy = all_result_map["all_test_accuracy"]
         all_final_significance = all_result_map["all_final_significance"]
+        all_target_datablock_num = all_result_map["all_target_datablock_num"]
+        all_success_datablock_num = all_result_map["all_success_datablock_num"]
+        all_failed_datablock_num = all_result_map["all_failed_datablock_num"]
+
         self.dispatcher_logger.debug("current_success_num: {}; current_failed_num: {}; current_no_submit_num: {}; current_no_sche_num: {};".format(
             current_success_num, current_failed_num, current_no_submit_num, current_no_sche_num
         ))
@@ -149,6 +158,10 @@ class Dispatcher(object):
         self.dispatcher_logger.debug("all_test_accuracy: {}".format(all_test_accuracy / job_sequence_all_num))
         self.dispatcher_logger.debug("all_final_significance: {}".format(all_final_significance / job_sequence_all_num))
         
+        self.dispatcher_logger.debug("all_target_datablock_num: {}".format(all_target_datablock_num))
+        self.dispatcher_logger.debug("all_success_datablock_num: {}".format(all_success_datablock_num))
+        self.dispatcher_logger.debug("all_failed_datablock_num: {}".format(all_failed_datablock_num))
+
         if current_success_num > 0:
             self.dispatcher_logger.debug("success_train_loss: {}".format(all_train_loss / current_success_num))
             self.dispatcher_logger.debug("success_train_accuracy: {}".format(all_train_accuracy / current_success_num))
@@ -371,7 +384,8 @@ class Dispatcher(object):
 
     def final_operate_data(self, current_test_all_dir):
         trace_save_path = "{}/{}".format(RESULT_PATH, current_test_all_dir)
-        final_used_num, success_num_arr, failed_num_arr, all_final_significance_arr, success_final_significance_arr = read_DL_dispatcher_result_func(trace_save_path)
+        final_used_num, success_num_arr, failed_num_arr, all_final_significance_arr, success_final_significance_arr, \
+            success_datablock_num_arr, failed_datablock_num_arr, target_datablock_num_arr = read_DL_dispatcher_result_func(trace_save_path)
         
         # 新建一个全新的log进行保存
         all_result_path = "{}/all_result.log".format(trace_save_path)
@@ -403,6 +417,25 @@ class Dispatcher(object):
                 np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr), np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr)
             ), file=f)
 
+            print("[successblock_info] {}({}-{}) === success_datablock_num_mean: {} ; success_datablock_num_min: {} ; success_datablock_num_max: {}".format(
+                np.mean(success_datablock_num_arr), min(success_datablock_num_arr), max(success_datablock_num_arr), np.mean(success_datablock_num_arr), min(success_datablock_num_arr), max(success_datablock_num_arr)
+            ))
+            print("[successblock_info] {}({}-{}) === success_datablock_num_mean: {} ; success_datablock_num_min: {} ; success_datablock_num_max: {}".format(
+                np.mean(success_datablock_num_arr), min(success_datablock_num_arr), max(success_datablock_num_arr), np.mean(success_datablock_num_arr), min(success_datablock_num_arr), max(success_datablock_num_arr)
+            ), file=f)
+            print("[failedblock_info] {}({}-{}) === failed_datablock_num_mean: {} ; failed_datablock_num_min: {} ; failed_datablock_num_max: {}".format(
+                np.mean(failed_datablock_num_arr), min(failed_datablock_num_arr), max(failed_datablock_num_arr), np.mean(failed_datablock_num_arr), min(failed_datablock_num_arr), max(failed_datablock_num_arr)
+            ))
+            print("[failedblock_info] {}({}-{}) === failed_datablock_num_mean: {} ; failed_datablock_num_min: {} ; failed_datablock_num_max: {}".format(
+                np.mean(failed_datablock_num_arr), min(failed_datablock_num_arr), max(failed_datablock_num_arr), np.mean(failed_datablock_num_arr), min(failed_datablock_num_arr), max(failed_datablock_num_arr)
+            ), file=f)
+            print("[targetblock_info] {}({}-{}) === target_datablock_num_mean: {} ; target_datablock_num_min: {} ; target_datablock_num_max: {}".format(
+                np.mean(target_datablock_num_arr), min(target_datablock_num_arr), max(target_datablock_num_arr), np.mean(target_datablock_num_arr), min(target_datablock_num_arr), max(target_datablock_num_arr)
+            ))
+            print("[targetblock_info] {}({}-{}) === target_datablock_num_mean: {} ; target_datablock_num_min: {} ; target_datablock_num_max: {}".format(
+                np.mean(target_datablock_num_arr), min(target_datablock_num_arr), max(target_datablock_num_arr), np.mean(target_datablock_num_arr), min(target_datablock_num_arr), max(target_datablock_num_arr)
+            ), file=f)
+
 def scheduler_listener_func(dispatcher_server_item, port):
     def dispatcher_func_timely(dispatcher_server_item, port):
         dispatcher_server = zerorpc.Server(dispatcher_server_item)
@@ -431,7 +464,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
                             placement_sleep_time, waiting_time,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times,
-                            job_dataset_trace_save_path, current_test_all_dir,
+                            job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             all_decision_num, all_history_num, time_interval, need_change_interval,
                             datablock_require_epsilon_max_ratio, change_job_epsilon_max_times):
     assert args.simulation_time == 1 and len(args.seeds) == 1
@@ -486,7 +519,8 @@ def testbed_experiment_start(args, sched_ip, sched_port,
             datasets_list, 
             current_test_all_dir,
             simulation=False,
-            simulation_index=0
+            simulation_index=0,
+            restart_trace=restart_trace
         )
         
         remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
@@ -547,7 +581,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
                             worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times, 
-                            job_dataset_trace_save_path, current_test_all_dir,
+                            job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             all_decision_num, all_history_num, need_change_interval,
                             simulation_time, simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, 
                             datablock_require_epsilon_max_ratio, change_job_epsilon_max_times
@@ -604,7 +638,8 @@ def simulation_experiment_start(args, sched_ip, sched_port,
                 datasets_list, 
                 current_test_all_dir, 
                 simulation=True, 
-                simulation_index=simulation_index)
+                simulation_index=simulation_index,
+                restart_trace=restart_trace)
             
             dispatcher.sched_init_sched_register(
                 sched_ip, sched_port, 
@@ -665,14 +700,20 @@ if __name__ == "__main__":
     dataset_reconstruct_path = args.dataset_reconstruct_path
     test_jobtrace_reconstruct_path = args.test_jobtrace_reconstruct_path
     history_jobtrace_reconstruct_path = args.history_jobtrace_reconstruct_path
+    save_to_origin_trace_path = args.save_to_origin_trace_path
 
     budget_capacity_ratio = args.budget_capacity_ratio
     base_capacity = args.base_capacity
     change_datablock_epsilon_max_times = args.change_datablock_epsilon_max_times
 
-    logging_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
-    schedule_type = 'simulation' if args.simulation_flag else 'testbed'
-    current_test_all_dir = 'schedule-review-%s-%s' % (schedule_type, logging_time)
+    if len(save_to_origin_trace_path) > 0:
+        current_test_all_dir = save_to_origin_trace_path
+        restart_trace = True
+    else:
+        logging_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
+        schedule_type = 'simulation' if args.simulation_flag else 'testbed'
+        current_test_all_dir = 'schedule-review-%s-%s' % (schedule_type, logging_time)
+        restart_trace = False
     job_dataset_trace_save_path = current_test_all_dir if args.need_save_jobtrace_flag else ""
 
     all_decision_num = args.all_decision_num
@@ -702,7 +743,7 @@ if __name__ == "__main__":
                             worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times,
-                            job_dataset_trace_save_path, current_test_all_dir,
+                            job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             all_decision_num, all_history_num, need_change_interval,
                             simulation_time, simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, 
                             datablock_require_epsilon_max_ratio, change_job_epsilon_max_times)
@@ -715,7 +756,7 @@ if __name__ == "__main__":
                             placement_sleep_time, waiting_time,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times,
-                            job_dataset_trace_save_path, current_test_all_dir,
+                            job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             all_decision_num, all_history_num, time_interval, need_change_interval,
                             datablock_require_epsilon_max_ratio, change_job_epsilon_max_times)    
     
