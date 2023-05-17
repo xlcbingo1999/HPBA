@@ -48,3 +48,51 @@ nohup python /home/netlab/DL_lab/opacus_testbed/test_nyc.py --device_index=1 --E
 nohup python /home/netlab/DL_lab/opacus_testbed/test_nyc.py --device_index=2 --EPSILON=5.0 --sample_frac=0.2 > /home/netlab/DL_lab/opacus_testbed/log_20230214/taxi_5.0_0.2.log 2>&1 &
 nohup python /home/netlab/DL_lab/opacus_testbed/test_nyc.py --device_index=3 --EPSILON=5.0 --sample_frac=0.1 > /home/netlab/DL_lab/opacus_testbed/log_20230214/taxi_5.0_0.1.log 2>&1 &
 
+
+parser.add_argument("--worker_ip", type=str, required=True)
+parser.add_argument("--worker_port", type=str, required=True)
+
+parser.add_argument("--job_id", type=str, required=True)
+parser.add_argument("--model_name", type=str, required=True)
+parser.add_argument("--train_dataset_name", type=str, required=True) # : 用这个进行split
+parser.add_argument("--test_dataset_name", type=str, required=True)
+parser.add_argument("--sub_train_key_ids", type=str, required=True) # : 用这个进行split
+parser.add_argument("--sub_test_key_id", type=str, required=True)
+
+parser.add_argument("--device_index", type=int, required=True)
+parser.add_argument("--logging_file_path", type=str, default="")
+parser.add_argument("--summary_writer_path", type=str, default="")
+parser.add_argument("--summary_writer_key", type=str, default="")
+parser.add_argument("--model_save_path", type=str, default="")
+parser.add_argument("--LR", type=float, required=True)
+parser.add_argument("--EPSILON", type=float, required=True)
+parser.add_argument("--DELTA", type=float, required=True)
+parser.add_argument("--MAX_GRAD_NORM", type=float, required=True)
+parser.add_argument("--BATCH_SIZE", type=int, required=True)
+parser.add_argument("--MAX_PHYSICAL_BATCH_SIZE", type=int, required=True)
+parser.add_argument("--begin_epoch_num", type=int, required=True)
+parser.add_argument("--run_epoch_num", type=int, required=True)
+
+EPSILON 0.02 0.1
+test_dataset_name EMNIST-2000 EMNIST_MNIST-1000_1000 MNIST-2000
+
+python DL_do_calculate.py \
+    --worker_ip 172.18.162.5 \
+    --worker_port 10205 \
+    --job_id 0 \
+    --model_name CNN \
+    --train_dataset_name EMNIST \
+    --test_dataset_name EMNIST-2000 \
+    --sub_train_key_ids train_sub_0 \
+    --sub_test_key_id test_sub_0 \
+    --device_index 0 \
+    --LR 1e-3 \
+    --EPSILON 0.02 \
+    --DELTA 1e-8 \
+    --MAX_GRAD_NORM 1.2 \
+    --BATCH_SIZE 1024 \
+    --MAX_PHYSICAL_BATCH_SIZE 512 \
+    --begin_epoch_num 0 \
+    --run_epoch_num 1 \
+    --not_model_train \
+    --not_model_save
