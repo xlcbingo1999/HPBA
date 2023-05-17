@@ -1,25 +1,25 @@
 current_ip_index = 5
-current_cmd_index = 9
+current_cmd_index = 8
 
-is_simulation = True
+is_simulation = False
 need_save_jobtrace_flag = False
-worker_indexes = [3]
+worker_indexes = [2]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 
-assignment_policy = "OfflinePolicy"
-his_batch_size_for_one_epochs = 100
+assignment_policy = "HISwithOrderProVersionPolicy"
+his_batch_size_for_one_epochs = 0
 significance_policy = "TempPolicy"
-test_jobtrace_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
-dataset_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
-history_jobtrace_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
-all_decision_num = 1500
+test_jobtrace_reconstruct_path = "schedule-review-testbed-05-08-23-51-56" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
+dataset_reconstruct_path = "schedule-review-testbed-05-08-22-10-45" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
+history_jobtrace_reconstruct_path = "schedule-review-testbed-05-08-23-58-10" # "schedule-review-simulation-05-03-19-49-14"
+all_decision_num = 50
 datablock_require_epsilon_max_ratio = 0.1
 change_job_epsilon_max_times = 1.0
-all_history_num = 0
+all_history_num = 50
 his_betas = 0.0
-simulation_all_datablock_num = 100
-simulation_offline_datablock_num = 100
+simulation_all_datablock_num = 6
+simulation_offline_datablock_num = 6
 change_datablock_epsilon_max_times = 1.0
 simulation_time = 5
 waiting_time = 2 if is_simulation else 10
