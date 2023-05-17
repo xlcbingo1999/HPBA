@@ -3,6 +3,7 @@ import pandas as pd
 import re
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from utils.data_operator import is_number
 
 def get_mark_color_hatch():
     colors = ["#3b6291", "#943c39", "#779043", "#624c7c", "#388498", "#bf7334", "#3f6899", "#9c403d",
@@ -24,9 +25,10 @@ def add_df_with_min_max(df):
     # 遍历每一行并进行正则表达式匹配和提取
     for index, row in df.iterrows():
         for key_index, key in enumerate(add_columns_keys):
-            success_num_str = row[key]
-            print(f"success_num_str: {success_num_str}")
-            if pd.isnull(success_num_str):
+            success_num = row[key]
+            success_num_str = str(success_num)
+            print(f"success_num_str: {success_num}")
+            if pd.isnull(success_num) or success_num_str.isspace():
                 print(f"success_num_str nan!")
                 df.loc[index, f'{key} avg'] = 0.0
                 df.loc[index, f'{key} min'] = 0.0
@@ -60,7 +62,7 @@ def add_df_with_min_max(df):
                 df.loc[index, f'{key} avg'] = avg_value
                 df.loc[index, f'{key} min'] = min_value
                 df.loc[index, f'{key} max'] = max_value
-            elif success_num_str.isdigit():
+            elif is_number(success_num_str):
                 avg_value = float(success_num_str)
                 df.loc[index, f'{key} avg'] = avg_value
                 df.loc[index, f'{key} min'] = avg_value
@@ -78,7 +80,7 @@ def get_result_avg_min_max_for_y_label_name(df_with_key, policy_groups, env_x_gr
 
     for policy_index, policy in enumerate(policy_groups):
         for group_index, env_x in enumerate(env_x_groups):
-            test_job_num = int(df_with_key.loc[(policy, env_x), f"Online job num"])
+            test_job_num = int(df_with_key.loc[(policy, env_x), "Online job num"])
             if y_label_name == "Number of Allocated Jobs":
                 success_key_prefix = "Success num"
                 results[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{success_key_prefix} avg"]
