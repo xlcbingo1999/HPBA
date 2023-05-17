@@ -1375,51 +1375,51 @@ class Scheduler_server(object):
 
         
     def sched_update_assignment_policy(self, assignment_policy, assignment_args):
-        if assignment_policy == "PBGPolicy":
+        if assignment_policy == "PBGPolicy" or assignment_policy == "PBG":
             comparison_cost_epsilon, comparison_z_threshold, L, U = assignment_args
             policy_item = PBGPolicy(comparison_cost_epsilon, comparison_z_threshold, L, U, self.seed, self.sched_logger)
-        elif assignment_policy == "PBGMixPolicy":
+        elif assignment_policy == "PBGMixPolicy" or assignment_policy == "PBGMix":
             comparison_cost_epsilon, comparison_z_threshold, L, U, gitta = assignment_args
             policy_item = PBGMixPolicy(comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, self.seed, self.sched_logger)
-        elif assignment_policy == "HISPolicy":
+        elif assignment_policy == "HISPolicy" or assignment_policy == "HIS":
             raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, job_sequence_all_num = assignment_args
             policy_item = HISPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
-        elif assignment_policy == "HISwithCPolicy":
+        elif assignment_policy == "HISwithCPolicy" or assignment_policy == "HISwithC":
             raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, job_sequence_all_num = assignment_args
             policy_item = HISwithCPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
-        elif assignment_policy == "HISwithOrderRemainVersionPolicy":
+        elif assignment_policy == "HISwithOrderRemainVersionPolicy" or assignment_policy == "HISwithOrderRemainVersion":
             beta, job_sequence_all_num = assignment_args
             policy_item = HISwithOrderRemainVersionPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
-        elif assignment_policy == "HISwithOrderProVersionPolicy":
+        elif assignment_policy == "HISwithOrderProVersionPolicy" or assignment_policy == "HISwithOrderProVersion":
             beta, job_sequence_all_num = assignment_args
             policy_item = HISwithOrderProVersionPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
-        elif assignment_policy == "IterativeHISPolicy":
+        elif assignment_policy == "IterativeHISPolicy" or assignment_policy == "IterativeHIS":
             raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
             policy_item = IterativeHISPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
-        elif assignment_policy == "IterativeHISwithOrderProVersionPolicy":
+        elif assignment_policy == "IterativeHISwithOrderProVersionPolicy" or assignment_policy == "IterativeHISwithOrderProVersion":
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
             policy_item = IterativeHISwithOrderProVersionPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
-        elif assignment_policy == "IterativeHISwithOrderRemainVersionPolicy":
+        elif assignment_policy == "IterativeHISwithOrderRemainVersionPolicy" or assignment_policy == "IterativeHISwithOrderRemainVersion":
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
             policy_item = IterativeHISwithOrderRemainVersionPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
-        elif assignment_policy == "DPFHISPolicy":
+        elif assignment_policy == "DPFHISPolicy" or assignment_policy == "DPFHIS":
             raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, waiting_queue_capacity, job_sequence_all_num = assignment_args
             policy_item = DPFHISPolicy(beta, job_sequence_all_num, waiting_queue_capacity, self.seed, self.sched_logger)
-        elif assignment_policy == "SagePolicy":
+        elif assignment_policy == "SagePolicy" or assignment_policy == "Sage":
             raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             policy_item = SagePolicy(self.seed, self.sched_logger)
-        elif assignment_policy == "SagewithRemainPolicy":
+        elif assignment_policy == "SagewithRemainPolicy" or assignment_policy == "SagewithRemain":
             policy_item = SagewithRemainPolicy(self.seed, self.sched_logger)
-        elif assignment_policy == "StreamingwithRemainPolicy":
+        elif assignment_policy == "StreamingwithRemainPolicy" or assignment_policy == "StreamingwithRemain":
             raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             policy_item = StreamingwithRemainPolicy(self.seed, self.sched_logger)
-        elif assignment_policy == "BestFitwithRemainPolicy":
+        elif assignment_policy == "BestFitwithRemainPolicy" or assignment_policy == "BestFitwithRemain":
             policy_item = BestFitwithRemainPolicy(self.seed, self.sched_logger)
-        elif assignment_policy == "OfflinePolicy":
+        elif assignment_policy == "OfflinePolicy" or assignment_policy == "Offline":
             job_sequence_all_num = assignment_args
             policy_item = OfflinePolicy(job_sequence_all_num, self.seed, self.sched_logger)
         self.assignment_policy = policy_item

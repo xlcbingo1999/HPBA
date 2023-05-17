@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import sys
+import re
 from utils.data_operator import final_operate_data, is_number
 
 
@@ -37,7 +38,18 @@ def update_df_real(df):
     for index, row in df.iterrows():
         row_update_flag = False
         log_trace_paths = str(row[mulu_column_key]).split("; ")
-        print(f"log_trace_paths: {log_trace_paths}")
+        # print(f"log_trace_paths: {log_trace_paths}")
+        keystr2logmulu = {}
+        for path in log_trace_paths:
+            match = re.match(r"\[(?P<keystr>.*)\]\s*(?P<logmulu>.*)", path)
+            if match:
+                keystr = str(match.group("keystr"))
+                logmulu = str(match.group("logmulu")).strip()
+                keystr2logmulu[keystr] = logmulu
+            else:
+                keystr2logmulu["default"] = path
+        
+        print(f"keystr2logmulu: {keystr2logmulu}")
 
         run_time_item = row["Run Time"]
         run_time_item_str = str(run_time_item)
@@ -83,7 +95,7 @@ def update_df_real(df):
 
 if __name__ == "__main__":
     root_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
-    file_names = ["fig_1", "fig_6"]
+    file_names = ["temp_get_result"]
     for file_name in file_names:
         target_path = os.path.join(root_dir, f"{file_name}.csv")
         result_path = os.path.join(root_dir, f"{file_name}_right.csv")

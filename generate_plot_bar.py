@@ -34,7 +34,7 @@ def get_policy_map(origin_policy):
         result_policy = "BestFit"
     return result_policy
 
-def draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, env_x_label):
+def draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, y_label_name_arr, env_x_label):
     current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
     path = os.path.join(current_dir, f"{target_pic_name}.csv")
     df = pd.read_csv(path)
@@ -56,20 +56,8 @@ def draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, env_x_l
     #     "SagewithRemainPolicy": "Sage",
     #     "BestFitwithRemainPolicy": "BestFit"
     # }
-    y_label_name_arr = [
-        "Significance of all jobs", 
-        "Significance of allocated jobs",
-        "Ratio of Allocated Datablocks"
-    ] 
-    max_one_line_length = 20
-    # "Number of Allocated Jobs", 
-    # "Ratio of Allocated Jobs", 
-    # "Significance of all jobs", 
-    # "Significance of allocated jobs",
-    # "Success Datablock Num",
-    # "Failed Datablock Num",
-    # "Target Datablock Num"
 
+    max_one_line_length = 20
     colors, hatchs = get_mark_color_hatch()
     for y_label_name in y_label_name_arr:
         results, results_min, results_max = get_result_avg_min_max_for_y_label_name(df_with_key, env_policy_groups, env_x_groups, y_label_name)
@@ -137,11 +125,25 @@ def draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, env_x_l
         pp.close()
 
 if __name__ == "__main__":
-    # target_pic_name = "fig_1_right"
-    # keys_str = ["policy", "Online job num"]
-    # env_x_groups = [1000, 2000, 3000, 4000]
-    # env_x_label = r"Number of test jobs $n$"
-    # draw_bar(target_pic_name, keys_str, env_x_groups, env_x_label)
+    target_pic_name = "fig_1_right"
+    keys_str = ["policy", "Online job num"]
+    env_x_groups = [500, 1000, 2000, 3000, 4000]
+    env_policy_groups = [
+        "OfflinePolicy",
+        "HISwithOrderProVersionPolicy", 
+        "IterativeHISwithOrderPolicy(100)", 
+        "PBGPolicy",
+        "PBGMixPolicy", 
+        "SagewithRemainPolicy",
+        "BestFitwithRemainPolicy"
+    ]
+    y_label_name_arr = [
+        "Significance of all jobs", 
+        "Average Significance of allocated jobs",
+        "Ratio of Allocated Datablocks"
+    ] 
+    env_x_label = r"Number of test jobs $n$"
+    draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, y_label_name_arr, env_x_label)
 
     # target_pic_name = "fig_2_right"
     # keys_str = ["policy", "Max-min Ratio"]
@@ -156,19 +158,30 @@ if __name__ == "__main__":
     #     "BestFitwithRemainPolicy"
     # ]
     # env_x_label = r"Ratio $\lambda$"
-    # draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, env_x_label)
+    # draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, y_label_name_arr, env_x_label)
 
-    target_pic_name = "fig_6_right"
-    keys_str = ["policy", "Max-min Ratio"]
-    env_x_groups = [0.025, 0.033, 0.05, 0.1, 0.4, 0.7, 1.0] # 0.025, 0.033, 0.05,
-    env_policy_groups = [
-        "HISwithOrderProVersionPolicy(0)",
-        "HISwithOrderProVersionPolicy(200)",
-        "HISwithOrderProVersionPolicy(400)",
-        "HISwithOrderProVersionPolicy(600)",
-        "HISwithOrderProVersionPolicy(800)",
-        "HISwithOrderProVersionPolicy(1000)",
-        "OfflinePolicy",
-    ]
-    env_x_label = r"Ratio $\lambda$"
-    draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, env_x_label)
+    # target_pic_name = "fig_6_right"
+    # keys_str = ["policy", "Max-min Ratio"]
+    # env_x_groups = [0.025, 0.033, 0.05, 0.1, 0.4, 0.7, 1.0] # 0.025, 0.033, 0.05,
+    # env_policy_groups = [
+    #     "HISwithOrderProVersionPolicy(0)",
+    #     "HISwithOrderProVersionPolicy(200)",
+    #     "HISwithOrderProVersionPolicy(400)",
+    #     "HISwithOrderProVersionPolicy(600)",
+    #     "HISwithOrderProVersionPolicy(800)",
+    #     "HISwithOrderProVersionPolicy(1000)",
+    #     "OfflinePolicy",
+    # ]
+    # env_x_label = r"Ratio $\lambda$"
+    # draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, y_label_name_arr, env_x_label)
+
+
+    # "Number of Allocated Jobs", 
+    # "Ratio of Allocated Jobs", 
+    # "Significance of all jobs", 
+    # "Significance of allocated jobs",
+    # "Average Significance of all jobs",
+    # "Average Significance of allocated jobs",
+    # "Success Datablock Num",
+    # "Failed Datablock Num",
+    # "Target Datablock Num"

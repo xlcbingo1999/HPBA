@@ -1,5 +1,5 @@
 current_ip_index = 5
-current_cmd_index = 7
+current_cmd_index = 9
 
 is_simulation = True
 need_save_jobtrace_flag = False
@@ -13,7 +13,7 @@ significance_policy = "TempPolicy"
 test_jobtrace_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
 dataset_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
 history_jobtrace_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
-all_decision_num = 500
+all_decision_num = 1500
 datablock_require_epsilon_max_ratio = 0.1
 change_job_epsilon_max_times = 1.0
 all_history_num = 0

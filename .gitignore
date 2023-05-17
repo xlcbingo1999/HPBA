@@ -1,4 +1,6 @@
 # 独立的变量
+*.xlsx
+*.csv
 DL_shell.txt
 tensorboard_*/
 log_*/

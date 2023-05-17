@@ -343,31 +343,36 @@ class Dispatcher(object):
         client.initialize_seeds(seed)
         client.initialize_simulation_flag(simulation, simulation_index)
         client.initialize_logging_path(self.current_test_all_dir, simulation_index)
-        if assignment_policy == "PBGPolicy":
+        if assignment_policy == "PBGPolicy" or assignment_policy == "PBG":
             comparison_cost_epsilon_list = args.pbg_comparison_cost_epsilons
             comparison_z_threshold_list = args.pbg_comparison_z_thresholds
             L_list = args.pbg_Ls
             U_list = args.pbg_Us
             assignment_args = (comparison_cost_epsilon_list, comparison_z_threshold_list, L_list, U_list)
-        elif assignment_policy == "PBGMixPolicy":
+        elif assignment_policy == "PBGMixPolicy" or assignment_policy == "PBGMix":
             comparison_cost_epsilon_list = args.pbg_comparison_cost_epsilons
             comparison_z_threshold_list = args.pbg_comparison_z_thresholds
             L_list = args.pbg_Ls
             U_list = args.pbg_Us
             gitta_list = args.pbg_gittas
             assignment_args = (comparison_cost_epsilon_list, comparison_z_threshold_list, L_list, U_list, gitta_list)
-        elif assignment_policy == "HISPolicy" or assignment_policy == "HISwithCPolicy" or assignment_policy == "HISwithOrderRemainVersionPolicy" or assignment_policy == "HISwithOrderProVersionPolicy":
+        elif assignment_policy == "HISPolicy" or assignment_policy == "HIS" \
+            or assignment_policy == "HISwithCPolicy" or assignment_policy == "HISwithC" \
+            or assignment_policy == "HISwithOrderRemainVersionPolicy" or assignment_policy == "HISwithOrderRemainVersion" \
+            or assignment_policy == "HISwithOrderProVersionPolicy" or assignment_policy == "HISwithOrderProVersion":
             beta_list = args.his_betas
             assignment_args = (beta_list, all_decision_num)
-        elif assignment_policy == "IterativeHISPolicy" or assignment_policy == "IterativeHISwithOrderProVersionPolicy" or assignment_policy == "IterativeHISwithOrderRemainVersionPolicy":
+        elif assignment_policy == "IterativeHISPolicy" or assignment_policy == "IterativeHIS" \
+            or assignment_policy == "IterativeHISwithOrderProVersionPolicy" or assignment_policy == "IterativeHISwithOrderProVersion" \
+            or assignment_policy == "IterativeHISwithOrderRemainVersionPolicy" or assignment_policy == "IterativeHISwithOrderRemainVersion":
             beta_list = args.his_betas
             batch_size_for_one_epoch_list = args.his_batch_size_for_one_epochs
             assignment_args = (beta_list, batch_size_for_one_epoch_list, all_decision_num)
-        elif assignment_policy == "DPFHISPolicy":
+        elif assignment_policy == "DPFHISPolicy" or assignment_policy == "DPFHIS":
             beta_list = args.dpf_his_betas
             waiting_queue_capacity_list = args.dpf_his_waiting_queue_capacitys
             assignment_args = (beta_list, waiting_queue_capacity_list, all_decision_num)
-        elif assignment_policy == "OfflinePolicy":
+        elif assignment_policy == "OfflinePolicy" or assignment_policy == "Offline":
             assignment_args = all_decision_num
         else:
             assignment_args = None
