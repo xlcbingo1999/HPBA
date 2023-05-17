@@ -46,21 +46,12 @@ def draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, y_label
     print("---- df.info ----")
     df_with_key.info()
 
-
-    # policy_groups = {
-    #     "OfflinePolicy": "Ground Truth",
-    #     "HISwithOrderProVersionPolicy": "HIS", 
-    #     "IterativeHISwithOrderPolicy(100)": "IterativeHIS(100)", 
-    #     "PBGPolicy": "PBG",
-    #     "PBGMixPolicy": "PBGMix", 
-    #     "SagewithRemainPolicy": "Sage",
-    #     "BestFitwithRemainPolicy": "BestFit"
-    # }
-
     max_one_line_length = 20
     colors, hatchs = get_mark_color_hatch()
     for y_label_name in y_label_name_arr:
-        results, results_min, results_max = get_result_avg_min_max_for_y_label_name(df_with_key, env_policy_groups, env_x_groups, y_label_name)
+        results, results_min, results_max = get_result_avg_min_max_for_y_label_name(
+            df_with_key, env_x_groups, env_policy_groups, y_label_name
+        )
 
         fig = plt.figure(figsize=(10, 5))
         plt.grid(linestyle="--", axis='y', alpha=0.5)  # 设置背景网格线为虚线
@@ -124,10 +115,10 @@ def draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, y_label
         pp.savefig(fig)
         pp.close()
 
-if __name__ == "__main__":
+def draw_fig_1():
     target_pic_name = "fig_1_right"
     keys_str = ["policy", "Online job num"]
-    env_x_groups = [500, 1000, 2000, 3000, 4000]
+    env_x_groups = [500, 1000, 1500, 2000, 3000, 4000]
     env_policy_groups = [
         "OfflinePolicy",
         "HISwithOrderProVersionPolicy", 
@@ -145,37 +136,53 @@ if __name__ == "__main__":
     env_x_label = r"Number of test jobs $n$"
     draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, y_label_name_arr, env_x_label)
 
-    # target_pic_name = "fig_2_right"
-    # keys_str = ["policy", "Max-min Ratio"]
-    # env_x_groups = [0.1, 0.4, 0.7, 1.0]
-    # env_policy_groups = [
-    #     "OfflinePolicy",
-    #     "HISwithOrderProVersionPolicy", 
-    #     "IterativeHISwithOrderPolicy(100)", 
-    #     "PBGPolicy",
-    #     "PBGMixPolicy", 
-    #     "SagewithRemainPolicy",
-    #     "BestFitwithRemainPolicy"
-    # ]
-    # env_x_label = r"Ratio $\lambda$"
-    # draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, y_label_name_arr, env_x_label)
+def draw_fig_2():
+    target_pic_name = "fig_2_right"
+    keys_str = ["policy", "Max-min Ratio"]
+    env_x_groups = [0.1, 0.4, 0.7, 1.0]
+    env_policy_groups = [
+        "OfflinePolicy",
+        "HISwithOrderProVersionPolicy", 
+        "IterativeHISwithOrderPolicy(100)", 
+        "PBGPolicy",
+        "PBGMixPolicy", 
+        "SagewithRemainPolicy",
+        "BestFitwithRemainPolicy"
+    ]
+    y_label_name_arr = [
+        "Significance of all jobs", 
+        "Average Significance of allocated jobs",
+        "Ratio of Allocated Datablocks"
+    ]
+    env_x_label = r"Ratio $\lambda$"
+    draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, y_label_name_arr, env_x_label)
 
-    # target_pic_name = "fig_6_right"
-    # keys_str = ["policy", "Max-min Ratio"]
-    # env_x_groups = [0.025, 0.033, 0.05, 0.1, 0.4, 0.7, 1.0] # 0.025, 0.033, 0.05,
-    # env_policy_groups = [
-    #     "HISwithOrderProVersionPolicy(0)",
-    #     "HISwithOrderProVersionPolicy(200)",
-    #     "HISwithOrderProVersionPolicy(400)",
-    #     "HISwithOrderProVersionPolicy(600)",
-    #     "HISwithOrderProVersionPolicy(800)",
-    #     "HISwithOrderProVersionPolicy(1000)",
-    #     "OfflinePolicy",
-    # ]
-    # env_x_label = r"Ratio $\lambda$"
-    # draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, y_label_name_arr, env_x_label)
+def draw_fig_6():
+    target_pic_name = "fig_6_right"
+    keys_str = ["policy", "Max-min Ratio"]
+    env_x_groups = [0.025, 0.033, 0.05, 0.1, 0.4, 0.7, 1.0] # 0.025, 0.033, 0.05,
+    env_policy_groups = [
+        "HISwithOrderProVersionPolicy(0)",
+        "HISwithOrderProVersionPolicy(200)",
+        "HISwithOrderProVersionPolicy(400)",
+        "HISwithOrderProVersionPolicy(600)",
+        "HISwithOrderProVersionPolicy(800)",
+        "HISwithOrderProVersionPolicy(1000)",
+        "OfflinePolicy",
+    ]
+    y_label_name_arr = [
+        "Significance of all jobs", 
+        "Average Significance of allocated jobs",
+        "Ratio of Allocated Datablocks"
+    ]
+    env_x_label = r"Ratio $\lambda$"
+    draw_bar(target_pic_name, keys_str, env_x_groups, env_policy_groups, y_label_name_arr, env_x_label)
 
-
+if __name__ == "__main__":
+    draw_fig_1()
+    draw_fig_2()
+    draw_fig_6()
+    
     # "Number of Allocated Jobs", 
     # "Ratio of Allocated Jobs", 
     # "Significance of all jobs", 

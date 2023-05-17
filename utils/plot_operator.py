@@ -73,7 +73,7 @@ def add_df_with_min_max(df):
                 df.loc[index, f'{key} max'] = 0.0
     return df
 
-def get_result_avg_min_max_for_y_label_name(df_with_key, policy_groups, env_x_groups, y_label_name):
+def get_result_avg_min_max_for_y_label_name(df_with_key, env_x_groups, policy_groups, y_label_name):
     results = [[0.0 for _ in range(len(env_x_groups))] for _ in range(len(policy_groups))] 
     results_min = [[0.0 for _ in range(len(env_x_groups))] for _ in range(len(policy_groups))] 
     results_max = [[0.0 for _ in range(len(env_x_groups))] for _ in range(len(policy_groups))] 
