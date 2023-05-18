@@ -29,13 +29,12 @@ def get_df_config():
     parser.add_argument("--time_interval", type=int, default=100) # 100, 500, 1000, 1500 [1/1, 1/2, 1/3, 1/5]
     parser.add_argument("--need_change_interval", action="store_true")
     parser.add_argument("--need_save_jobtrace_flag", action="store_true")
-    
+    parser.add_argument("--all_datablock_num", type=int, default=100)
+    parser.add_argument("--offline_datablock_num", type=int, default=100)
     
     parser.add_argument("--simulation_flag", action="store_true")
     parser.add_argument("--simulation_time", type=int, default=1)
     parser.add_argument("--simulation_time_speed_up", type=float, default=1.0)
-    parser.add_argument("--simulation_all_datablock_num", type=int, default=100)
-    parser.add_argument("--simulation_offline_datablock_num", type=int, default=100)
 
     parser.add_argument("--datablock_require_epsilon_max_ratio", type=float, default=0.1)
     parser.add_argument("--change_job_epsilon_max_times", type=float, default=1.0)
@@ -471,6 +470,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
                             budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times,
                             job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             all_decision_num, all_history_num, time_interval, need_change_interval,
+                            all_datablock_num, offline_datablock_num, 
                             datablock_require_epsilon_max_ratio, change_job_epsilon_max_times):
     assert args.simulation_time == 1 and len(args.seeds) == 1
     simulation_flag = False
@@ -483,7 +483,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
         fix_delta=1e-5, 
         change_datablock_epsilon_max_times=change_datablock_epsilon_max_times,
         fix_time=0, 
-        num=6, 
+        num=all_datablock_num, 
         dataset_reconstruct_path=dataset_reconstruct_path, 
         save_path=current_test_all_dir
     )
@@ -588,13 +588,14 @@ def simulation_experiment_start(args, sched_ip, sched_port,
                             budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times, 
                             job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             all_decision_num, all_history_num, need_change_interval,
-                            simulation_time, simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, 
+                            all_datablock_num, offline_datablock_num, 
+                            simulation_time, simulation_time_speed_up,
                             datablock_require_epsilon_max_ratio, change_job_epsilon_max_times
                             ):
     min_epsilon_capacity = base_capacity * budget_capacity_ratio
     datasets_list = generate_alibaba_dataset(
-        num=simulation_all_datablock_num,
-        offline_num=simulation_offline_datablock_num,
+        num=all_datablock_num,
+        offline_num=offline_datablock_num,
         time_speed_up=simulation_time_speed_up,
         dataset_names=["EMNIST"],
         fix_epsilon=min_epsilon_capacity,
@@ -728,8 +729,8 @@ if __name__ == "__main__":
 
     simulation_time = args.simulation_time
     simulation_time_speed_up = args.simulation_time_speed_up
-    simulation_all_datablock_num = args.simulation_all_datablock_num
-    simulation_offline_datablock_num = args.simulation_offline_datablock_num
+    all_datablock_num = args.all_datablock_num
+    offline_datablock_num = args.offline_datablock_num
 
     datablock_require_epsilon_max_ratio = args.datablock_require_epsilon_max_ratio
     change_job_epsilon_max_times = args.change_job_epsilon_max_times
@@ -750,7 +751,8 @@ if __name__ == "__main__":
                             budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times,
                             job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             all_decision_num, all_history_num, need_change_interval,
-                            simulation_time, simulation_time_speed_up, simulation_all_datablock_num, simulation_offline_datablock_num, 
+                            all_datablock_num, offline_datablock_num, 
+                            simulation_time, simulation_time_speed_up,
                             datablock_require_epsilon_max_ratio, change_job_epsilon_max_times)
     else:
         testbed_experiment_start(args, sched_ip, sched_port,
@@ -763,6 +765,7 @@ if __name__ == "__main__":
                             budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times,
                             job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             all_decision_num, all_history_num, time_interval, need_change_interval,
+                            all_datablock_num, offline_datablock_num, 
                             datablock_require_epsilon_max_ratio, change_job_epsilon_max_times)    
     
         
