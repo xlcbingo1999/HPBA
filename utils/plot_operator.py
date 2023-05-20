@@ -5,11 +5,12 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from utils.data_operator import is_number
 
-def get_mark_color_hatch():
+def get_mark_color_hatch_marker():
     colors = ["#3b6291", "#943c39", "#779043", "#624c7c", "#388498", "#bf7334", "#3f6899", "#9c403d",
             "#7d9847", "#675083", "#3b8ba1", "#c97937"]
     hatchs = ['-', 'x', '/', '*', '\\\\', '+', 'o', '.']
-    return colors, hatchs
+    markers = ['x', 'o', 'v', '^', '<', '>', 's', 'P', 'X', 'D']
+    return colors, hatchs, markers
 
 def add_df_with_min_max(df):
     add_columns_keys = [
@@ -27,7 +28,7 @@ def add_df_with_min_max(df):
         for key_index, key in enumerate(add_columns_keys):
             success_num = row[key]
             success_num_str = str(success_num)
-            print(f"success_num_str: {success_num}")
+            # print(f"success_num_str: {success_num}")
             if pd.isnull(success_num) or success_num_str.isspace():
                 print(f"success_num_str nan!")
                 df.loc[index, f'{key} avg'] = 0.0
@@ -73,56 +74,56 @@ def add_df_with_min_max(df):
                 df.loc[index, f'{key} max'] = 0.0
     return df
 
-def get_result_avg_min_max_for_y_label_name(df_with_key, env_x_groups, policy_groups, y_label_name):
-    results = [[0.0 for _ in range(len(env_x_groups))] for _ in range(len(policy_groups))] 
-    results_min = [[0.0 for _ in range(len(env_x_groups))] for _ in range(len(policy_groups))] 
-    results_max = [[0.0 for _ in range(len(env_x_groups))] for _ in range(len(policy_groups))] 
+def get_result_avg_min_max_for_y_label_name(df_with_key, out_loop_groups, in_loop_groups, y_label_name):
+    results = [[0.0 for _ in range(len(in_loop_groups))] for _ in range(len(out_loop_groups))] 
+    results_min = [[0.0 for _ in range(len(in_loop_groups))] for _ in range(len(out_loop_groups))] 
+    results_max = [[0.0 for _ in range(len(in_loop_groups))] for _ in range(len(out_loop_groups))] 
 
-    for policy_index, policy in enumerate(policy_groups):
-        for group_index, env_x in enumerate(env_x_groups):
-            test_job_num = int(df_with_key.loc[(policy, env_x), "Online job num"])
+    for out_index, out_key in enumerate(out_loop_groups):
+        for in_index, in_key in enumerate(in_loop_groups):
+            test_job_num = int(df_with_key.loc[(out_key, in_key), "Online job num"])
             if y_label_name == "Number of Allocated Jobs":
                 success_key_prefix = "Success num"
-                results[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{success_key_prefix} avg"]
-                results_min[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{success_key_prefix} min"]
-                results_max[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{success_key_prefix} max"]
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"]
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} min"]
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} max"]
             elif y_label_name == "Number of Failed Jobs":
                 failed_key_prefix = "Failed num"
-                results[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{failed_key_prefix} avg"]
-                results_min[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{failed_key_prefix} min"]
-                results_max[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{failed_key_prefix} max"]
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{failed_key_prefix} avg"]
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{failed_key_prefix} min"]
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{failed_key_prefix} max"]
             elif y_label_name == "Ratio of Allocated Jobs":
                 success_key_prefix = "Success num"
-                results[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{success_key_prefix} avg"] / test_job_num
-                results_min[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{success_key_prefix} min"] / test_job_num
-                results_max[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{success_key_prefix} max"] / test_job_num
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"] / test_job_num
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} min"] / test_job_num
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} max"] / test_job_num
             elif y_label_name == "Ratio of Allocated Datablocks":
                 success_key_prefix = "Success Datablock Num"
                 target_key_prefix = "Target Datablock Num"
-                results[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{success_key_prefix} avg"] / df_with_key.loc[(policy, env_x), f"{target_key_prefix} avg"]
-                results_min[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{success_key_prefix} min"] / df_with_key.loc[(policy, env_x), f"{target_key_prefix} avg"]
-                results_max[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{success_key_prefix} max"] / df_with_key.loc[(policy, env_x), f"{target_key_prefix} avg"]
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"] / df_with_key.loc[(out_key, in_key), f"{target_key_prefix} avg"]
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} min"] / df_with_key.loc[(out_key, in_key), f"{target_key_prefix} avg"]
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} max"] / df_with_key.loc[(out_key, in_key), f"{target_key_prefix} avg"]
             elif y_label_name == "Average Significance of all jobs":
                 avg_sig_all_job_key_prefix = "Mean Significance (ALL)"
-                results[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{avg_sig_all_job_key_prefix} avg"]
-                results_min[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{avg_sig_all_job_key_prefix} min"]
-                results_max[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{avg_sig_all_job_key_prefix} max"]
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} avg"]
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} min"]
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} max"]
             elif y_label_name == "Average Significance of allocated jobs":
                 avg_sig_success_job_key_prefix = "Mean Significance (Success)"
-                results[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{avg_sig_success_job_key_prefix} avg"]
-                results_min[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{avg_sig_success_job_key_prefix} min"]
-                results_max[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{avg_sig_success_job_key_prefix} max"]
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} avg"]
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} min"]
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} max"]
             elif y_label_name == "Significance of all jobs":
                 avg_sig_all_job_key_prefix = "Mean Significance (ALL)"
-                results[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{avg_sig_all_job_key_prefix} avg"] * test_job_num
-                results_min[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{avg_sig_all_job_key_prefix} min"] * test_job_num
-                results_max[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{avg_sig_all_job_key_prefix} max"] * test_job_num
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} avg"] * test_job_num
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} min"] * test_job_num
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} max"] * test_job_num
             elif y_label_name == "Significance of allocated jobs":
                 avg_sig_success_job_key_prefix = "Mean Significance (Success)"
                 success_key_prefix = "Success num"
-                results[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{avg_sig_success_job_key_prefix} avg"] * df_with_key.loc[(policy, env_x), f"{success_key_prefix} avg"]
-                results_min[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{avg_sig_success_job_key_prefix} min"] * df_with_key.loc[(policy, env_x), f"{success_key_prefix} avg"]
-                results_max[policy_index][group_index] = df_with_key.loc[(policy, env_x), f"{avg_sig_success_job_key_prefix} max"] * df_with_key.loc[(policy, env_x), f"{success_key_prefix} avg"]
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} avg"] * df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"]
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} min"] * df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"]
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} max"] * df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"]
 
 
     print("results: {}".format(results))
