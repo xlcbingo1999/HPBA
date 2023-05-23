@@ -66,7 +66,7 @@ class Scheduler_server(object):
         self.jobid_2_status = {} # 0: no sche; 1: sched target decide; 2: runnning; 3: success finished; 4: failed;
         self.status_2_jobid = {
             JOB_STATUS_KEY.NO_SCHE: [], 
-            JOB_STATUS_KEY.RECOMING: [],
+            JOB_STATUS_KEY.WAITING: [],
             JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL: [],
             JOB_STATUS_KEY.DONE_ALL_SCHED: [],
             JOB_STATUS_KEY.RUNNING: [], 
@@ -145,7 +145,7 @@ class Scheduler_server(object):
 
     def check_all_finished_or_failed(self):
         return (len(self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE]) <= 0 
-            and len(self.status_2_jobid[JOB_STATUS_KEY.RECOMING]) <= 0
+            and len(self.status_2_jobid[JOB_STATUS_KEY.WAITING]) <= 0
             and len(self.status_2_jobid[JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL]) <= 0
             and len(self.status_2_jobid[JOB_STATUS_KEY.DONE_ALL_SCHED]) <= 0
             and len(self.status_2_jobid[JOB_STATUS_KEY.RUNNING]) <= 0
@@ -155,7 +155,7 @@ class Scheduler_server(object):
         self.jobid_2_status = {} # 0: no sche; 1: sched target decide; 2: runnning; 3: success finished; 4: failed;
         self.status_2_jobid = {
             JOB_STATUS_KEY.NO_SCHE: [], 
-            JOB_STATUS_KEY.RECOMING: [],
+            JOB_STATUS_KEY.WAITING: [],
             JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL: [],
             JOB_STATUS_KEY.DONE_ALL_SCHED: [],
             JOB_STATUS_KEY.RUNNING: [], 
@@ -595,19 +595,19 @@ class Scheduler_server(object):
         elif operator == "wait_recoming":
             if origin_status == JOB_STATUS_KEY.DONE_ALL_SCHED:
                 update_path = JOB_STATUS_UPDATE_PATH.ALLSCHED_2_RECOMING
-                new_status = JOB_STATUS_KEY.RECOMING
+                new_status = JOB_STATUS_KEY.WAITING
             elif origin_status == JOB_STATUS_KEY.RUNNING:
                 update_path = JOB_STATUS_UPDATE_PATH.RUNNING_2_RECOMING
-                new_status = JOB_STATUS_KEY.RECOMING
+                new_status = JOB_STATUS_KEY.WAITING
             elif origin_status == JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL:
                 update_path = JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_RECOMING
-                new_status = JOB_STATUS_KEY.RECOMING
+                new_status = JOB_STATUS_KEY.WAITING
             elif origin_status == JOB_STATUS_KEY.NO_SCHE:
                 update_path = JOB_STATUS_UPDATE_PATH.NOSCHED_2_RECOMING
-                new_status = JOB_STATUS_KEY.RECOMING
+                new_status = JOB_STATUS_KEY.WAITING
         elif operator == "real_recoming":
-            if origin_status == JOB_STATUS_KEY.RECOMING:
-                update_path = JOB_STATUS_UPDATE_PATH.RECOMING_2_NOSCHED
+            if origin_status == JOB_STATUS_KEY.WAITING:
+                update_path = JOB_STATUS_UPDATE_PATH.WAITING_2_NOSCHED
                 new_status = JOB_STATUS_KEY.NO_SCHE
         elif operator == "finished":
             if origin_status == JOB_STATUS_KEY.NO_SCHE:
@@ -651,19 +651,19 @@ class Scheduler_server(object):
         # wait_recoming
         elif status_update_path == JOB_STATUS_UPDATE_PATH.ALLSCHED_2_RECOMING:
             origin_status = JOB_STATUS_KEY.DONE_ALL_SCHED
-            target_status = JOB_STATUS_KEY.RECOMING
+            target_status = JOB_STATUS_KEY.WAITING
         elif status_update_path == JOB_STATUS_UPDATE_PATH.RUNNING_2_RECOMING:
             origin_status = JOB_STATUS_KEY.RUNNING
-            target_status = JOB_STATUS_KEY.RECOMING
+            target_status = JOB_STATUS_KEY.WAITING
         elif status_update_path == JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_RECOMING:
             origin_status = JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL
-            target_status = JOB_STATUS_KEY.RECOMING
+            target_status = JOB_STATUS_KEY.WAITING
         elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_RECOMING:
             origin_status = JOB_STATUS_KEY.NO_SCHE
-            target_status = JOB_STATUS_KEY.RECOMING
+            target_status = JOB_STATUS_KEY.WAITING
         # real_recoming
-        elif status_update_path == JOB_STATUS_UPDATE_PATH.RECOMING_2_NOSCHED:
-            origin_status = JOB_STATUS_KEY.RECOMING
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.WAITING_2_NOSCHED:
+            origin_status = JOB_STATUS_KEY.WAITING
             target_status = JOB_STATUS_KEY.NO_SCHE
         # finished
         elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_FINISHED:
@@ -736,7 +736,7 @@ class Scheduler_server(object):
     '''
                 
     def real_recoming_jobs(self):
-        all_recoming_jobs_copy = copy.deepcopy(self.status_2_jobid[JOB_STATUS_KEY.RECOMING])
+        all_recoming_jobs_copy = copy.deepcopy(self.status_2_jobid[JOB_STATUS_KEY.WAITING])
         if len(all_recoming_jobs_copy) <= 0:
             return 
         for job_id in all_recoming_jobs_copy:

@@ -83,7 +83,8 @@ def read_DL_dispatcher_result_func(trace_save_path):
     success_fail_num_pattern = r'current_success_num:\s*(?P<success>\d+);\s+current_failed_num:\s*(?P<failed>\d+);\s+current_no_submit_num:\s*(?P<no_submit>\d+);\s+current_no_sche_num:\s*(?P<no_sche>\d+);'
     all_final_significance_pattern = r'all_final_significance:\s*(?P<all_final_significance>\d+\.\d+)'
     success_final_significance_pattern = r'success_final_significance:\s*(?P<success_final_significance>\d+\.\d+)'
-    final_selected_pattern = r'from policy (\[(?P<policy_name>(.*?))\]) selected_datablock_identifiers: (?P<selected_list>\[.*?\])'
+    old_final_selected_pattern = r'from policy (\[(?P<policy_name>(.*?))\]) selected_datablock_identifiers: (?P<selected_list>\[.*?\])'
+    final_selected_pattern = r'from policy (\[(?P<policy_name>(.*?))\]) selected_datablock_identifiers: (?P<selected_map>\{.*?\})'
     failed_selected_pattern = r'failed job scheduling \[(?P<job_id>.+)\]'
     add_new_job_pattern = r'success add new jobs: (?P<job_detail>.+)'
     
@@ -168,21 +169,32 @@ def read_DL_dispatcher_result_func(trace_save_path):
                     if match:
                         policy_name = match.group('policy_name')
                         policy_name_set.add(policy_name)
-                        datablock_identifiers = match.group('selected_list')
-                        datablock_identifiers_list = ast.literal_eval(datablock_identifiers)
+                        datablock_identifiers = match.group('selected_map')
+                        datablock_identifiers_map = ast.literal_eval(datablock_identifiers)
                         # print(f"temp_datablock_identifiers_list: {datablock_identifiers_list}")
-                        for item in datablock_identifiers_list:
-                            if item[0] not in job_result_selected_blocks_map:
-                                job_result_selected_blocks_map[item[0]] = set()
-                            else:
-                                job_result_selected_blocks_map[item[0]].add(item[1])
+                        for job_id, selected_list in datablock_identifiers_map.items():
+                            job_result_selected_blocks_map[job_id] = selected_list
                     else:
                         print('selected_datablock_identifiers No match')
+                    # match = re.search(final_selected_pattern, line)
+                    # if match:
+                    #     policy_name = match.group('policy_name')
+                    #     policy_name_set.add(policy_name)
+                    #     datablock_identifiers = match.group('selected_list')
+                    #     datablock_identifiers_list = ast.literal_eval(datablock_identifiers)
+                    #     # print(f"temp_datablock_identifiers_list: {datablock_identifiers_list}")
+                    #     for item in datablock_identifiers_list:
+                    #         if item[0] not in job_result_selected_blocks_map:
+                    #             job_result_selected_blocks_map[item[0]] = set()
+                    #         else:
+                    #             job_result_selected_blocks_map[item[0]].add(item[1])
+                    # else:
+                    #     print('selected_datablock_identifiers No match')
                 if "failed job scheduling" in line:
                     match = re.search(failed_selected_pattern, line)
                     if match:
                         failed_job_id = match.group('job_id')
-                        job_result_selected_blocks_map[failed_job_id] = set()
+                        job_result_selected_blocks_map[failed_job_id] = []
                     else:
                         print('failed job scheduling No match')
                 if "success add new jobs" in line:

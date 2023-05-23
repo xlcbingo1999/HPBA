@@ -369,7 +369,6 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
                 break
     else:
         print("check dataset_names: {}".format(dataset_names))
-        offline_num = offline_num
         online_time_iterval = 3600.0 * 4 / time_speed_up
         datasets_list = {}
         for name in dataset_names:

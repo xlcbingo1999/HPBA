@@ -12,7 +12,7 @@ class TempPolicy(SigPolicy):
         self.need_update_backward = False
 
         if simulation:
-            self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + "/significance_TempPolicy_100.json"
+            self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + "/significance_TempPolicy_1000.json"
         else:
             self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + "/significance_TempPolicy.json"
         self.logger = logger

@@ -1,4 +1,4 @@
-from policies.BasePolicy import Policy
+from policies.HISBase import HISBasePolicy
 import copy
 import random
 import numpy as np
@@ -7,10 +7,10 @@ from scipy.optimize import linear_sum_assignment
 import cvxpy as cp
 import json
 
-class HISwithCPolicy(Policy):
+class HISwithOrderRemainVersionPolicy(HISBasePolicy):
     def __init__(self, beta, job_sequence_all_num, seed, logger):
-        super().__init__()
-        self._name = 'HISwithCPolicy'
+        super().__init__(beta, job_sequence_all_num, seed, logger)
+        self._name = 'HISwithOrderRemainVersionPolicy'
         self.beta = beta
         # self.gamma = gamma
         # self.delta = delta
@@ -21,27 +21,6 @@ class HISwithCPolicy(Policy):
         self.need_history = True
         self.initialize_seeds(seed)
 
-        self.job_sequence_all_num = job_sequence_all_num
-
-        self.offline_history_job_priority_weights = []
-        self.offline_history_job_budget_consumes = []
-        self.offline_history_job_target_selected_num = []
-        self.offline_history_job_train_dataset_name = []
-        self.offline_history_job_test_dataset_name = []
-        self.offline_history_job_sub_test_key_id = []
-        self.offline_history_job_type_id = []
-        self.offline_history_job_significance = []
-
-        self.online_history_job_priority_weights = []
-        self.online_history_job_budget_consumes = []
-        self.online_history_job_target_selected_num = []
-        self.online_history_job_train_dataset_name = []
-        self.online_history_job_test_dataset_name = []
-        self.online_history_job_sub_test_key_id = []
-        self.online_history_job_type_id = []
-        self.online_history_job_significance = []
-
-        
 
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
@@ -56,12 +35,13 @@ class HISwithCPolicy(Policy):
 
     def get_LP_result(self, sign_matrix, datablock_privacy_budget_capacity_list, job_target_datablock_selected_num_list, job_privacy_budget_consume_list, solver=cp.ECOS):
         job_num, datablock_num = sign_matrix.shape[0], sign_matrix.shape[1]
+        job_target_datablock_selected_num_list = np.array(job_target_datablock_selected_num_list)
         job_privacy_budget_consume_list = np.array(job_privacy_budget_consume_list)[np.newaxis, :]
         datablock_privacy_budget_capacity_list = np.array(datablock_privacy_budget_capacity_list)[np.newaxis, :]
 
         matrix_X = cp.Variable((job_num, datablock_num), nonneg=True)
         objective = cp.Maximize(
-            cp.sum(cp.sum(cp.multiply(sign_matrix, matrix_X), axis=1) / job_target_datablock_selected_num_list)
+            cp.sum(cp.multiply(sign_matrix, matrix_X))
         )
 
         constraints = [
@@ -84,19 +64,6 @@ class HISwithCPolicy(Policy):
         if cvxprob.status != "optimal":
             self.logger.info('WARNING: Allocation returned by policy not optimal!')
         return matrix_X.value
-
-    def get_sign_matrix(self, current_all_job_priority_weights, current_all_job_significances,
-                        sub_train_datasetidentifier_2_epsilon_capcity):
-        temp_index_2_datablock_identifier = {}
-        sign_matrix = []
-        for job_index, job_priority_weight in enumerate(current_all_job_priority_weights):
-            temp = []
-            for datablock_index, datablock_identifier in enumerate(sub_train_datasetidentifier_2_epsilon_capcity):
-                temp_index_2_datablock_identifier[datablock_index] = datablock_identifier
-                temp.append(current_all_job_significances[job_index][datablock_identifier] * job_priority_weight)
-            sign_matrix.append(temp)
-        sign_matrix = np.array(sign_matrix)
-        return sign_matrix, temp_index_2_datablock_identifier
 
     '''
     def get_allocation_for_large(self, history_job_priority_weights, sub_train_datasetidentifier_2_significance,
@@ -132,19 +99,21 @@ class HISwithCPolicy(Policy):
                                 sub_train_datasetidentifier_2_epsilon_capcity,
                                 target_epsilon_require, 
                                 target_datablock_select_num, 
-                                job_priority_weight):
+                                job_priority_weight,
+                                job_arrival_index, 
+                                all_job_sequence_num):
         
         selected_datablock_identifiers = []
         selected_real_sched_epsilon_map = {}
         calcu_compare_epsilon = 0.0
         
-        current_all_job_priority_weights = copy.deepcopy(history_job_priority_weights)
+        current_all_job_priority_weights = history_job_priority_weights
         current_all_job_priority_weights.append(job_priority_weight)
-        current_all_job_budget_consumes = copy.deepcopy(history_job_budget_consumes)
+        current_all_job_budget_consumes = history_job_budget_consumes
         current_all_job_budget_consumes.append(target_epsilon_require)
-        current_all_job_signficances = copy.deepcopy(history_job_signficances)
+        current_all_job_signficances = history_job_signficances
         current_all_job_signficances.append(sub_train_datasetidentifier_2_significance)
-        current_all_job_target_datablock_selected_nums = copy.deepcopy(history_job_target_datablock_selected_nums)
+        current_all_job_target_datablock_selected_nums = history_job_target_datablock_selected_nums
         current_all_job_target_datablock_selected_nums.append(target_datablock_select_num)
 
         sign_matrix, temp_index_2_datablock_identifier = self.get_sign_matrix(
@@ -154,47 +123,59 @@ class HISwithCPolicy(Policy):
         )
         
         datablock_privacy_budget_capacity_list = np.zeros(shape=sign_matrix.shape[1])
-        job_target_datablock_selected_num_list = np.array(current_all_job_target_datablock_selected_nums)
-        for temp_index in temp_index_2_datablock_identifier:
-            datablock_privacy_budget_capacity_list[temp_index] = sub_train_datasetidentifier_2_epsilon_capcity[temp_index_2_datablock_identifier[temp_index]]
-        assign_result_matrix = self.get_LP_result(sign_matrix, datablock_privacy_budget_capacity_list, job_target_datablock_selected_num_list, current_all_job_budget_consumes)
-        job_num, datablock_num = sign_matrix.shape[0], sign_matrix.shape[1]
+        datablock_privacy_budget_remain_list = np.zeros(shape=sign_matrix.shape[1])
+        for temp_index, datablock_identifier in temp_index_2_datablock_identifier.items():
+            datablock_privacy_budget_capacity_list[temp_index] = sub_train_datasetidentifier_2_epsilon_capcity[datablock_identifier]
+            datablock_privacy_budget_remain_list[temp_index] = sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier]
+        
+        assign_result_matrix = self.get_LP_result(
+            sign_matrix, 
+            datablock_privacy_budget_capacity_list, 
+            current_all_job_target_datablock_selected_nums, 
+            current_all_job_budget_consumes
+        )
         current_job_probability = assign_result_matrix[-1] # 这里其实相当于算出了一个分数, 如果为了这个分数不被泄露, 可以用指数机制加噪, 该方案被证实为满足DP-差分隐私.
         choose_indexes = []
-        waiting_select_indexes = np.array(range(datablock_num + 1))
-        current_job_probability = list(current_job_probability)
-        current_job_probability.append(target_datablock_select_num - sum(current_job_probability))
-        null_index = len(current_job_probability) - 1
-        for index, proba in enumerate(current_job_probability):
-            if proba <= 0.0:
-                current_job_probability[index] = 0.0
-            if index < null_index:
-                datablock_identifier = temp_index_2_datablock_identifier[index]
-                if target_epsilon_require > sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier]:
-                    current_job_probability[index] = 0.0
+        
+        current_job_probability_list = list(current_job_probability)
+        waiting_sort_indexes = range(sign_matrix.shape[1])
+        current_job_probability_sorted_indexes = sorted(waiting_sort_indexes, key=lambda k: (datablock_privacy_budget_remain_list[k], current_job_probability_list[k]), reverse=True)
+        
+        for sorted_index in current_job_probability_sorted_indexes:
+            if sorted_index in choose_indexes:
+                continue
+            prob_true = min(1.0, max(0.0, current_job_probability_list[sorted_index]))
+            if sub_train_datasetidentifier_2_epsilon_remain[temp_index_2_datablock_identifier[sorted_index]] < target_epsilon_require:
+                prob_true = 0.0
+            prob_false = 1.0 - prob_true
+            prob_vec = [prob_false, prob_true]
+            choice_result = np.random.choice(a=range(2), size=1, replace=False, p=prob_vec)
+            if choice_result == 1:
+                choose_indexes.append(sorted_index)
 
-        sum_current_job_probability = sum(current_job_probability)
-        if sum_current_job_probability > 1e-17:
-            current_job_probability = np.divide(current_job_probability, sum_current_job_probability)
-        else:
-            current_job_probability[null_index] = 1.0
-            temp_sum_current_job_probability = sum(current_job_probability)
-            current_job_probability = np.divide(current_job_probability, temp_sum_current_job_probability)
-        result_select_num = target_datablock_select_num
-        if len(waiting_select_indexes) < target_datablock_select_num:
-            result_select_num = len(waiting_select_indexes)
-        probability_enable_num = sum(p > 0.0 for p in current_job_probability)
-        if probability_enable_num < result_select_num:
-            result_select_num = probability_enable_num
-        # self.logger.debug("check result_select_num: ", result_select_num)
-        # self.logger.debug("check waiting_select_indexes: ", waiting_select_indexes)
-        # self.logger.debug("check current_job_probability: {}".format(current_job_probability))
-        temp_result = list(np.random.choice(a=waiting_select_indexes, size=result_select_num, replace=False, p=current_job_probability))
-        if null_index in temp_result:
-            choose_indexes = copy.deepcopy(temp_result)
-            choose_indexes.remove(null_index)
-        else:
-            choose_indexes = copy.deepcopy(temp_result)
+            self.logger.debug(f"(job_id[{job_id}], datablock_identifier[{temp_index_2_datablock_identifier[sorted_index]}]) => remain: {datablock_privacy_budget_remain_list[sorted_index]}; pro: {current_job_probability_list[sorted_index]}; choice_result: {choice_result}")
+        # best-effort
+        self.logger.debug(f"z0: {(job_arrival_index + 1) / all_job_sequence_num}")
+        z_bigger_than_z0_indexes = []
+        current_z = []
+        sub_job_probability_list = []
+        for temp_index in temp_index_2_datablock_identifier:
+            if target_epsilon_require <= ((job_arrival_index + 1) / all_job_sequence_num) * datablock_privacy_budget_remain_list[temp_index]:
+                current_z.append(target_epsilon_require / datablock_privacy_budget_remain_list[temp_index])
+                z_bigger_than_z0_indexes.append(temp_index)
+                sub_job_probability_list.append(current_job_probability_list[temp_index])
+        self.logger.debug(f"z_bigger_than_z0_indexes: {z_bigger_than_z0_indexes}")
+
+        assert len(current_z) == len(z_bigger_than_z0_indexes) == len(sub_job_probability_list)
+        current_z_sorted_secondary_indexes = sorted(range(len(z_bigger_than_z0_indexes)), key=lambda k: (sub_job_probability_list[k], current_z[k]), reverse=True)
+        for temp_secondary_index in current_z_sorted_secondary_indexes:
+            z_bigger_than_z0_index = z_bigger_than_z0_indexes[temp_secondary_index]
+            if z_bigger_than_z0_index not in choose_indexes:
+                choose_indexes.append(z_bigger_than_z0_index)
+                self.logger.debug(f"job_id[{job_id}] add datablock identifier caused by z0: {temp_index_2_datablock_identifier[z_bigger_than_z0_index]}")
+
+        self.logger.debug(f"job_id[{job_id}] step[pro and z0]: choose_indexes: {choose_indexes}")
+
         for choose_index in choose_indexes:
             datablock_identifier = temp_index_2_datablock_identifier[choose_index]
             if target_epsilon_require <= sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier]:
@@ -203,13 +184,7 @@ class HISwithCPolicy(Policy):
         return selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
 
     def get_allocation(self, state):
-        job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]
-        assert len(job_id_2_train_dataset_name) == 1
-        set_job_id = set(job_id_2_train_dataset_name.keys())
-        set_dataset_name = set(job_id_2_train_dataset_name.values())
-        assert len(set_dataset_name) == 1 # 必须保证所有的任务都是针对同一个数据集的
-        job_id = list(set_job_id)[0]
-        train_dataset_name = list(set_dataset_name)[0]
+        job_id, train_dataset_name = self.get_allocation_judge_one_job(state)
 
         sub_train_datasetidentifier_2_epsilon_remain = state["current_sub_train_datasetidentifier_2_epsilon_remain"][train_dataset_name]
         sub_train_datasetidentifier_2_epsilon_capcity = state["current_sub_train_datasetidentifier_2_epsilon_capcity"][train_dataset_name]
@@ -229,6 +204,7 @@ class HISwithCPolicy(Policy):
         online_history_job_budget_consumes = self.online_history_job_budget_consumes
         online_history_job_signficance = self.online_history_job_significance
         online_history_job_target_datablock_selected_num = self.online_history_job_target_selected_num
+
         # assert target_datablock_select_num == 1
         
         if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < all_job_sequence_num:
@@ -265,7 +241,8 @@ class HISwithCPolicy(Policy):
                                 sub_train_datasetidentifier_2_significance,
                                 sub_train_datasetidentifier_2_epsilon_remain, 
                                 sub_train_datasetidentifier_2_epsilon_capcity,
-                                target_epsilon_require, target_datablock_select_num, job_priority_weight)
+                                target_epsilon_require, target_datablock_select_num, job_priority_weight,
+                                job_arrival_index, all_job_sequence_num)
    
         job_2_selected_datablock_identifiers = [
             (job_id, identifier) for identifier in selected_datablock_identifiers
@@ -273,76 +250,3 @@ class HISwithCPolicy(Policy):
         waiting_job_ids = []
         self.logger.debug("from policy [{}] selected_datablock_identifiers: {}".format(self.name , job_2_selected_datablock_identifiers))
         return job_2_selected_datablock_identifiers, waiting_job_ids, selected_real_sched_epsilon_map, calcu_compare_epsilon
-    
-    def push_offline_history_to_assignment_policy(self, offline_history_job_priority_weights, offline_history_job_budget_consumes,
-            offline_history_job_target_selected_num, offline_history_job_train_dataset_name, offline_history_job_test_dataset_name,
-            offline_history_job_sub_test_key_id, offline_history_job_type_id, offline_history_job_significance):
-        self.offline_history_job_priority_weights = offline_history_job_priority_weights
-        self.offline_history_job_budget_consumes = offline_history_job_budget_consumes
-        self.offline_history_job_target_selected_num = offline_history_job_target_selected_num
-        self.offline_history_job_train_dataset_name = offline_history_job_train_dataset_name
-        self.offline_history_job_test_dataset_name = offline_history_job_test_dataset_name
-        self.offline_history_job_sub_test_key_id = offline_history_job_sub_test_key_id
-        self.offline_history_job_type_id = offline_history_job_type_id
-        self.offline_history_job_significance = offline_history_job_significance
-
-    def push_online_history_to_assignment_policy(self, online_job_priority_weight, online_job_budget_consume, 
-            online_job_datablock_selected_num, online_job_train_dataset_name, online_job_test_dataset_name, 
-            online_job_sub_test_key_id, online_job_type_id, online_job_significance):
-        self.online_history_job_priority_weights.append(online_job_priority_weight)
-        self.online_history_job_budget_consumes.append(online_job_budget_consume)
-        self.online_history_job_target_selected_num.append(online_job_datablock_selected_num)
-        self.online_history_job_train_dataset_name.append(online_job_train_dataset_name)
-        self.online_history_job_test_dataset_name.append(online_job_test_dataset_name)
-        self.online_history_job_sub_test_key_id.append(online_job_sub_test_key_id)
-        self.online_history_job_type_id.append(online_job_type_id)
-        self.online_history_job_significance.append(online_job_significance)
-
-    def pull_offline_history_from_assignment_policy(self, target_keys):
-        result = {}
-        for key in target_keys:
-            if key == "offline_history_job_priority_weights":
-                result[key] = self.offline_history_job_priority_weights
-            if key == "offline_history_job_budget_consumes":
-                result[key] = self.offline_history_job_budget_consumes
-            if key == "offline_history_job_target_selected_num":
-                result[key] = self.offline_history_job_target_selected_num
-            if key == "offline_history_job_train_dataset_name":
-                result[key] = self.offline_history_job_train_dataset_name
-            if key == "offline_history_job_test_dataset_name":
-                result[key] = self.offline_history_job_test_dataset_name
-            if key == "offline_history_job_sub_test_key_id":
-                result[key] = self.offline_history_job_sub_test_key_id
-            if key == "offline_history_job_type_id":
-                result[key] = self.offline_history_job_type_id
-            if key == "offline_history_job_significance":
-                result[key] = self.offline_history_job_significance
-        return result
-
-    def pull_online_history_from_assignment_policy(self, target_keys):
-        result = {}
-        for key in target_keys:
-            if key == "online_history_job_priority_weights":
-                result[key] = self.online_history_job_priority_weights
-            if key == "online_history_job_budget_consumes":
-                result[key] = self.online_history_job_budget_consumes
-            if key == "online_history_job_target_selected_num":
-                result[key] = self.online_history_job_target_selected_num
-            if key == "online_history_job_train_dataset_name":
-                result[key] = self.online_history_job_train_dataset_name
-            if key == "online_history_job_test_dataset_name":
-                result[key] = self.online_history_job_test_dataset_name
-            if key == "online_history_job_sub_test_key_id":
-                result[key] = self.online_history_job_sub_test_key_id
-            if key == "online_history_job_type_id":
-                result[key] = self.online_history_job_type_id
-            if key == "online_history_job_significance":
-                result[key] = self.online_history_job_significance
-        return result
-
-    def update_offline_history_job_significance_to_assignment_policy(self, offline_history_job_significance):
-        self.offline_history_job_significance = offline_history_job_significance
-    
-    def update_online_history_job_significance_to_assignment_policy(self, online_history_job_significance):
-        self.online_history_job_significance = online_history_job_significance
-    

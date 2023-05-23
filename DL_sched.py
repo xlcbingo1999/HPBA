@@ -15,19 +15,22 @@ from utils.logging_tools import get_logger
 
 from policies.PBG import PBGPolicy
 from policies.PBGMix import PBGMixPolicy
-from policies.Sage import SagePolicy
+# from policies.Sage import SagePolicy
 from policies.SagewithRemain import SagewithRemainPolicy
-from policies.StreamingwithRemain import StreamingwithRemainPolicy
+# from policies.StreamingwithRemain import StreamingwithRemainPolicy
 from policies.BestFitwithRemain import BestFitwithRemainPolicy
-from policies.HIS import HISPolicy
-from policies.HISwithC import HISwithCPolicy
-from policies.HISwithOrderRemainVersion import HISwithOrderRemainVersionPolicy
+# from policies.HIS import HISPolicy
+# from policies.HISwithC import HISwithCPolicy
+# from policies.HISwithOrderRemainVersion import HISwithOrderRemainVersionPolicy
 from policies.HISwithOrderProVersion import HISwithOrderProVersionPolicy
-from policies.IterativeHIS import IterativeHISPolicy
+# from policies.HISwithOrderProVersionBestEffort import HISwithOrderProVersionBestEffortPolicy
+# from policies.IterativeHIS import IterativeHISPolicy
 from policies.IterativeHISwithOrderProVersion import IterativeHISwithOrderProVersionPolicy
-from policies.IterativeHISwithOrderRemainVersion import IterativeHISwithOrderRemainVersionPolicy
-from policies.DPF_HIS_event import DPFHISPolicy
+# from policies.IterativeHISwithOrderRemainVersion import IterativeHISwithOrderRemainVersionPolicy
+# from policies.IterativeHISwithOrderProVersionBestEffort import IterativeHISwithOrderProVersionBestEffortPolicy
+# from policies.DPF_HIS_event import DPFHISPolicy
 from policies.Offline import OfflinePolicy
+# from policies.OfflineBestEffort import OfflineBestEffortPolicy
 from significance_policies.HISOTDD import HISOTDDPolicy
 from significance_policies.Temp import TempPolicy
 from significance_policies.OTDD import OTDDPolicy
@@ -75,6 +78,11 @@ class Scheduler_server(object):
         self.simulation_queue = PriorityQueue()
         self.simulation_global_time = 0.0
 
+        self.all_or_nothing_flag = False
+        self.enable_waiting_flag = False
+        self.need_waiting_job_sched_flag = False # 当需要让waiting_job调度的时候就设置为true, 调度结束设置为false
+        self.need_new_job_sched_flag = True # 进入调度状态就设置为false(无论是waiting_job还是online_job的调度), 避免出现冲突
+
         self.all_stop = False
         self.all_finished = True
 
@@ -95,7 +103,7 @@ class Scheduler_server(object):
         self.sub_train_datasetidentifier_2_dataset_metadata = {}
         self.sub_train_datasetidentifier_2_epsilon_capacity = {}
         self.sub_train_datasetidentifier_2_epsilon_remain = {}
-        self.sub_train_datasetidentifier_2_submited_time = {}
+        self.sub_train_datasetidentifier_2_arrival_time = {}
         self.sub_train_datasetidentifier_2_exhausted_time = {}
         self.sub_train_datasetidentifier_2_train_type = {}
         self.test_datasetname_2_metadata = {}
@@ -104,7 +112,7 @@ class Scheduler_server(object):
         self.status_2_jobid = {
             JOB_STATUS_KEY.SIMULATION_NO_SUMBIT: [], 
             JOB_STATUS_KEY.NO_SCHE: [], 
-            JOB_STATUS_KEY.RECOMING: [],
+            JOB_STATUS_KEY.WAITING: [],
             JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL: [],
             JOB_STATUS_KEY.DONE_ALL_SCHED: [],
             JOB_STATUS_KEY.RUNNING: [], 
@@ -125,7 +133,7 @@ class Scheduler_server(object):
         self.jobid_2_real_epsilon = {}
         self.jobid_2_priority_weight = {}
 
-        self.jobid_2_submited_time = {}
+        self.jobid_2_arrival_time = {}
         self.jobid_2_started_time = {}
         self.jobid_2_finished_time = {}
         self.jobid_2_train_dataset_name = {}
@@ -165,13 +173,18 @@ class Scheduler_server(object):
         self.summary_writer_path = ""
         self.sched_logger = None
 
-    def initialize_simulation_flag(self, simulation, simulation_index):
+    def initialize_sched_configs(self, simulation, simulation_index, seed,
+                                current_test_all_dir, all_or_nothing_flag, enable_waiting_flag):
+        # simulation
         self.simulation = simulation
         self.simulation_index = simulation_index
 
-    def initialize_logging_path(self, current_test_all_dir, simulation_index):
-        # current_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
-        # self.current_test_all_dir = 'schedule-review-%s' % (current_time)
+        # seed
+        self.seed = seed
+        np.random.seed(seed)
+        random.seed(seed+1)
+
+        # logging path
         self.model_save_path = '{}/{}'.format(RESULT_PATH, current_test_all_dir)
         self.all_logger_path = '{}/{}'.format(RESULT_PATH, current_test_all_dir)
         self.summary_writer_path = '{}/{}'.format(RESULT_PATH, current_test_all_dir)
@@ -179,15 +192,15 @@ class Scheduler_server(object):
         sched_logger_path = '{}/DL_sched_{}.log'.format(self.all_logger_path, simulation_index)
         self.sched_logger = get_logger(sched_logger_path, sched_logger_path, enable_multiprocess=True)
 
-    def initialize_seeds(self, seed):
-        self.seed = seed
-        np.random.seed(seed)
-        random.seed(seed+1)
+        # all_or_nothing / waiting
+        self.all_or_nothing_flag = all_or_nothing_flag
+        self.enable_waiting_flag = enable_waiting_flag
+                
 
     def check_all_finished_or_failed(self):
         return (len(self.status_2_jobid[JOB_STATUS_KEY.SIMULATION_NO_SUMBIT]) <= 0
             and len(self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE]) <= 0 
-            and len(self.status_2_jobid[JOB_STATUS_KEY.RECOMING]) <= 0
+            and len(self.status_2_jobid[JOB_STATUS_KEY.WAITING]) <= 0
             and len(self.status_2_jobid[JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL]) <= 0
             and len(self.status_2_jobid[JOB_STATUS_KEY.DONE_ALL_SCHED]) <= 0
             and len(self.status_2_jobid[JOB_STATUS_KEY.RUNNING]) <= 0
@@ -196,7 +209,7 @@ class Scheduler_server(object):
     def get_all_no_finished_or_failed_jobs(self):
         return self.status_2_jobid[JOB_STATUS_KEY.SIMULATION_NO_SUMBIT] + \
             self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE] + \
-            self.status_2_jobid[JOB_STATUS_KEY.RECOMING] + \
+            self.status_2_jobid[JOB_STATUS_KEY.WAITING] + \
             self.status_2_jobid[JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL] + \
             self.status_2_jobid[JOB_STATUS_KEY.DONE_ALL_SCHED] + \
             self.status_2_jobid[JOB_STATUS_KEY.RUNNING]
@@ -211,6 +224,11 @@ class Scheduler_server(object):
         self.simulation_index = 0
         self.simulation_queue = PriorityQueue()
         self.simulation_global_time = 0.0
+
+        self.all_or_nothing_flag = False
+        self.enable_waiting_flag = False
+        self.need_waiting_job_sched_flag = False # 当需要让waiting_job调度的时候就设置为true, 调度结束设置为false
+        self.need_new_job_sched_flag = True # 进入调度状态就设置为false(无论是waiting_job还是online_job的调度), 避免出现冲突
 
         self.all_stop = False
         self.all_finished = True
@@ -227,7 +245,7 @@ class Scheduler_server(object):
         self.sub_train_datasetidentifier_2_dataset_metadata = {}
         self.sub_train_datasetidentifier_2_epsilon_capacity = {}
         self.sub_train_datasetidentifier_2_epsilon_remain = {}
-        self.sub_train_datasetidentifier_2_submited_time = {}
+        self.sub_train_datasetidentifier_2_arrival_time = {}
         self.sub_train_datasetidentifier_2_exhausted_time = {}
         self.sub_train_datasetidentifier_2_train_type = {}
         self.test_datasetname_2_metadata = {}
@@ -236,7 +254,7 @@ class Scheduler_server(object):
         self.status_2_jobid = {
             JOB_STATUS_KEY.SIMULATION_NO_SUMBIT: [], 
             JOB_STATUS_KEY.NO_SCHE: [], 
-            JOB_STATUS_KEY.RECOMING: [],
+            JOB_STATUS_KEY.WAITING: [],
             JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL: [],
             JOB_STATUS_KEY.DONE_ALL_SCHED: [],
             JOB_STATUS_KEY.RUNNING: [], 
@@ -257,7 +275,7 @@ class Scheduler_server(object):
         self.jobid_2_real_epsilon = {}
         self.jobid_2_priority_weight = {}
 
-        self.jobid_2_submited_time = {}
+        self.jobid_2_arrival_time = {}
         self.jobid_2_started_time = {}
         self.jobid_2_finished_time = {}
         self.jobid_2_train_dataset_name = {}
@@ -330,7 +348,7 @@ class Scheduler_server(object):
                 self.sub_train_datasetidentifier_2_dataset_metadata[init_dataset_name] = {}
                 self.sub_train_datasetidentifier_2_epsilon_capacity[init_dataset_name] = {}
                 self.sub_train_datasetidentifier_2_epsilon_remain[init_dataset_name] = {}
-                self.sub_train_datasetidentifier_2_submited_time[init_dataset_name] = {}
+                self.sub_train_datasetidentifier_2_arrival_time[init_dataset_name] = {}
                 self.sub_train_datasetidentifier_2_exhausted_time[init_dataset_name] = {}
             
             for identifier in dataset_identifier_2_capacity_map:
@@ -345,9 +363,9 @@ class Scheduler_server(object):
                 self.sub_train_datasetidentifier_2_epsilon_capacity[init_dataset_name][identifier] = dataset_identifier_2_capacity_map[identifier]
                 self.sub_train_datasetidentifier_2_epsilon_remain[init_dataset_name][identifier] = dataset_identifier_2_capacity_map[identifier]
                 if self.simulation:
-                    self.sub_train_datasetidentifier_2_submited_time[init_dataset_name][identifier] = self.simulation_global_time
+                    self.sub_train_datasetidentifier_2_arrival_time[init_dataset_name][identifier] = self.simulation_global_time
                 else:
-                    self.sub_train_datasetidentifier_2_submited_time[init_dataset_name][identifier] = time.time()
+                    self.sub_train_datasetidentifier_2_arrival_time[init_dataset_name][identifier] = time.time()
                 if self.assignment_policy.need_history:
                     # 这里必须对所有的offline和online历史记录都去计算一下新的significance!
                     offline_history_job_informations = self.assignment_policy.pull_offline_history_from_assignment_policy(
@@ -389,6 +407,23 @@ class Scheduler_server(object):
                         result_d_map = self.get_job_datablock_significance_sync(type_id, significance_state)
                         online_history_job_informations["online_history_job_significance"][online_index].update(result_d_map)
                     self.assignment_policy.update_online_history_job_significance_to_assignment_policy(online_history_job_informations["online_history_job_significance"])
+                if self.enable_waiting_flag:
+                    # self.sched_logger.debug(f"self.status_2_jobid[JOB_STATUS_KEY.WAITING]: {self.status_2_jobid[JOB_STATUS_KEY.WAITING]}")
+                    for waiting_job_id in self.status_2_jobid[JOB_STATUS_KEY.WAITING]:
+                        test_dataset_name = self.jobid_2_test_dataset_name[waiting_job_id]
+                        sub_test_key_id = self.jobid_2_sub_test_key_id[waiting_job_id]
+                        train_dataset_name = self.jobid_2_train_dataset_name[waiting_job_id]
+                        type_id = self.jobid_2_typeid[waiting_job_id]
+                        significance_state = [{
+                            "test_dataset_name": test_dataset_name,
+                            "sub_test_key_id": sub_test_key_id,
+                            "train_dataset_name": train_dataset_name,
+                            "sub_train_key_id": identifier
+                        }]
+                        result_d_map = self.get_job_datablock_significance_sync(type_id, significance_state)
+                        
+                        self.jobid_2_target_significance[waiting_job_id].update(result_d_map)
+                        
 
         self.sched_logger.info("init_subtrain_datasets_map {}".format(init_subtrain_datasets_map))
     
@@ -423,7 +458,7 @@ class Scheduler_server(object):
             self.jobid_2_target_epsilon[id] = target_epsilon_consume
             self.jobid_2_sched_epsilon[id] = 0
             self.jobid_2_real_epsilon[id] = 0
-            self.jobid_2_submited_time[id] = origin_info["time"]
+            self.jobid_2_arrival_time[id] = origin_info["time"]
             self.jobid_2_priority_weight[id] = origin_info["priority_weight"]
             train_dataset_name = origin_info["train_dataset_name"]
             self.jobid_2_train_dataset_name[id] = train_dataset_name
@@ -458,6 +493,7 @@ class Scheduler_server(object):
         offline_history_job_sub_test_key_id = []
         offline_history_job_significance = []
         offline_history_job_type_id = []
+        offline_history_job_arrival_time = []
         for id in sorted(history_jobs_map):
             # target_job_epoch_num = history_jobs_map[id]["TARGET_EPOCHS"]
             offline_history_job_priority_weights.append(history_jobs_map[id]["priority_weight"])
@@ -479,6 +515,9 @@ class Scheduler_server(object):
             
             type_id = history_jobs_map[id]["job_type"]
             offline_history_job_type_id.append(type_id)
+
+            arrival_time = history_jobs_map[id]["time"]
+            offline_history_job_arrival_time.append(arrival_time)
 
             all_significance_state = []
             for sub_train_key_id in self.sub_train_datasetidentifier_2_dataset_status[train_dataset_name]:
@@ -502,7 +541,8 @@ class Scheduler_server(object):
                 offline_history_job_test_dataset_name,
                 offline_history_job_sub_test_key_id,
                 offline_history_job_type_id,
-                offline_history_job_significance
+                offline_history_job_significance,
+                offline_history_job_arrival_time
             )
         self.finished_update_init_history_jobs = True
 
@@ -548,13 +588,25 @@ class Scheduler_server(object):
                         self.update_jobs(next_event.metadata)
                         job_id, info = list(next_event.metadata.items())[0]
                         dispatchers.add((info["dispatcher_ip"], info["dispatcher_port"]))
+                        self.simulation_queue.put(SchedEvent(self.simulation_global_time, EVENT_KEY.JOB_SIGCAL_SCHED_RUNNING, {}))
+                    if next_event.event_key == EVENT_KEY.JOB_SIGCAL_SCHED_RUNNING:
                         self.calculate_significance_for_nosched_jobs()
-                        self.sched_dataset_for_done_significance_cal_jobs()
+                        if self.enable_waiting_flag and self.need_waiting_job_sched_flag:
+                            self.need_new_job_sched_flag = False # 此时不能让其他任务进来
+                            # 先进行waiting_job的决策
+                            self.sched_dataset_for_jobs(JOB_STATUS_KEY.WAITING)
+                            self.need_waiting_job_sched_flag = False # 决策完就不再需要了
+                            self.need_new_job_sched_flag = True
+                        if self.need_new_job_sched_flag:
+                            self.sched_dataset_for_jobs(JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL)
                         self.placement_dispatch_for_allsched_jobs()
                     elif next_event.event_key == EVENT_KEY.HISTORY_JOB_SUBMIT:
                         self.update_history_jobs(next_event.metadata)
                     elif next_event.event_key == EVENT_KEY.DATABLOCK_ADD:
                         self.update_dataset(next_event.metadata)
+                        self.need_waiting_job_sched_flag = True # 新块到达时候需要进行一次waiting_job的决策
+                        if self.assignment_policy.all_job_has_coming: # 只有全部完成后, 但是调度决策还没有停止的时候才需要增加一个激活全局的调度事件
+                            self.simulation_queue.put(SchedEvent(self.simulation_global_time, EVENT_KEY.JOB_SIGCAL_SCHED_RUNNING, {}))
                     elif next_event.event_key == EVENT_KEY.TEST_START:
                         self.sched_logger.info("============= TEST_START =============")
                 
@@ -575,12 +627,15 @@ class Scheduler_server(object):
         p = threading.Thread(target=thread_func_sched_simulation, args=(subtrain_datasetidentifier_info, all_history_jobs_detail, all_jobs_detail))
         p.start()
 
-    def sche_timely_update_history_job(self, priority_weight, EPSILON, train_dataset_name, datablock_selected_num, test_dataset_name, sub_test_key_id, type_id, significance):
+    def sche_timely_update_history_job(self, priority_weight, 
+                                    EPSILON, train_dataset_name, datablock_selected_num, 
+                                    test_dataset_name, sub_test_key_id, 
+                                    type_id, significance, arrival_time):
         if self.assignment_policy.need_history:
             self.assignment_policy.push_online_history_to_assignment_policy(
                 priority_weight, EPSILON, datablock_selected_num, 
                 train_dataset_name, test_dataset_name, sub_test_key_id,
-                type_id, significance
+                type_id, significance, arrival_time
             )
         self.sched_logger.debug("success add a new history job")
 
@@ -594,7 +649,8 @@ class Scheduler_server(object):
         self.sche_timely_update_history_job(self.jobid_2_priority_weight[job_id], self.jobid_2_target_epsilon[job_id],
                                             self.jobid_2_train_dataset_name[job_id], self.jobid_2_datablock_selected_num[job_id],
                                             self.jobid_2_test_dataset_name[job_id], self.jobid_2_sub_test_key_id[job_id], 
-                                            self.jobid_2_typeid[job_id], self.jobid_2_target_significance[job_id])
+                                            self.jobid_2_typeid[job_id], self.jobid_2_target_significance[job_id],
+                                            self.jobid_2_arrival_time[job_id])
 
     def report_status(self, location):
         self.sched_logger.debug("======== Scheduler Status in {} ========".format(location))
@@ -605,7 +661,7 @@ class Scheduler_server(object):
         current_done_sig_num = len(self.status_2_jobid[JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL])
         current_done_sche_num = len(self.status_2_jobid[JOB_STATUS_KEY.DONE_ALL_SCHED])
         current_running_num = len(self.status_2_jobid[JOB_STATUS_KEY.RUNNING])
-        current_recoming_num = len(self.status_2_jobid[JOB_STATUS_KEY.RECOMING])
+        current_recoming_num = len(self.status_2_jobid[JOB_STATUS_KEY.WAITING])
 
         self.sched_logger.debug("current_success_num: {}; current_failed_num: {}; current_no_submit_num: {}; current_no_sche_num: {};".format(
             current_success_num, current_failed_num, current_no_submit_num, current_no_sche_num
@@ -665,7 +721,8 @@ class Scheduler_server(object):
 
     def get_runtime_state(self, job_id_2_train_dataset_name, job_id_2_target_epsilon_require, 
                         job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
-                        job_id_2_test_dataset_name, job_id_2_sub_test_key_id, job_id_2_target_significance, job_id_2_arrival_index):
+                        job_id_2_test_dataset_name, job_id_2_sub_test_key_id, job_id_2_target_significance, 
+                        job_id_2_arrival_index, job_id_2_arrival_time):
         state = {}
         state["job_id_2_train_dataset_name"] = job_id_2_train_dataset_name
         state["job_id_2_target_epsilon_require"] = job_id_2_target_epsilon_require
@@ -675,11 +732,13 @@ class Scheduler_server(object):
         state["job_id_2_sub_test_key_id"] = job_id_2_sub_test_key_id
         state["job_id_2_significance"] = job_id_2_target_significance
         state["job_id_2_arrival_index"] = job_id_2_arrival_index
+        state["job_id_2_arrival_time"] = job_id_2_arrival_time
 
         state["current_sub_train_datasetidentifier_2_epsilon_remain"] = copy.deepcopy(self.sub_train_datasetidentifier_2_epsilon_remain)
         state["current_sub_train_datasetidentifier_2_epsilon_capcity"] = copy.deepcopy(self.sub_train_datasetidentifier_2_epsilon_capacity)
+        state["current_sub_train_datasetidentifier_2_arrival_time"] = copy.deepcopy(self.sub_train_datasetidentifier_2_arrival_time)
  
-        self.sched_logger.debug("get state current_sub_train_datasetidentifier_2_epsilon_remain: {}".format(self.sub_train_datasetidentifier_2_epsilon_remain))
+        # self.sched_logger.debug("get state current_sub_train_datasetidentifier_2_epsilon_remain: {}".format(self.sub_train_datasetidentifier_2_epsilon_remain))
         return state
     
     # def get_significance_state(self, policy, train_dataset_name, datablock_identifier, test_type, target_epsilon_consume):
@@ -694,16 +753,18 @@ class Scheduler_server(object):
     def get_scheduling_datablock_result_from_policy(self, job_id_2_dataset_name, job_id_2_target_epsilon_require, 
                                         job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
                                         job_id_2_test_dataset_name, job_id_2_sub_test_key_id, 
-                                        job_id_2_target_significance, job_id_2_arrival_index):
-        job_2_selected_datablock_identifiers = []
+                                        job_id_2_target_significance, job_id_2_arrival_index, job_id_2_arrival_time):
+        job_2_selected_datablock_identifiers = {}
         # 在这里接入算法?
         state = self.get_runtime_state(job_id_2_dataset_name, job_id_2_target_epsilon_require, 
                                     job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
                                     job_id_2_test_dataset_name, job_id_2_sub_test_key_id, 
-                                    job_id_2_target_significance, job_id_2_arrival_index)
-        job_2_selected_datablock_identifiers, waiting_job_ids, selected_real_sched_epsilon_map, calcu_compare_epsilon = self.assignment_policy.get_allocation(state)
+                                    job_id_2_target_significance, job_id_2_arrival_index, job_id_2_arrival_time)
+        job_2_selected_datablock_identifiers, waiting_job_ids, \
+            selected_real_sched_epsilon_map, calcu_compare_epsilon, need_waiting_job_sched = \
+            self.assignment_policy.get_allocation(state, self.all_or_nothing_flag, self.enable_waiting_flag)
         # not_selected_datablock_identifiers = [tu[0] for tu in sub_train_sort[target_datablock_select_num:]]
-        return job_2_selected_datablock_identifiers, waiting_job_ids, selected_real_sched_epsilon_map, calcu_compare_epsilon
+        return job_2_selected_datablock_identifiers, waiting_job_ids, selected_real_sched_epsilon_map, calcu_compare_epsilon, need_waiting_job_sched
 
     def push_success_scheduling_result_to_policy(self, success_datasetidentifier_2_consume_epsilon):
         self.assignment_policy.push_success_allocation(success_datasetidentifier_2_consume_epsilon)
@@ -820,6 +881,9 @@ class Scheduler_server(object):
             if origin_status == JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL:
                 update_path = JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_ALLSCHED
                 new_status = JOB_STATUS_KEY.DONE_ALL_SCHED
+            elif origin_status == JOB_STATUS_KEY.WAITING:
+                update_path = JOB_STATUS_UPDATE_PATH.WAITING_2_ALLSCHED
+                new_status = JOB_STATUS_KEY.DONE_ALL_SCHED
         elif operator == "significance":
             if origin_status == JOB_STATUS_KEY.NO_SCHE:
                 update_path = JOB_STATUS_UPDATE_PATH.NOSCHED_2_SIGNIFICANCE
@@ -837,23 +901,19 @@ class Scheduler_server(object):
             elif origin_status == JOB_STATUS_KEY.RUNNING:
                 update_path = JOB_STATUS_UPDATE_PATH.RUNNING_2_FAILED
                 new_status = JOB_STATUS_KEY.FAILED
-        elif operator == "wait_recoming":
+        elif operator == "wait":
             if origin_status == JOB_STATUS_KEY.DONE_ALL_SCHED:
                 update_path = JOB_STATUS_UPDATE_PATH.ALLSCHED_2_RECOMING
-                new_status = JOB_STATUS_KEY.RECOMING
+                new_status = JOB_STATUS_KEY.WAITING
             elif origin_status == JOB_STATUS_KEY.RUNNING:
                 update_path = JOB_STATUS_UPDATE_PATH.RUNNING_2_RECOMING
-                new_status = JOB_STATUS_KEY.RECOMING
+                new_status = JOB_STATUS_KEY.WAITING
             elif origin_status == JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL:
                 update_path = JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_RECOMING
-                new_status = JOB_STATUS_KEY.RECOMING
+                new_status = JOB_STATUS_KEY.WAITING
             elif origin_status == JOB_STATUS_KEY.NO_SCHE:
                 update_path = JOB_STATUS_UPDATE_PATH.NOSCHED_2_RECOMING
-                new_status = JOB_STATUS_KEY.RECOMING
-        elif operator == "real_recoming":
-            if origin_status == JOB_STATUS_KEY.RECOMING:
-                update_path = JOB_STATUS_UPDATE_PATH.RECOMING_2_NOSCHED
-                new_status = JOB_STATUS_KEY.NO_SCHE
+                new_status = JOB_STATUS_KEY.WAITING
         elif operator == "finished":
             if origin_status == JOB_STATUS_KEY.NO_SCHE:
                 update_path = JOB_STATUS_UPDATE_PATH.NOSCHED_2_FINISHED
@@ -880,6 +940,9 @@ class Scheduler_server(object):
         if status_update_path == JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_ALLSCHED:
             origin_status = JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL
             target_status = JOB_STATUS_KEY.DONE_ALL_SCHED
+        elif status_update_path == JOB_STATUS_UPDATE_PATH.WAITING_2_ALLSCHED:
+            origin_status = JOB_STATUS_KEY.WAITING
+            target_status = JOB_STATUS_KEY.DONE_ALL_SCHED
         # significance
         elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_SIGNIFICANCE:
             origin_status = JOB_STATUS_KEY.NO_SCHE
@@ -900,20 +963,16 @@ class Scheduler_server(object):
         # wait_recoming
         elif status_update_path == JOB_STATUS_UPDATE_PATH.ALLSCHED_2_RECOMING:
             origin_status = JOB_STATUS_KEY.DONE_ALL_SCHED
-            target_status = JOB_STATUS_KEY.RECOMING
+            target_status = JOB_STATUS_KEY.WAITING
         elif status_update_path == JOB_STATUS_UPDATE_PATH.RUNNING_2_RECOMING:
             origin_status = JOB_STATUS_KEY.RUNNING
-            target_status = JOB_STATUS_KEY.RECOMING
+            target_status = JOB_STATUS_KEY.WAITING
         elif status_update_path == JOB_STATUS_UPDATE_PATH.SIGNIFICANCE_2_RECOMING:
             origin_status = JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL
-            target_status = JOB_STATUS_KEY.RECOMING
+            target_status = JOB_STATUS_KEY.WAITING
         elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_RECOMING:
             origin_status = JOB_STATUS_KEY.NO_SCHE
-            target_status = JOB_STATUS_KEY.RECOMING
-        # real_recoming
-        elif status_update_path == JOB_STATUS_UPDATE_PATH.RECOMING_2_NOSCHED:
-            origin_status = JOB_STATUS_KEY.RECOMING
-            target_status = JOB_STATUS_KEY.NO_SCHE
+            target_status = JOB_STATUS_KEY.WAITING
         # finished
         elif status_update_path == JOB_STATUS_UPDATE_PATH.NOSCHED_2_FINISHED:
             origin_status = JOB_STATUS_KEY.NO_SCHE
@@ -946,10 +1005,11 @@ class Scheduler_server(object):
             sub_train_index_2_significance[index] = signi
         # 将所有为None的提取出来, 异步请求一下
         async_indexes = [k for k, v in sub_train_index_2_significance.items() if v is None]
-        for index in async_indexes:
-            self.sched_logger.warning("enter into get_job_datablock_significance_async!")
-            result_d = self.significance_policy.get_job_datablock_significance_async(type_id, all_significance_state[index], device_index, is_history)
-            sub_train_index_2_significance[index] = result_d
+        if len(async_indexes) > 0:
+            for index in async_indexes:
+                self.sched_logger.warning("enter into get_job_datablock_significance_async!")
+                result_d = self.significance_policy.get_job_datablock_significance_async(type_id, all_significance_state[index], device_index, is_history)
+                sub_train_index_2_significance[index] = result_d
         # 最终返回: {sub_train_key_id: value}
         sub_train_datasetidentifier_2_significance = {
             all_significance_state[key]["sub_train_key_id"]: value for key, value in sub_train_index_2_significance.items()
@@ -1030,63 +1090,100 @@ class Scheduler_server(object):
             self.jobid_2_real_significance[job_id] = copy.deepcopy(self.jobid_2_target_significance[job_id])
             self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.NO_SCHE, JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL)
 
-    def sched_dataset_for_done_significance_cal_jobs(self):
-        all_done_sig_cal_jobs_copy = copy.deepcopy(self.status_2_jobid[JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL])
-        if len(all_done_sig_cal_jobs_copy) <= 0:
+    def sched_dataset_for_jobs(self, sched_job_origin_state):
+        assert sched_job_origin_state == JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL or sched_job_origin_state == JOB_STATUS_KEY.WAITING
+        self.sched_logger.info(f"sched_dataset_for_jobs in {sched_job_origin_state}")
+        need_operator_jobs = self.status_2_jobid[sched_job_origin_state]
+        if len(need_operator_jobs) <= 0:
             return
-        if self.assignment_policy.only_one:
-            all_done_sig_cal_jobs_copy = [all_done_sig_cal_jobs_copy[0]]
+        if self.assignment_policy.only_one: # 这里其实应该改成一个for循环, 一次一次来, 直到当前所有的新来的任务完成决策
+            for operator_job in need_operator_jobs:
+                current_operator_jobs = [operator_job]
+                self.sched_dataset_for_current_operator_jobs(current_operator_jobs, sched_job_origin_state)
+        else:
+            self.sched_dataset_for_current_operator_jobs(need_operator_jobs, sched_job_origin_state)
         
-        job_id_2_dataset_name = {job_id: self.jobid_2_train_dataset_name[job_id] for job_id in all_done_sig_cal_jobs_copy}
-        job_id_2_target_epsilon_require = {job_id: self.jobid_2_target_epsilon[job_id] for job_id in all_done_sig_cal_jobs_copy}
-        job_id_2_target_datablock_selected_num = {job_id: self.jobid_2_datablock_selected_num[job_id] for job_id in all_done_sig_cal_jobs_copy}
-        job_id_2_job_priority_weight = {job_id: self.jobid_2_priority_weight[job_id] for job_id in all_done_sig_cal_jobs_copy}
-        job_id_2_test_dataset_name = {job_id: self.jobid_2_test_dataset_name[job_id] for job_id in all_done_sig_cal_jobs_copy}
-        job_id_2_sub_test_key_id = {job_id: self.jobid_2_sub_test_key_id[job_id] for job_id in all_done_sig_cal_jobs_copy}
-        job_id_2_target_significance = {job_id: self.jobid_2_target_significance[job_id] for job_id in all_done_sig_cal_jobs_copy}
-        job_id_2_arrival_index = {job_id: self.jobid_2_arrival_index[job_id] for job_id in all_done_sig_cal_jobs_copy}
-        
+    def sched_dataset_for_current_operator_jobs(self, current_operator_jobs, sched_job_origin_state):
+        job_id_2_dataset_name = {job_id: self.jobid_2_train_dataset_name[job_id] for job_id in current_operator_jobs}
+        job_id_2_target_epsilon_require = {job_id: self.jobid_2_target_epsilon[job_id] for job_id in current_operator_jobs}
+        job_id_2_target_datablock_selected_num = {job_id: self.jobid_2_datablock_selected_num[job_id] for job_id in current_operator_jobs}
+        job_id_2_job_priority_weight = {job_id: self.jobid_2_priority_weight[job_id] for job_id in current_operator_jobs}
+        job_id_2_test_dataset_name = {job_id: self.jobid_2_test_dataset_name[job_id] for job_id in current_operator_jobs}
+        job_id_2_sub_test_key_id = {job_id: self.jobid_2_sub_test_key_id[job_id] for job_id in current_operator_jobs}
+        job_id_2_target_significance = {job_id: self.jobid_2_target_significance[job_id] for job_id in current_operator_jobs}
+        job_id_2_arrival_index = {job_id: self.jobid_2_arrival_index[job_id] for job_id in current_operator_jobs}
+        job_id_2_arrival_time = {job_id: self.jobid_2_arrival_time[job_id] for job_id in current_operator_jobs}
         # 为没有决定分配方案的任务决定分配方案
-        job_2_selected_datablock_identifiers, waiting_job_ids, selected_real_sched_epsilon_map, calcu_compare_epsilon = \
+        job_2_selected_datablock_identifiers, waiting_job_ids, \
+            selected_real_sched_epsilon_map, calcu_compare_epsilon, need_waiting_job_sched = \
             self.get_scheduling_datablock_result_from_policy(job_id_2_dataset_name, 
                 job_id_2_target_epsilon_require, job_id_2_target_datablock_selected_num, job_id_2_job_priority_weight, 
-                job_id_2_test_dataset_name, job_id_2_sub_test_key_id, job_id_2_target_significance, job_id_2_arrival_index)
-        success_sched_job_ids = set()
+                job_id_2_test_dataset_name, job_id_2_sub_test_key_id, 
+                job_id_2_target_significance, job_id_2_arrival_index, job_id_2_arrival_time)
+        self.need_waiting_job_sched_flag = need_waiting_job_sched
+
+        job_id_2_policy_sched_datablocks_num = {}
         success_datasetidentifier_2_consume_epsilon = {}
+        success_sched_job_ids = set()
         if len(job_2_selected_datablock_identifiers) > 0:
-            for temp_job_id, identifier in job_2_selected_datablock_identifiers:
-                consume_epsilon = selected_real_sched_epsilon_map[(temp_job_id, identifier)] 
+            temp_copy_sub_train_datasetidentifier_2_epsilon_remain = copy.deepcopy(
+                self.sub_train_datasetidentifier_2_epsilon_remain
+            )
+            for temp_job_id, selected_datablock_identifiers in job_2_selected_datablock_identifiers.items():
                 dataset_name = job_id_2_dataset_name[temp_job_id]
-                if self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] >= consume_epsilon:
-                    self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] -= consume_epsilon # calcu_compare_epsilon
-                    self.jobid_2_sched_epsilon[temp_job_id] = consume_epsilon
-                    self.jobid_2_real_significance[temp_job_id][identifier] = (self.jobid_2_sched_epsilon[temp_job_id] / self.jobid_2_target_epsilon[temp_job_id]) * self.jobid_2_target_significance[temp_job_id][identifier]
-                    if temp_job_id not in self.jobid_2_sub_train_key_ids:
-                        self.jobid_2_sub_train_key_ids[temp_job_id] = []
-                    self.jobid_2_sub_train_key_ids[temp_job_id].append(identifier)
-                    
+                if self.all_or_nothing_flag and len(selected_datablock_identifiers) != job_id_2_target_datablock_selected_num[temp_job_id]:
+                    continue
+                job_temp_sched_success_flag = True
+                for identifier in selected_datablock_identifiers:
+                    consume_epsilon = selected_real_sched_epsilon_map[(temp_job_id, identifier)]
+                    if consume_epsilon > temp_copy_sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier]:
+                        job_temp_sched_success_flag = False
+                        break
+                    else:
+                        temp_copy_sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] -= consume_epsilon
+                if job_temp_sched_success_flag:
                     success_sched_job_ids.add(temp_job_id)
+                else:
+                    self.sched_logger.warning(f"it's wrong! temp_job_id[{temp_job_id}] has not choice consume: {consume_epsilon}; capacity: {temp_copy_sub_train_datasetidentifier_2_epsilon_remain}")
+                    continue
+                
+            # 实质调度
+            for temp_job_id in success_sched_job_ids:
+                dataset_name = job_id_2_dataset_name[temp_job_id]
+                selected_datablock_identifiers = job_2_selected_datablock_identifiers[temp_job_id]
+                for identifier in selected_datablock_identifiers:
+                    consume_epsilon = selected_real_sched_epsilon_map[(temp_job_id, identifier)] 
+                    
+                    self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] -= consume_epsilon
+                    if self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] <= 0.0:
+                        self.sub_train_datasetidentifier_2_dataset_status[dataset_name][identifier] = DATASET_STATUS_KEY.EXHAUST
+                        if self.simulation:
+                            self.sub_train_datasetidentifier_2_exhausted_time[dataset_name][identifier] = self.simulation_global_time
+                        else:
+                            self.sub_train_datasetidentifier_2_exhausted_time[dataset_name][identifier] = time.time()
                     if dataset_name not in success_datasetidentifier_2_consume_epsilon:
                         success_datasetidentifier_2_consume_epsilon[dataset_name] = {}
                     if identifier not in success_datasetidentifier_2_consume_epsilon[dataset_name]:
                         success_datasetidentifier_2_consume_epsilon[dataset_name][identifier] = 0.0
                     success_datasetidentifier_2_consume_epsilon[dataset_name][identifier] += consume_epsilon
-                if self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] <= 0.0:
-                    self.sub_train_datasetidentifier_2_dataset_status[dataset_name][identifier] = DATASET_STATUS_KEY.EXHAUST
-                    if self.simulation:
-                        self.sub_train_datasetidentifier_2_exhausted_time[dataset_name][identifier] = self.simulation_global_time
-                    else:
-                        self.sub_train_datasetidentifier_2_exhausted_time[dataset_name][identifier] = time.time()
+                    self.jobid_2_sched_epsilon[temp_job_id] = consume_epsilon
+                    self.jobid_2_real_significance[temp_job_id][identifier] = (self.jobid_2_sched_epsilon[temp_job_id] / self.jobid_2_target_epsilon[temp_job_id]) * self.jobid_2_target_significance[temp_job_id][identifier]
+                    if temp_job_id not in self.jobid_2_sub_train_key_ids:
+                        self.jobid_2_sub_train_key_ids[temp_job_id] = []
+                    self.jobid_2_sub_train_key_ids[temp_job_id].append(identifier)
         
         self.sched_logger.info("final true success Jobs selected datablock identifiers: {}".format(success_sched_job_ids))
         self.push_success_scheduling_result_to_policy(success_datasetidentifier_2_consume_epsilon)
 
         # 不管是否进行数据块的分配, 都应该增加
-        for temp_job_id in all_done_sig_cal_jobs_copy:
-            # self.jobid_2_current_epochs[temp_job_id] += self.jobid_2_update_sched_epoch_num[temp_job_id]
-            self.job_add_to_history(temp_job_id)
+        if self.enable_waiting_flag:
+            for temp_job_id in success_sched_job_ids:
+                self.job_add_to_history(temp_job_id)
+        else:
+            for temp_job_id in current_operator_jobs:
+                self.job_add_to_history(temp_job_id)
 
-        need_failed_job = copy.deepcopy(all_done_sig_cal_jobs_copy)
+        need_failed_job = copy.deepcopy(current_operator_jobs)
         for temp_job_id in success_sched_job_ids:
             self.sched_logger.debug(f"final true success jobid_2_sub_train_key_ids [{temp_job_id}] <=> [{self.jobid_2_sub_train_key_ids[temp_job_id]}]")
             status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "dataset")
@@ -1094,11 +1191,14 @@ class Scheduler_server(object):
             self.sche_reflash_job_status(temp_job_id, origin_status_success, target_status_success)
             need_failed_job.remove(temp_job_id)
 
-        self.sched_logger.info("waiting_job_ids: {}".format(waiting_job_ids))
+        # self.sched_logger.info("waiting_job_ids: {}".format(waiting_job_ids))
         for temp_job_id in waiting_job_ids:
-            # 保持仍然为DONE_SIGNIFICANCE_CAL的状态
             need_failed_job.remove(temp_job_id)
-
+            if self.enable_waiting_flag and sched_job_origin_state != JOB_STATUS_KEY.WAITING:
+                status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "wait")
+                origin_status_success, target_status_success = self.get_job_status_update_origin_target(status_update_path)
+                self.sche_reflash_job_status(temp_job_id, origin_status_success, target_status_success)
+        
         for temp_job_id in need_failed_job:
             self.sched_logger.info("failed job scheduling [{}] first".format(temp_job_id))
             # TODO(xlc): 这里不应该直接设置为Failed状态, 而是考虑max_time的情况, 决定是否将任务放到NO_SCHED的状态, 同时需要知道模型的最新保存位置?
@@ -1124,6 +1224,8 @@ class Scheduler_server(object):
                 self.jobid_2_recoming_min_time[temp_job_id] = time.time() + self.recoming_time_interval
                 status_update_path, _ = self.get_target_job_status_update_path_and_status(temp_job_id, "wait_recoming")
             '''
+        self.sched_logger.debug(f"waiting job[{len(self.status_2_jobid[JOB_STATUS_KEY.WAITING])}]: {self.status_2_jobid[JOB_STATUS_KEY.WAITING]}")
+        self.sched_logger.debug(f"sub_train_datasetidentifier_2_epsilon_remain: {self.sub_train_datasetidentifier_2_epsilon_remain}")
         if not self.simulation:
             self.report_status("after sched_dataset_for_done_significance_cal_jobs")
 
@@ -1230,8 +1332,15 @@ class Scheduler_server(object):
 
     def sched_dispatch_start(self, scheduler_update_sleep_time):
         def thread_func_timely_schedule(scheduler_update_sleep_time):
-            while not self.all_finished and self.finished_update_init_history_jobs:
-                self.sched_dataset_for_done_significance_cal_jobs()
+            while (not self.all_finished) and self.finished_update_init_history_jobs:
+                if self.enable_waiting_flag and self.need_waiting_job_sched_flag:
+                    self.need_new_job_sched_flag = False # 此时不能让其他任务进来
+                    # 先进行waiting_job的决策
+                    self.sched_dataset_for_jobs(JOB_STATUS_KEY.WAITING)
+                    self.need_waiting_job_sched_flag = False # 决策完就不再需要了
+                    self.need_new_job_sched_flag = True
+                if self.need_new_job_sched_flag:
+                    self.sched_dataset_for_jobs(JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL)
                 if not self.simulation:
                     time.sleep(scheduler_update_sleep_time)
             self.sched_logger.info("Thread [thread_func_timely_schedule] finished!")
@@ -1299,7 +1408,7 @@ class Scheduler_server(object):
         current_done_sig_num = len(self.status_2_jobid[JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL])
         current_done_sche_num = len(self.status_2_jobid[JOB_STATUS_KEY.DONE_ALL_SCHED])
         current_running_num = len(self.status_2_jobid[JOB_STATUS_KEY.RUNNING])
-        current_recoming_num = len(self.status_2_jobid[JOB_STATUS_KEY.RECOMING])
+        current_recoming_num = len(self.status_2_jobid[JOB_STATUS_KEY.WAITING])
 
         all_train_loss = 0.0
         all_train_accuracy = 0.0
@@ -1376,11 +1485,11 @@ class Scheduler_server(object):
         
     def sched_update_assignment_policy(self, assignment_policy, assignment_args):
         if assignment_policy == "PBGPolicy" or assignment_policy == "PBG":
-            comparison_cost_epsilon, comparison_z_threshold, L, U = assignment_args
-            policy_item = PBGPolicy(comparison_cost_epsilon, comparison_z_threshold, L, U, self.seed, self.sched_logger)
+            job_sequence_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U = assignment_args
+            policy_item = PBGPolicy(job_sequence_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, self.seed, self.sched_logger)
         elif assignment_policy == "PBGMixPolicy" or assignment_policy == "PBGMix":
-            comparison_cost_epsilon, comparison_z_threshold, L, U, gitta = assignment_args
-            policy_item = PBGMixPolicy(comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, self.seed, self.sched_logger)
+            job_sequence_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta = assignment_args
+            policy_item = PBGMixPolicy(job_sequence_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, self.seed, self.sched_logger)
         elif assignment_policy == "HISPolicy" or assignment_policy == "HIS":
             raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, job_sequence_all_num = assignment_args
@@ -1390,11 +1499,16 @@ class Scheduler_server(object):
             beta, job_sequence_all_num = assignment_args
             policy_item = HISwithCPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "HISwithOrderRemainVersionPolicy" or assignment_policy == "HISwithOrderRemainVersion":
+            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, job_sequence_all_num = assignment_args
             policy_item = HISwithOrderRemainVersionPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "HISwithOrderProVersionPolicy" or assignment_policy == "HISwithOrderProVersion":
             beta, job_sequence_all_num = assignment_args
             policy_item = HISwithOrderProVersionPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
+        elif assignment_policy == "HISwithOrderProVersionBestEffortPolicy" or assignment_policy == "HISwithOrderProVersionBestEffort":
+            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
+            beta, job_sequence_all_num = assignment_args
+            policy_item = HISwithOrderProVersionBestEffortPolicy(beta, job_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISPolicy" or assignment_policy == "IterativeHIS":
             raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
@@ -1403,8 +1517,13 @@ class Scheduler_server(object):
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
             policy_item = IterativeHISwithOrderProVersionPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISwithOrderRemainVersionPolicy" or assignment_policy == "IterativeHISwithOrderRemainVersion":
+            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
             policy_item = IterativeHISwithOrderRemainVersionPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
+        elif assignment_policy == "IterativeHISwithOrderProVersionBestEffortPolicy" or assignment_policy == "IterativeHISwithOrderProVersionBestEffort":
+            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
+            beta, batch_size_for_one_epoch, job_sequence_all_num = assignment_args
+            policy_item = IterativeHISwithOrderProVersionBestEffortPolicy(beta, job_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
         elif assignment_policy == "DPFHISPolicy" or assignment_policy == "DPFHIS":
             raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, waiting_queue_capacity, job_sequence_all_num = assignment_args
@@ -1413,15 +1532,21 @@ class Scheduler_server(object):
             raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             policy_item = SagePolicy(self.seed, self.sched_logger)
         elif assignment_policy == "SagewithRemainPolicy" or assignment_policy == "SagewithRemain":
-            policy_item = SagewithRemainPolicy(self.seed, self.sched_logger)
+            job_sequence_all_num = assignment_args
+            policy_item = SagewithRemainPolicy(job_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "StreamingwithRemainPolicy" or assignment_policy == "StreamingwithRemain":
             raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             policy_item = StreamingwithRemainPolicy(self.seed, self.sched_logger)
         elif assignment_policy == "BestFitwithRemainPolicy" or assignment_policy == "BestFitwithRemain":
-            policy_item = BestFitwithRemainPolicy(self.seed, self.sched_logger)
+            job_sequence_all_num = assignment_args
+            policy_item = BestFitwithRemainPolicy(job_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "OfflinePolicy" or assignment_policy == "Offline":
             job_sequence_all_num = assignment_args
             policy_item = OfflinePolicy(job_sequence_all_num, self.seed, self.sched_logger)
+        elif assignment_policy == "OfflineBestEffortPolicy" or assignment_policy == "OfflineBestEffort":
+            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
+            job_sequence_all_num = assignment_args
+            policy_item = OfflineBestEffortPolicy(job_sequence_all_num, self.seed, self.sched_logger)
         self.assignment_policy = policy_item
         self.assignment_policy.report_state()
 

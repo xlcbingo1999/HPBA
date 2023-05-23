@@ -1,4 +1,4 @@
-from policies.BasePolicy import Policy
+from policies.HISBase import HISBasePolicy
 import copy
 import random
 import numpy as np
@@ -15,9 +15,9 @@ class QueueItem(object):
         self.datablock_identifier = datablock_identifier 
         self.significance = significance
 
-class IterativeHISwithOrderRemainVersionPolicy(Policy):
+class IterativeHISwithOrderRemainVersionPolicy(HISBasePolicy):
     def __init__(self, beta, job_sequence_all_num, batch_size_for_one_epoch, seed, logger):
-        super().__init__()
+        super().__init__(beta, job_sequence_all_num, seed, logger)
         self._name = 'IterativeHISwithOrderRemainVersionPolicy'
         self.beta = beta
         self.z0 = 0.1
@@ -29,7 +29,7 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
         self.initialize_seeds(seed)
 
         
-        self.job_sequence_all_num = job_sequence_all_num
+        # self.job_sequence_all_num = job_sequence_all_num
         self.batch_size_for_one_epoch = batch_size_for_one_epoch
         self.all_epoch_num = np.ceil(self.job_sequence_all_num / self.batch_size_for_one_epoch)
         self.logger.info("check job_sequence_all_num: {}".format(self.job_sequence_all_num))
@@ -41,24 +41,6 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
         self.datablock_identifier_2_remain_epsilon = {}
 
         self.best_effort_jobs_queue = PriorityQueue()
-
-        self.offline_history_job_priority_weights = []
-        self.offline_history_job_budget_consumes = []
-        self.offline_history_job_target_selected_num = []
-        self.offline_history_job_train_dataset_name = []
-        self.offline_history_job_test_dataset_name = []
-        self.offline_history_job_sub_test_key_id = []
-        self.offline_history_job_type_id = []
-        self.offline_history_job_significance = []
-
-        self.online_history_job_priority_weights = []
-        self.online_history_job_budget_consumes = []
-        self.online_history_job_target_selected_num = []
-        self.online_history_job_train_dataset_name = []
-        self.online_history_job_test_dataset_name = []
-        self.online_history_job_sub_test_key_id = []
-        self.online_history_job_type_id = []
-        self.online_history_job_significance = []
     
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
@@ -76,7 +58,8 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
     def get_LP_result(self, sign_matrix, datablock_privacy_budget_capacity_list, job_target_datablock_selected_num_list, job_privacy_budget_consume_list, solver=cp.ECOS):
         begin_time = time.time()
         job_num, datablock_num = sign_matrix.shape[0], sign_matrix.shape[1]
-        self.logger.debug("job_num: {}; datablock_num: {}".format(job_num, datablock_num))
+        # self.logger.debug("job_num: {}; datablock_num: {}".format(job_num, datablock_num))
+        job_target_datablock_selected_num_list = np.array(job_target_datablock_selected_num_list)
         job_privacy_budget_consume_list = np.array(job_privacy_budget_consume_list)[np.newaxis, :]
         datablock_privacy_budget_capacity_list = np.array(datablock_privacy_budget_capacity_list)[np.newaxis, :]
 
@@ -151,7 +134,6 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
         
         datablock_privacy_budget_capacity_list = np.zeros(shape=sign_matrix.shape[1])
         datablock_privacy_budget_remain_list = np.zeros(shape=sign_matrix.shape[1])
-        job_target_datablock_selected_num_list = np.array(current_all_job_target_datablock_selected_nums)
 
         for temp_index in temp_index_2_datablock_identifier:
             datablock_privacy_budget_capacity_list[temp_index] = self.datablock_identifier_2_remain_epsilon[temp_index_2_datablock_identifier[temp_index]] + \
@@ -160,7 +142,12 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
         for temp_index, datablock_identifier in temp_index_2_datablock_identifier.items():
             datablock_privacy_budget_remain_list[temp_index] = sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier]
 
-        assign_result_matrix = self.get_LP_result(sign_matrix, datablock_privacy_budget_capacity_list, job_target_datablock_selected_num_list, current_all_job_budget_consumes)
+        assign_result_matrix = self.get_LP_result(
+            sign_matrix, 
+            datablock_privacy_budget_capacity_list, 
+            current_all_job_target_datablock_selected_nums, 
+            current_all_job_budget_consumes
+        )
         current_job_probability = assign_result_matrix[-1] # 这里其实相当于算出了一个分数, 如果为了这个分数不被泄露, 可以用指数机制加噪, 该方案被证实为满足DP-差分隐私.
         choose_indexes = []
         
@@ -235,13 +222,7 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
         return selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
 
     def get_allocation(self, state):
-        job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]
-        assert len(job_id_2_train_dataset_name) == 1
-        set_job_id = set(job_id_2_train_dataset_name.keys())
-        set_dataset_name = set(job_id_2_train_dataset_name.values())
-        assert len(set_dataset_name) == 1 # 必须保证所有的任务都是针对同一个数据集的
-        job_id = list(set_job_id)[0]
-        train_dataset_name = list(set_dataset_name)[0]
+        job_id, train_dataset_name = self.get_allocation_judge_one_job(state)
 
         sub_train_datasetidentifier_2_epsilon_remain = state["current_sub_train_datasetidentifier_2_epsilon_remain"][train_dataset_name]
         sub_train_datasetidentifier_2_epsilon_capcity = state["current_sub_train_datasetidentifier_2_epsilon_capcity"][train_dataset_name]
@@ -276,7 +257,7 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
             # TODO(xlc): 计算remain epsilon budget!
             for sub_train_dataset_identifier in sub_train_datasetidentifier_2_epsilon_capcity:
                 self.datablock_identifier_2_remain_epsilon[sub_train_dataset_identifier] += (self.datablock_identifier_2_epsilon_G[sub_train_dataset_identifier] / self.datablock_identifier_2_all_epoch_num[sub_train_dataset_identifier])
-            
+            need_waiting_job_sched = True
             self.logger.info("update datablock_identifier_2_remain_epsilon: {}".format(self.datablock_identifier_2_remain_epsilon))
 
         self.current_batch_size_for_one_epoch += 1
@@ -318,12 +299,12 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
                                 target_epsilon_require, target_datablock_select_num, job_priority_weight,
                                 job_arrival_index, all_job_sequence_num)
    
-        job_2_selected_datablock_identifiers = [
-            (job_id, identifier) for identifier in selected_datablock_identifiers
-        ]
+        job_2_selected_datablock_identifiers = {}
+        if len(selected_datablock_identifiers) > 0:
+            job_2_selected_datablock_identifiers[job_id] = selected_datablock_identifiers
         waiting_job_ids = []
         self.logger.debug("from policy [{}] selected_datablock_identifiers: {}".format(self.name , job_2_selected_datablock_identifiers))
-        return job_2_selected_datablock_identifiers, waiting_job_ids, selected_real_sched_epsilon_map, calcu_compare_epsilon
+        return job_2_selected_datablock_identifiers, waiting_job_ids, selected_real_sched_epsilon_map, calcu_compare_epsilon, need_waiting_job_sched
     
     def push_success_allocation(self, success_datasetidentifier_2_consume_epsilon):
         if len(success_datasetidentifier_2_consume_epsilon.keys()) <= 0:
@@ -341,76 +322,3 @@ class IterativeHISwithOrderRemainVersionPolicy(Policy):
                 self.logger.warning("datablock_identifier_2_remain_epsilon[{}] == {}".format(
                     datablock_identifier, self.datablock_identifier_2_remain_epsilon[datablock_identifier]
                 ))
-        
-    def push_offline_history_to_assignment_policy(self, offline_history_job_priority_weights, offline_history_job_budget_consumes,
-            offline_history_job_target_selected_num, offline_history_job_train_dataset_name, offline_history_job_test_dataset_name,
-            offline_history_job_sub_test_key_id, offline_history_job_type_id, offline_history_job_significance):
-        self.offline_history_job_priority_weights = offline_history_job_priority_weights
-        self.offline_history_job_budget_consumes = offline_history_job_budget_consumes
-        self.offline_history_job_target_selected_num = offline_history_job_target_selected_num
-        self.offline_history_job_train_dataset_name = offline_history_job_train_dataset_name
-        self.offline_history_job_test_dataset_name = offline_history_job_test_dataset_name
-        self.offline_history_job_sub_test_key_id = offline_history_job_sub_test_key_id
-        self.offline_history_job_type_id = offline_history_job_type_id
-        self.offline_history_job_significance = offline_history_job_significance
-
-    def push_online_history_to_assignment_policy(self, online_job_priority_weight, online_job_budget_consume, 
-            online_job_datablock_selected_num, online_job_train_dataset_name, online_job_test_dataset_name, 
-            online_job_sub_test_key_id, online_job_type_id, online_job_significance):
-        self.online_history_job_priority_weights.append(online_job_priority_weight)
-        self.online_history_job_budget_consumes.append(online_job_budget_consume)
-        self.online_history_job_target_selected_num.append(online_job_datablock_selected_num)
-        self.online_history_job_train_dataset_name.append(online_job_train_dataset_name)
-        self.online_history_job_test_dataset_name.append(online_job_test_dataset_name)
-        self.online_history_job_sub_test_key_id.append(online_job_sub_test_key_id)
-        self.online_history_job_type_id.append(online_job_type_id)
-        self.online_history_job_significance.append(online_job_significance)
-
-    def pull_offline_history_from_assignment_policy(self, target_keys):
-        result = {}
-        for key in target_keys:
-            if key == "offline_history_job_priority_weights":
-                result[key] = self.offline_history_job_priority_weights
-            if key == "offline_history_job_budget_consumes":
-                result[key] = self.offline_history_job_budget_consumes
-            if key == "offline_history_job_target_selected_num":
-                result[key] = self.offline_history_job_target_selected_num
-            if key == "offline_history_job_train_dataset_name":
-                result[key] = self.offline_history_job_train_dataset_name
-            if key == "offline_history_job_test_dataset_name":
-                result[key] = self.offline_history_job_test_dataset_name
-            if key == "offline_history_job_sub_test_key_id":
-                result[key] = self.offline_history_job_sub_test_key_id
-            if key == "offline_history_job_type_id":
-                result[key] = self.offline_history_job_type_id
-            if key == "offline_history_job_significance":
-                result[key] = self.offline_history_job_significance
-        return result
-
-    def pull_online_history_from_assignment_policy(self, target_keys):
-        result = {}
-        for key in target_keys:
-            if key == "online_history_job_priority_weights":
-                result[key] = self.online_history_job_priority_weights
-            if key == "online_history_job_budget_consumes":
-                result[key] = self.online_history_job_budget_consumes
-            if key == "online_history_job_target_selected_num":
-                result[key] = self.online_history_job_target_selected_num
-            if key == "online_history_job_train_dataset_name":
-                result[key] = self.online_history_job_train_dataset_name
-            if key == "online_history_job_test_dataset_name":
-                result[key] = self.online_history_job_test_dataset_name
-            if key == "online_history_job_sub_test_key_id":
-                result[key] = self.online_history_job_sub_test_key_id
-            if key == "online_history_job_type_id":
-                result[key] = self.online_history_job_type_id
-            if key == "online_history_job_significance":
-                result[key] = self.online_history_job_significance
-        return result
-
-    def update_offline_history_job_significance_to_assignment_policy(self, offline_history_job_significance):
-        self.offline_history_job_significance = offline_history_job_significance
-    
-    def update_online_history_job_significance_to_assignment_policy(self, online_history_job_significance):
-        self.online_history_job_significance = online_history_job_significance
-    

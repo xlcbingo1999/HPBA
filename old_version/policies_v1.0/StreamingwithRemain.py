@@ -20,7 +20,7 @@ class StreamingwithRemainPolicy(Policy):
     def initialize_seeds(self, seed):
         random.seed(seed+1)
     
-    def get_allocation(self, state):
+    def get_allocation(self, state, all_or_nothing_flag, enable_waiting_flag):
         job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]
         assert len(job_id_2_train_dataset_name) == 1
         set_job_id = set(job_id_2_train_dataset_name.keys())

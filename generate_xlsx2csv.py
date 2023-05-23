@@ -7,9 +7,9 @@ file_name = '20230510_privacy_new' # 'temp_get_result', 20230510_privacy_new
 
 sheet_name_2_result_file_name = {
     # "fig2_max_min_ratio": "fig_2",
-    "fig1_online_job_num": "fig_1",
+    # "fig1_online_job_num": "fig_1",
     # "fig6_HIS_history_change": "fig_6",
-    # "fig5_batch_size": "fig_5",
+    "fig5_batch_size": "fig_5",
     # "Sheet1": "temp_get_result"
 }
 # 定义输入的 Excel 文件路径

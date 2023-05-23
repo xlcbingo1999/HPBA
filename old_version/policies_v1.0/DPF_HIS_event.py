@@ -1,3 +1,4 @@
+'''
 from policies.BasePolicy import Policy
 import copy
 import random
@@ -292,3 +293,10 @@ class DPFHISPolicy(Policy):
                 result_dataset_identifier = dataset_identifier
         assert result_dataset_identifier != ""
         return result_dataset_identifier
+'''
+from policies.BasePolicy import Policy
+class DPFHISPolicy(Policy):
+    def __init__(self, beta, job_sequence_all_num, waiting_queue_capacity, seed, logger):
+        super().__init__()
+        self._name = 'DPFHISPolicy'
+        pass
