@@ -20,13 +20,17 @@ def get_specific_model_config(model_name):
         return {
             "BATCH_SIZE": 1024,
             "MAX_PHYSICAL_BATCH_SIZE": 512,
-            "TARGET_EPOCHS": 50
+            "TARGET_EPOCHS": 50,
+            "TAGRET_ACC": 0.7,
+            "SITON_RUN_EPOCH_NUM": 5
         }
     elif model_name == "FF":
         return {
             "BATCH_SIZE": 1024,
             "MAX_PHYSICAL_BATCH_SIZE": 512,
-            "TARGET_EPOCHS": 50
+            "TARGET_EPOCHS": 50,
+            "TAGRET_ACC": 0.6,
+            "SITON_RUN_EPOCH_NUM": 5
         }
 
 def generate_dataset(dataset_names, 
@@ -104,8 +108,8 @@ def change_epsilon_G(datablock_detail, new_epsilon):
     return datablock_detail
 
 def generate_normal_one_job(time, model_name, train_dataset_name, test_dataset_name, datablock_select_num, 
-                            BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPSILON, DELTA, 
-                            TARGET_EPOCHS, dispatcher_ip, dispatcher_port,
+                            BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPSILON_PER_EPOCH, DELTA, 
+                            TARGET_EPOCHS, SITON_RUN_EPOCH_NUM, TAGRET_ACC, dispatcher_ip, dispatcher_port,
                             is_history=False):
     if (is_history and time > 0) or (not is_history and time < 0):
         time = -time
@@ -119,14 +123,16 @@ def generate_normal_one_job(time, model_name, train_dataset_name, test_dataset_n
         "sub_test_key_id": "test_sub_0",
         "datablock_select_num": datablock_select_num,
         "LR": 1e-3,
-        "EPSILON": EPSILON,
+        "EPSILON": EPSILON_PER_EPOCH,
         "DELTA": DELTA,
-        # "update_sched_epoch_num": update_sched_epoch_num,
-        # "MAX_EPOCHS": TARGET_EPOCHS * 2,
+        "TARGET_EPOCHS": TARGET_EPOCHS,
+        "SITON_RUN_EPOCH_NUM": SITON_RUN_EPOCH_NUM,
         "MAX_GRAD_NORM": 1.2,
         "BATCH_SIZE": BATCH_SIZE,
         "MAX_PHYSICAL_BATCH_SIZE": MAX_PHYSICAL_BATCH_SIZE,
-        "TARGET_EPOCHS": TARGET_EPOCHS,
+        "TAGRET_ACC": TAGRET_ACC,
+        "simulation_init_test_acc": 0.2,
+        "siton_up_test_acc": 0.05,
         "priority_weight": 1.0,
         "dispatcher_ip": dispatcher_ip,
         "dispatcher_port": dispatcher_port,
@@ -144,7 +150,7 @@ def poisson_arrival_times(last_arrival_time, lambdas):
 def generate_jobs(all_num, 
                 per_epoch_EPSILONs, datablock_require_epsilon_max_ratio, change_job_epsilon_max_times, 
                 time_interval, need_change_interval, is_history, 
-                dispatcher_ip, dispatcher_port,
+                dispatcher_ip, dispatcher_port, enable_waiting_flag,
                 jobtrace_reconstruct_path="", save_path=""):
     if len(jobtrace_reconstruct_path) > 0:
         if is_history:
@@ -187,6 +193,10 @@ def generate_jobs(all_num,
         epsilon_data = np.random.uniform(per_epoch_EPSILONs[0], per_epoch_EPSILONs[1], size=all_num)
         epsilon_samples = np.random.choice(epsilon_data, size=all_num, replace=True)
         while current_decision_num < all_num:
+            if current_decision_num > 0:
+                current_lambda = 1 / time_interval
+                last_arrival_time = poisson_arrival_times(last_arrival_time, current_lambda)
+
             model_name_index_list = [i for i, _ in enumerate(models)]
             model_name_i = random.choices(model_name_index_list, weights=models_weights)[0]
             model_name = models[model_name_i]
@@ -195,6 +205,8 @@ def generate_jobs(all_num,
             BATCH_SIZE = details["BATCH_SIZE"]
             MAX_PHYSICAL_BATCH_SIZE = details["MAX_PHYSICAL_BATCH_SIZE"]
             TARGET_EPOCHS = details["TARGET_EPOCHS"]
+            SITON_RUN_EPOCH_NUM = details["SITON_RUN_EPOCH_NUM"] if enable_waiting_flag else details["TARGET_EPOCHS"]
+            TAGRET_ACC = details["TAGRET_ACC"]
             
             train_dataset_name = random.choices(train_dataset_names)[0]
 
@@ -209,13 +221,11 @@ def generate_jobs(all_num,
             EPSILON = epsilon_samples[current_decision_num]
             DELTA = 1e-8
 
-            if current_decision_num > 0:
-                current_lambda = 1 / time_interval
-                last_arrival_time = poisson_arrival_times(last_arrival_time, current_lambda)
             job = generate_normal_one_job(
                 last_arrival_time, model_name, train_dataset_name, test_dataset_name, datablock_select_num, 
                 BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPSILON, DELTA, 
-                TARGET_EPOCHS, dispatcher_ip, dispatcher_port, is_history
+                TARGET_EPOCHS, SITON_RUN_EPOCH_NUM, TAGRET_ACC, dispatcher_ip, dispatcher_port, 
+                is_history
             )
             jobs.append(job)
 
@@ -236,8 +246,9 @@ def generate_jobs(all_num,
 def generate_alibaba_jobs(all_num, 
                 time_speed_up, need_change_interval, is_history,
                 datablock_require_epsilon_max_ratio, min_epsilon_capacity, change_job_epsilon_max_times,
-                dispatcher_ip, dispatcher_port,
+                dispatcher_ip, dispatcher_port, enable_waiting_flag,
                 jobtrace_reconstruct_path="", save_path=""):
+    min_abs_time = float("inf")
     if len(jobtrace_reconstruct_path) > 0:
         if is_history:
             his_job_path = RESULT_PATH + "/{}/his_jobs.json".format(jobtrace_reconstruct_path)
@@ -250,6 +261,7 @@ def generate_alibaba_jobs(all_num,
 
         jobs = jobs[0:all_num] if all_num < len(jobs) else jobs
         current_decision_num = 0
+        
         print("change_job_epsilon_max_times: ", change_job_epsilon_max_times)
         for job_detail_index, job_detail in enumerate(jobs):
             jobs[job_detail_index] = change_dispatcher_ip_port(job_detail, dispatcher_ip, dispatcher_port)
@@ -259,15 +271,15 @@ def generate_alibaba_jobs(all_num,
                 old_time = job_detail["time"]
                 new_arrival_time = old_time / time_speed_up
                 jobs[job_detail_index] = change_arrival_time(job_detail, new_arrival_time)
-                
+            min_abs_time = min(min_abs_time, jobs[job_detail_index]["time"])
             current_decision_num += 1
     else:
-        alibaba_dp_trace_path = ALIBABA_DP_TRACE_PATH + "/privacy_tasks_30_days.csv"
+        alibaba_dp_trace_path = ALIBABA_DP_TRACE_PATH + "/privacy_tasks_30_days_extend.csv"
         df = pd.read_csv(alibaba_dp_trace_path)
         if datablock_require_epsilon_max_ratio is not None:
             max_job_epsilon_require = min_epsilon_capacity * datablock_require_epsilon_max_ratio
-            valid_sample_df = df[df["epsilon"] < max_job_epsilon_require]
-            print("min df[epsilon]: {}".format(min(df["epsilon"])))
+            valid_sample_df = df[df["epsilon_per_epoch"] < max_job_epsilon_require]
+            print("min df[epsilon_per_epoch]: {}".format(min(df["epsilon_per_epoch"])))
             print("check max_job_epsilon_require: {}".format(max_job_epsilon_require))
             print("check valid_sample_df: {}".format(len(valid_sample_df)))
         else:
@@ -282,7 +294,7 @@ def generate_alibaba_jobs(all_num,
                 else:
                     temp_df = valid_sample_df.copy()
                 result_df = pd.concat([result_df, temp_df])
-                # print("check result_df: len {}".format(len(result_df)))
+        result_df = result_df.sort_values("n_blocks")
         print("check result_df len: {}".format(len(result_df)))
 
         # 从一大堆里面生成
@@ -296,7 +308,6 @@ def generate_alibaba_jobs(all_num,
         
         jobs = []
         current_decision_num = 0
-        last_arrival_time = 0.0
         while current_decision_num < all_num:
             result_df_line = result_df.iloc[current_decision_num]
             model_name_index_list = [i for i, _ in enumerate(models)]
@@ -307,6 +318,8 @@ def generate_alibaba_jobs(all_num,
             BATCH_SIZE = details["BATCH_SIZE"]
             MAX_PHYSICAL_BATCH_SIZE = details["MAX_PHYSICAL_BATCH_SIZE"]
             TARGET_EPOCHS = details["TARGET_EPOCHS"]
+            SITON_RUN_EPOCH_NUM = details["SITON_RUN_EPOCH_NUM"] if enable_waiting_flag else details["TARGET_EPOCHS"]
+            TAGRET_ACC = details["TAGRET_ACC"]
             
             train_dataset_name = random.choices(train_dataset_names)[0]
 
@@ -315,9 +328,8 @@ def generate_alibaba_jobs(all_num,
             test_dataset_name = test_dataset_names[test_dataset_name_i]
 
             datablock_select_num = result_df_line["n_blocks"]
-            epsilon_all_epochs = result_df_line["epsilon"]
+            EPSILON_PER_EPOCH = result_df_line["epsilon_per_epoch"]
 
-            EPSILON = epsilon_all_epochs / TARGET_EPOCHS
             DELTA = result_df_line["delta"]
 
             if need_change_interval:
@@ -326,13 +338,29 @@ def generate_alibaba_jobs(all_num,
                 arrival_time = result_df_line["norm_submit_time"]
             job = generate_normal_one_job(
                 arrival_time, model_name, train_dataset_name, test_dataset_name, datablock_select_num, 
-                BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPSILON, DELTA, 
-                TARGET_EPOCHS, dispatcher_ip, dispatcher_port, is_history
+                BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPSILON_PER_EPOCH, DELTA, 
+                TARGET_EPOCHS, SITON_RUN_EPOCH_NUM, TAGRET_ACC, dispatcher_ip, dispatcher_port, 
+                is_history
             )
             jobs.append(job)
-
+            min_abs_time = min(min_abs_time, job["time"])
             current_decision_num += 1
         print("current_decision_num: {}".format(current_decision_num))
+
+    jobs = sorted(jobs, key=lambda x: x["time"])
+    # 各类归一化操作: 时间归一化
+    if len(jobs) > 0:
+        all_norm_time = []
+        all_time_interval = []
+        last_time = 0.0
+        for job_detail_index, job_detail in enumerate(jobs):
+            norm_time = job_detail["time"] - min_abs_time
+            jobs[job_detail_index] = change_arrival_time(job_detail, norm_time)
+            all_norm_time.append(norm_time)
+            all_time_interval.append(norm_time - last_time)
+            last_time = norm_time
+        print(f"norm_time => min: {np.min(all_norm_time)}; max: {np.max(all_norm_time)}")
+        print(f"all_time_interval => min: {np.min(all_time_interval)}; max: {np.max(all_time_interval)}; mean: {np.mean(all_time_interval)}")
 
     if len(save_path) > 0:
         if is_history:
@@ -354,6 +382,7 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
         with open(dataset_path, "r+") as f:
             temp_datasets_list = json.load(f)
         datasets_list = {}
+        time_2_datablock_num = {}
         current_num = 0
         for name in temp_datasets_list:
             if name not in datasets_list:
@@ -362,6 +391,10 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
                 datasets_list[name][sub_datablock_name] = temp_datasets_list[name][sub_datablock_name]
                 if change_datablock_epsilon_max_times != 1.0:
                     datasets_list[name][sub_datablock_name] = change_epsilon_G(temp_datasets_list[name][sub_datablock_name], temp_datasets_list[name][sub_datablock_name]["epsilon_capacity"]*change_datablock_epsilon_max_times)
+                arrival_time = datasets_list[name][sub_datablock_name]["time"]
+                if arrival_time not in time_2_datablock_num:
+                    time_2_datablock_num[arrival_time] = 0
+                time_2_datablock_num[arrival_time] += 1
                 current_num += 1
                 if current_num > num:
                     break
@@ -369,8 +402,9 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
                 break
     else:
         print("check dataset_names: {}".format(dataset_names))
-        online_time_iterval = 3600.0 * 4 / time_speed_up
+        online_time_iterval = 3600.0 * 4 / time_speed_up # 4个小时一个块?
         datasets_list = {}
+        time_2_datablock_num = {}
         for name in dataset_names:
             if name not in waiting_select_train_dataset_names:
                 continue
@@ -381,6 +415,9 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
                     arrival_time = -100.0
                 else:
                     arrival_time = online_time_iterval * (index - offline_num)
+                if arrival_time not in time_2_datablock_num:
+                    time_2_datablock_num[arrival_time] = 0
+                time_2_datablock_num[arrival_time] += 1
                 datasets_list[name][sub_datablock_name] = {
                     "submited": False,
                     "epsilon_capacity": fix_epsilon,
@@ -395,4 +432,4 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
         with open(dataset_path, "w+") as f:
             json.dump(datasets_list, f)
         print("save dataset trace in {}".format(dataset_path))
-    return datasets_list
+    return datasets_list, time_2_datablock_num

@@ -18,13 +18,13 @@ class WaitingJob(object):
         self.dominant_share = 0.0
 
 class OfflinePolicy(Policy):
-    def __init__(self, job_sequence_all_num, seed, logger):
-        super().__init__(job_sequence_all_num)
+    def __init__(self, pipeline_sequence_all_num, job_request_all_num, seed, logger):
+        super().__init__(pipeline_sequence_all_num, job_request_all_num)
         self._name = 'OfflinePolicy'
         # 保存一个unlocked的量
         self.waiting_queue = []
         self.waiting_queue_jobid_set = set()
-        self.waiting_queue_capacity = job_sequence_all_num
+        self.waiting_queue_capacity = job_request_all_num # TODO(xlc): 需要all_job_seq_num 
 
         self.only_one = False
         self.need_history = False
@@ -35,6 +35,7 @@ class OfflinePolicy(Policy):
         self.logger.info("policy name: {}".format(self._name))
     
     def get_allocation(self, state, all_or_nothing_flag, enable_waiting_flag):
+        assert not enable_waiting_flag
         need_waiting_job_sched = False
         job_id_2_target_epsilon_require = state["job_id_2_target_epsilon_require"]
         job_id_2_target_datablock_select_num = state["job_id_2_target_datablock_selected_num"]
@@ -128,7 +129,7 @@ class OfflinePolicy(Policy):
         job_privacy_budget_consume_list = np.array(job_privacy_budget_consume_list)[np.newaxis, :]
         datablock_privacy_budget_capacity_list = np.array(datablock_privacy_budget_capacity_list)[np.newaxis, :]
 
-        matrix_X = cp.Variable((job_num, datablock_num), nonneg=True)
+        matrix_X = cp.Variable((job_num, datablock_num), boolean=True) # nonneg=True
         objective = cp.Maximize(
             cp.sum(cp.multiply(sign_matrix, matrix_X))
         )
@@ -136,9 +137,16 @@ class OfflinePolicy(Policy):
         constraints = [
             matrix_X >= 0,
             matrix_X <= 1,
-            cp.sum(matrix_X, axis=1) <= np.squeeze(job_target_datablock_selected_num_list),
             (job_privacy_budget_consume_list @ matrix_X) <= datablock_privacy_budget_capacity_list
         ]
+
+        if all_or_nothing_flag:
+            # constraints.append(cp.sum(matrix_X, axis=1) <= job_target_datablock_selected_num_list)
+            vector_Y = cp.Variable((job_num, ), boolean=True) # TODO(xlc): 这个求解就比较费劲了!
+            constraints.append(cp.sum(matrix_X, axis=1) == cp.multiply(vector_Y, job_target_datablock_selected_num_list))
+        else:
+            constraints.append(cp.sum(matrix_X, axis=1) <= job_target_datablock_selected_num_list)
+
         if not enable_waiting_flag:
             add_time_constraint_num = 0
             for job_index, job_arrival_time in enumerate(job_arrival_time_list):

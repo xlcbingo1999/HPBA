@@ -416,6 +416,8 @@ import ast
     # job_map = ast.literal_eval(map_string)
     # print(job_map['job_11'])
 # ('job_10', 'train_sub_42'), ('job_10', 'train_sub_72'), ('job_10', 'train_sub_70'), ('job_10', 'train_sub_49'), ('job_10', 'train_sub_37'), ('job_10', 'train_sub_84'), ('job_10', 'train_sub_96'), ('job_10', 'train_sub_27'), ('job_10', 'train_sub_61'), ('job_10', 'train_sub_1'), ('job_10', 'train_sub_83'), ('job_10', 'train_sub_32'), ('job_10', 'train_sub_47')
+
+'''
 string = "from policy [HISwithOrderProVersionPolicy] selected_datablock_identifiers: []"
 
 policy_match = re.search(r"from policy (\[(?P<policy_name>(.*?))\]) selected_datablock_identifiers: (?P<selected_list>\[.*?\])", string)
@@ -429,3 +431,28 @@ if policy_match:
     print("Datablock Identifiers:", datablock_identifiers_list)
     for item in datablock_identifiers_list:
         print(f"datablock_identifier_item: {item}")
+'''
+
+import concurrent.futures
+
+def process_data(arg1, arg2):
+    # 执行操作
+    result = arg1 + arg2
+    return result
+
+# 创建一个Executor
+executor = concurrent.futures.ThreadPoolExecutor()
+
+# 定义要传递的多个参数
+args1 = [1, 2, 3, 4]
+args2 = [5, 6, 7, 8]
+
+# 使用zip函数将多个参数打包为一个可迭代对象
+args_combined = zip(args1, args2)
+
+# 使用map函数传递多个参数
+results = executor.map(process_data, args1, args2)
+
+# 处理结果
+for result in results:
+    print(result)

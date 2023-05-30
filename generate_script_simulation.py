@@ -1,27 +1,29 @@
 current_ip_index = 5
-current_cmd_index = 2
+current_cmd_index = 5
 
 is_simulation = True
-all_or_nothing_flag = False
-enable_waiting_flag = False
+all_or_nothing_flag = True
+enable_waiting_flag = True
+pipeline_sequence_all_num = 50
+
 need_save_jobtrace_flag = False
 worker_indexes = [2]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 
-assignment_policy = "PBGPolicy" # "IterativeHISwithOrderProVersionBestEffortPolicy"
-his_batch_size_for_one_epochs = 100
+assignment_policy = "BestFitwithRemainPolicy" # "IterativeHISwithOrderProVersionPolicy" "PBGPolicy" "PBGMixPolicy" "SagewithRemainPolicy" "BestFitwithRemainPolicy"
+his_batch_size_for_one_epochs = 10
 significance_policy = "TempPolicy"
-test_jobtrace_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
-dataset_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
-history_jobtrace_reconstruct_path = "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
-all_decision_num = 1000
+test_jobtrace_reconstruct_path = "schedule-review-simulation-05-29-09-25-36" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
+dataset_reconstruct_path = "schedule-review-simulation-05-29-09-25-36" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
+history_jobtrace_reconstruct_path = "schedule-review-simulation-05-29-09-25-36" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
+
 datablock_require_epsilon_max_ratio = 0.1
 change_job_epsilon_max_times = 1.0
 all_history_num = 0
 his_betas = 0.0
-all_datablock_num = 100
-offline_datablock_num = 100
+all_datablock_num = 2000
+offline_datablock_num = 0
 base_capacity = 10.0
 change_datablock_epsilon_max_times = 1.0
 simulation_time = 5
@@ -67,7 +69,7 @@ dispatcher_cmds.append(f"--dispatcher_ip 172.18.162.{current_ip_index}")
 dispatcher_cmds.append(f"--dispatcher_port 164{current_cmd_index}{current_ip_index}")
 
 dispatcher_cmds.append(f"--assignment_policy {assignment_policy}")
-dispatcher_cmds.append(f"--his_batch_size_for_one_epochs {his_batch_size_for_one_epochs}")
+
 dispatcher_cmds.append(f"--significance_policy {significance_policy}")
 
 if len(test_jobtrace_reconstruct_path) > 0:
@@ -77,7 +79,7 @@ if len(dataset_reconstruct_path) > 0:
 if len(history_jobtrace_reconstruct_path) > 0:
     dispatcher_cmds.append(f"--history_jobtrace_reconstruct_path {history_jobtrace_reconstruct_path}")
 
-dispatcher_cmds.append(f"--all_decision_num {all_decision_num}")
+dispatcher_cmds.append(f"--pipeline_sequence_all_num {pipeline_sequence_all_num}")
 dispatcher_cmds.append(f"--datablock_require_epsilon_max_ratio {datablock_require_epsilon_max_ratio}")
 dispatcher_cmds.append(f"--change_job_epsilon_max_times {change_job_epsilon_max_times}")
 dispatcher_cmds.append(f"--base_capacity {base_capacity}")
@@ -87,12 +89,15 @@ dispatcher_cmds.append(f"--his_betas {his_betas}")
 dispatcher_cmds.append(f"--all_datablock_num {all_datablock_num}")
 dispatcher_cmds.append(f"--offline_datablock_num {offline_datablock_num}")
 
-if assignment_policy == "PBGPolicy" or assignment_policy == "PBGMixPolicy":
+if "PBG" in assignment_policy:
     dispatcher_cmds.append(f"--pbg_comparison_cost_epsilons {pbg_comparison_cost_epsilons}")
     dispatcher_cmds.append(f"--pbg_comparison_z_thresholds {pbg_comparison_z_thresholds}")
     dispatcher_cmds.append(f"--pbg_Ls {pbg_Ls}")
     dispatcher_cmds.append(f"--pbg_Us {pbg_Us}")
     dispatcher_cmds.append(f"--pbg_gittas {pbg_gittas}")
+
+if "HIS" in assignment_policy:
+    dispatcher_cmds.append(f"--his_batch_size_for_one_epochs {his_batch_size_for_one_epochs}")
 
 if is_simulation:
     dispatcher_cmds.append(f"--simulation_flag")
@@ -104,6 +109,8 @@ if all_or_nothing_flag:
     dispatcher_cmds.append(f"--all_or_nothing_flag")
 if enable_waiting_flag:
     dispatcher_cmds.append(f"--enable_waiting_flag")
+# if job_recoming_flag:
+#     dispatcher_cmds.append(f"--job_recoming_flag")
 
 if need_save_jobtrace_flag:
     dispatcher_cmds.append(f"--need_save_jobtrace_flag")

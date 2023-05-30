@@ -47,17 +47,17 @@ def get_df_config():
     parser.add_argument("--summary_writer_key", type=str, default="")
     parser.add_argument("--model_save_path", type=str, default="")
     parser.add_argument("--LR", type=float, required=True)
-    parser.add_argument("--EPSILON", type=float, required=True)
+    parser.add_argument("--EPSILON_one_siton", type=float, required=True)
     parser.add_argument("--DELTA", type=float, required=True)
     parser.add_argument("--MAX_GRAD_NORM", type=float, required=True)
     parser.add_argument("--BATCH_SIZE", type=int, required=True)
     parser.add_argument("--MAX_PHYSICAL_BATCH_SIZE", type=int, required=True)
     parser.add_argument("--begin_epoch_num", type=int, required=True)
-    parser.add_argument("--run_epoch_num", type=int, required=True)
+    parser.add_argument("--siton_run_epoch_num", type=int, required=True)
 
     parser.add_argument("--final_significance", type=float, required=True)
     parser.add_argument("--simulation_flag", action="store_true")
-    parser.add_argument("--model_save_flag", action="store_true")
+    parser.add_argument("--not_need_callback", action="store_false")
     args = parser.parse_args()
     return args
 
@@ -115,10 +115,10 @@ def do_calculate_func(job_id, model_name,
                     test_dataset_name, sub_test_key_id,
                     device_index,
                     model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
-                    LR, EPSILON, DELTA, MAX_GRAD_NORM, 
+                    LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
                     BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
-                    begin_epoch_num, run_epoch_num, final_significance, 
-                    model_save_flag, simulation_flag):
+                    begin_epoch_num, siton_run_epoch_num, final_significance, 
+                    simulation_flag):
     begin_time = time.time()
 
     if simulation_flag:
@@ -127,9 +127,9 @@ def do_calculate_func(job_id, model_name,
             'train_loss': 0.0,
             'test_acc': 0.0,
             'test_loss': 0.0,
-            'epsilon_consume': run_epoch_num * EPSILON,
+            'epsilon_consume': EPSILON_one_siton,
             'begin_epoch_num': begin_epoch_num,
-            'run_epoch_num': run_epoch_num,
+            'siton_run_epoch_num': siton_run_epoch_num,
             'final_significance': final_significance
         }
         real_duration_time = time.time() - begin_time
@@ -142,14 +142,16 @@ def do_calculate_func(job_id, model_name,
         print("check sub_test_key_id: {}".format(sub_test_key_id), file=f)
         print("check device_index: {}".format(device_index), file=f)
         print("check final_significance: {}".format(final_significance), file=f)
-        print("check EPSILON: {}",format(EPSILON), file=f)
+        print("check EPSILON_one_siton: {}",format(EPSILON_one_siton), file=f)
         
     train_dataset = get_concat_dataset(train_dataset_name, sub_train_key_ids, 
                                     DATASET_PATH, SUB_TRAIN_DATASET_CONFIG_PATH, 
                                     "train")
+    print("finished load train_dataset")
     test_dataset = get_concat_dataset(test_dataset_name, sub_test_key_id,
                                     DATASET_PATH, TEST_DATASET_CONFIG_PATH,
                                     "test")
+    print("finished load test_dataset")
     
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
@@ -165,7 +167,7 @@ def do_calculate_func(job_id, model_name,
         model.load_state_dict(torch.load(model_save_path))
     model.train()
 
-    if EPSILON > 0.0:
+    if EPSILON_one_siton > 0.0:
         model = ModuleValidator.fix(model)
         errors = ModuleValidator.validate(model, strict=False)
         print("error: {}".format(errors))
@@ -175,18 +177,18 @@ def do_calculate_func(job_id, model_name,
     optimizer = optimizer = torch.optim.Adam(model.parameters(), lr=LR)  # optimize all cnn parameters
 
     
-    privacy_engine = PrivacyEngine() if EPSILON > 0.0 else None
+    privacy_engine = PrivacyEngine() if EPSILON_one_siton > 0.0 else None
     model, optimizer, train_loader = \
         get_privacy_dataloader(privacy_engine, model, optimizer, 
-                                train_loader, run_epoch_num, 
-                                run_epoch_num * EPSILON, DELTA, MAX_GRAD_NORM) 
+                                train_loader, siton_run_epoch_num, 
+                                EPSILON_one_siton, DELTA, MAX_GRAD_NORM) 
 
     with open(logging_file_path, "a+") as f:
-        print("job [{}] - epoch [{} to {}] begining ...".format(job_id, begin_epoch_num, begin_epoch_num + run_epoch_num))
-        print("job [{}] - epoch [{} to {}] begining ...".format(job_id, begin_epoch_num, begin_epoch_num + run_epoch_num), file=f)
+        print("job [{}] - epoch [{} to {}] begining ...".format(job_id, begin_epoch_num, begin_epoch_num + siton_run_epoch_num))
+        print("job [{}] - epoch [{} to {}] begining ...".format(job_id, begin_epoch_num, begin_epoch_num + siton_run_epoch_num), file=f)
         
     summary_writer = SummaryWriter(summary_writer_path)
-    for epoch in range(run_epoch_num):
+    for epoch in range(siton_run_epoch_num):
         model.train()
         total_train_loss = []
         total_train_acc = []
@@ -279,7 +281,7 @@ def do_calculate_func(job_id, model_name,
         summary_writer.add_scalar('{}/total_val_acc'.format(summary_writer_key), np.mean(total_val_acc), begin_epoch_num + epoch)
     
     summary_writer.close()
-    if model_save_flag:
+    if len(model_save_path) > 0:
         if not os.path.exists(model_save_path):
             os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
         torch.save(model._module.state_dict(), model_save_path)
@@ -292,15 +294,15 @@ def do_calculate_func(job_id, model_name,
         'test_loss': np.mean(total_val_loss),
         'epsilon_consume': epsilon,
         'begin_epoch_num': begin_epoch_num,
-        'run_epoch_num': run_epoch_num,
+        'siton_run_epoch_num': siton_run_epoch_num,
         'final_significance': final_significance
     }
 
     with open(logging_file_path, "a+") as f:
-        print("job [{}] - epoch [{} to {}] end ".format(job_id, begin_epoch_num, begin_epoch_num + run_epoch_num))
+        print("job [{}] - epoch [{} to {}] end ".format(job_id, begin_epoch_num, begin_epoch_num + siton_run_epoch_num))
 
         print("job [{}] saves in {}".format(job_id, model_save_path), file=f)
-        print("job [{}] - epoch [{} to {}] end ".format(job_id, begin_epoch_num, begin_epoch_num + run_epoch_num), file=f)
+        print("job [{}] - epoch [{} to {}] end ".format(job_id, begin_epoch_num, begin_epoch_num + siton_run_epoch_num), file=f)
 
     return job_id, all_results, real_duration_time
 
@@ -321,13 +323,13 @@ if __name__ == "__main__":
 
     device_index = args.device_index
 
+    model_save_path = args.model_save_path
     summary_writer_path = args.summary_writer_path
     summary_writer_key = args.summary_writer_key
     logging_file_path = args.logging_file_path
-    model_save_path = args.model_save_path
     
     LR = args.LR 
-    EPSILON = args.EPSILON
+    EPSILON_one_siton = args.EPSILON_one_siton
     DELTA = args.DELTA
     MAX_GRAD_NORM = args.MAX_GRAD_NORM 
     BATCH_SIZE = args.BATCH_SIZE
@@ -337,8 +339,10 @@ if __name__ == "__main__":
     simulation_flag = args.simulation_flag
 
     begin_epoch_num = args.begin_epoch_num
-    run_epoch_num = args.run_epoch_num
-    model_save_flag = args.model_save_flag
+    siton_run_epoch_num = args.siton_run_epoch_num
+
+    not_need_callback = args.not_need_callback
+    
 
     job_id, all_results, real_duration_time = do_calculate_func(
         job_id, model_name, 
@@ -346,13 +350,14 @@ if __name__ == "__main__":
         test_dataset_name, sub_test_key_id,
         device_index, 
         model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
-        LR, EPSILON, DELTA, MAX_GRAD_NORM, 
+        LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
         BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
-        begin_epoch_num, run_epoch_num, final_significance, 
-        model_save_flag, simulation_flag
+        begin_epoch_num, siton_run_epoch_num, final_significance, 
+        simulation_flag
     )
     
-    tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)
-    client = zerorpc.Client()
-    client.connect(tcp_ip_port)
-    client.finished_job_callback(job_id, all_results, real_duration_time)
+    if not not_need_callback:
+        tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)
+        client = zerorpc.Client()
+        client.connect(tcp_ip_port)
+        client.finished_job_callback(job_id, all_results, real_duration_time)

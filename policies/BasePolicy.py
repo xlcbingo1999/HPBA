@@ -1,26 +1,37 @@
+import sys
+
 class Policy:
-    def __init__(self, job_sequence_all_num):
+    def __init__(self, pipeline_sequence_all_num, job_request_all_num):
         self._name = None
-        self._job_sequence_all_num = job_sequence_all_num
-        self.has_come_job_ids = set()
+        self._pipeline_sequence_all_num = pipeline_sequence_all_num
+        self._job_request_all_num = job_request_all_num
+        self.has_come_pipeline_ids = set()
 
     @property
     def name(self):
         return self._name
 
     @property
-    def job_sequence_all_num(self):
-        return self._job_sequence_all_num
+    def pipeline_sequence_all_num(self):
+        return self._pipeline_sequence_all_num
 
     @property
-    def all_job_has_coming(self):
-        return len(self.has_come_job_ids) == self.job_sequence_all_num
+    def job_request_all_num(self):
+        return self._job_request_all_num
+
+    @property
+    def all_pipeline_has_coming(self):
+        return len(self.has_come_pipeline_ids) == self.pipeline_sequence_all_num
+
+    @property
+    def is_infinity_flag(self):
+        return self._job_request_all_num == sys.maxsize
 
     def add_to_policy_profiler(self, job_id):
-        self.has_come_job_ids.add(job_id)
+        self.has_come_pipeline_ids.add(job_id)
 
     def exist_in_policy_profiler(self, job_id):
-        return job_id in self.has_come_job_ids
+        return job_id in self.has_come_pipeline_ids
 
     def get_allocation_judge_one_job(self, state):
         job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]

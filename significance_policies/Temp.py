@@ -12,7 +12,7 @@ class TempPolicy(SigPolicy):
         self.need_update_backward = False
 
         if simulation:
-            self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + "/significance_TempPolicy_1000.json"
+            self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + "/significance_TempPolicy_2000.json"
         else:
             self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + "/significance_TempPolicy.json"
         self.logger = logger
@@ -77,14 +77,9 @@ class TempPolicy(SigPolicy):
         ]
         
         end = time.time()
-        # self.logger.info("type_id [{}] to datablocks significance: {} [origin_Temps: {}], time: {}".format(
-            # type_id, result, origin_Temps, end-begin
-        # ))
+        self.logger.debug("type_id [{}] to datablocks significance: {} [origin_Temps: {}], time: {}".format(
+            type_id, result, origin_Temps, end-begin
+        ))
         return result
-    
-    def get_job_datablock_significance_async(self, type_id, signficance_state, device_index, is_history):
-        print("nothing happen")
-        raise ValueError("get_job_datablock_significance_async")
-    
-    def update_job_datablock_signficance_FAIR(self, type_id, used_sub_train_key_ids, current_result):
-        print("nothing happen")
+
+        

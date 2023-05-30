@@ -8,13 +8,14 @@ import cvxpy as cp
 import json
 
 class HISwithOrderProVersionPolicy(HISBasePolicy):
-    def __init__(self, beta, job_sequence_all_num, seed, logger):
-        super().__init__(beta, job_sequence_all_num, seed, logger)
+    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, seed, logger):
+        super().__init__(beta, pipeline_sequence_all_num, job_request_all_num, seed, logger)
         self._name = 'HISwithOrderProVersionPolicy'
         self.beta = beta
         # self.gamma = gamma
         # self.delta = delta
         # self.only_small = only_small
+        self.job_request_all_num = job_request_all_num
         self.logger = logger
         self.waiting_queue_capacity = 1
         self.only_one = True
@@ -24,7 +25,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
         self.logger.info("policy args: beta: {}".format(self.beta))
-        # self.logger.info("policy args: gamma: {}".format(self.gamma))
+        self.logger.info("policy args: job_request_all_num: {}".format(self.job_request_all_num))
         # self.logger.info("policy args: delta: {}".format(self.delta))
         # self.logger.info("policy args: only_small: {}".format(self.only_small))
 
@@ -33,7 +34,8 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         random.seed(seed+1)
 
     def get_LP_result(self, sign_matrix, 
-                      datablock_privacy_budget_capacity_list, 
+                      datablock_privacy_budget_capacity_list,
+                      datablock_privacy_budget_remain_list, 
                       datablock_arrival_time_list,
                       job_target_datablock_selected_num_list, 
                       job_privacy_budget_consume_list, 
@@ -42,6 +44,10 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
                       enable_waiting_flag,
                       solver=cp.ECOS):
         job_num, datablock_num = sign_matrix.shape[0], sign_matrix.shape[1]
+        
+        # 检查本身就无法调度上岸的方案
+        invalid_sched_datablock_indices = np.where(datablock_privacy_budget_remain_list < job_privacy_budget_consume_list[-1])[0]
+        
         job_target_datablock_selected_num_list = np.array(job_target_datablock_selected_num_list)
         job_privacy_budget_consume_list = np.array(job_privacy_budget_consume_list)[np.newaxis, :]
         datablock_privacy_budget_capacity_list = np.array(datablock_privacy_budget_capacity_list)[np.newaxis, :]
@@ -54,17 +60,29 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         constraints = [
             matrix_X >= 0,
             matrix_X <= 1,
-            cp.sum(matrix_X, axis=1) <= job_target_datablock_selected_num_list,
             (job_privacy_budget_consume_list @ matrix_X) <= datablock_privacy_budget_capacity_list
         ]
-        if not enable_waiting_flag:
-            add_time_constraint_num = 0
-            for job_index, job_arrival_time in enumerate(job_arrival_time_list):
-                for datablock_index, datablock_arrival_time in enumerate(datablock_arrival_time_list):
-                    if job_arrival_time < datablock_arrival_time:
-                        constraints.append(matrix_X[job_index, datablock_index] == 0)
-                        add_time_constraint_num += 1
-            self.logger.debug(f"add_time_constraint_num: {add_time_constraint_num}")
+
+        for datablock_index in invalid_sched_datablock_indices:
+            constraints.append(matrix_X[-1, datablock_index] == 0)
+        if all_or_nothing_flag:
+            # TODO(xlc): 直接用这个放松版本应该也可以过来, 毕竟离线最优IP解project后的部分也是这个放松后问题的直接解法, 但是可能Offline不好求!
+            # vector_Y = cp.Variable((job_num, ), boolean=True)
+            # constraints.append(cp.sum(matrix_X, axis=1) == cp.multiply(vector_Y, job_target_datablock_selected_num_list))
+            constraints.append(cp.sum(matrix_X, axis=1) <= job_target_datablock_selected_num_list)
+        else:
+            constraints.append(cp.sum(matrix_X, axis=1) <= job_target_datablock_selected_num_list)
+        
+
+        # TODO(xlc): 对于HIS和IterativeHIS是不需要加入额外的约束的
+        # if not enable_waiting_flag:
+        #     add_time_constraint_num = 0
+        #     for job_index, job_arrival_time in enumerate(job_arrival_time_list):
+        #         for datablock_index, datablock_arrival_time in enumerate(datablock_arrival_time_list):
+        #             if job_arrival_time > datablock_arrival_time:
+        #                 constraints.append(matrix_X[job_index, datablock_index] == 0)
+        #                 add_time_constraint_num += 1
+        #     self.logger.debug(f"add_time_constraint_num: {add_time_constraint_num}")
 
         cvxprob = cp.Problem(objective, constraints)
         result = cvxprob.solve(solver)
@@ -161,6 +179,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
 
         assign_result_matrix = self.get_LP_result(sign_matrix, 
                                                 datablock_privacy_budget_capacity_list,
+                                                datablock_privacy_budget_remain_list,
                                                 datablock_arrival_time_list, 
                                                 current_all_job_target_datablock_selected_nums,
                                                 current_all_job_arrival_times,
@@ -198,7 +217,6 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         return selected_datablock_identifiers, selected_real_sched_epsilon_map, calcu_compare_epsilon
 
     def get_allocation(self, state, all_or_nothing_flag, enable_waiting_flag):
-        need_waiting_job_sched = False
         job_id, train_dataset_name = self.get_allocation_judge_one_job(state)
         self.add_to_policy_profiler(job_id)
 
@@ -213,7 +231,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         sub_train_datasetidentifier_2_significance = state["job_id_2_significance"][job_id]
         job_arrival_index = state["job_id_2_arrival_index"][job_id]
         
-        all_job_sequence_num = self.job_sequence_all_num
+        all_job_sequence_num = self.job_request_all_num # TODO(xlc): 需要all_job_seq_num
         offline_history_job_priority_weights = self.offline_history_job_priority_weights
         offline_history_job_budget_consumes = self.offline_history_job_budget_consumes
         offline_history_job_signficance = self.offline_history_job_significance
@@ -235,11 +253,11 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
             sample_history_job_target_datablock_selected_nums = offline_history_job_target_datablock_selected_num + online_history_job_target_datablock_selected_num
             sample_history_job_arrival_times = offline_history_job_arrival_time + online_history_job_arrival_time
         else:
-            select_num_from_offline_history = max(self.job_sequence_all_num - len(online_history_job_priority_weights) - 1, 0)
+            select_num_from_offline_history = max(self.pipeline_sequence_all_num - len(online_history_job_priority_weights) - 1, 0)
             offline_sample_indexes = np.random.choice(range(len(offline_history_job_priority_weights)), select_num_from_offline_history, replace=False)
             
-            if len(online_history_job_priority_weights) > self.job_sequence_all_num - 1:
-                online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.job_sequence_all_num - 1, replace=False)
+            if len(online_history_job_priority_weights) > self.pipeline_sequence_all_num - 1:
+                online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.pipeline_sequence_all_num - 1, replace=False)
             else:
                 online_sample_indexes = range(len(online_history_job_priority_weights))
             sample_history_job_priority_weights = [online_history_job_priority_weights[i] for i in online_sample_indexes] + [offline_history_job_priority_weights[i] for i in offline_sample_indexes]
@@ -248,7 +266,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
             sample_history_job_target_datablock_selected_nums = [online_history_job_target_datablock_selected_num[i] for i in online_sample_indexes] + [offline_history_job_target_datablock_selected_num[i] for i in offline_sample_indexes]
             sample_history_job_arrival_times = [online_history_job_arrival_time[i] for i in online_sample_indexes] + [offline_history_job_arrival_time[i] for i in offline_history_job_arrival_time]
 
-        if (not enable_waiting_flag) and job_arrival_index < self.beta * all_job_sequence_num:
+        if job_arrival_index < self.beta * all_job_sequence_num: # TODO(xlc): 无限任务的时候, beta只能设置为0
             self.logger.info("stop due to sample caused by job_arrival_index: {}; self.beta: {}; all_job_sequence_num: {}".format(
                 job_arrival_index, self.beta, all_job_sequence_num
             ))
@@ -277,17 +295,21 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
    
         result_job_2_selected_datablock_identifiers = {}
         result_selected_real_sched_epsilon_map = {}
+        result_job_2_instant_recoming_flag = {}
+        result_waiting_job_ids = []
+
         temp_sched_failed_flag = False
         if ((not all_or_nothing_flag) and len(temp_selected_datablock_identifiers) > 0) or (all_or_nothing_flag and len(temp_selected_datablock_identifiers) == target_datablock_select_num):
             result_job_2_selected_datablock_identifiers[job_id] = temp_selected_datablock_identifiers
             result_selected_real_sched_epsilon_map = temp_selected_real_sched_epsilon_map
         else:
             temp_sched_failed_flag = True
-        waiting_job_ids = []
-        if enable_waiting_flag:
-            need_waiting_job_sched = need_waiting_job_sched or False
+
+        if enable_waiting_flag: 
             if temp_sched_failed_flag:
-                waiting_job_ids.append(job_id)
+                result_waiting_job_ids.append(job_id)
+            else:
+                result_job_2_instant_recoming_flag[job_id] = True
         
         self.logger.debug("from policy [{}] selected_datablock_identifiers: {}".format(self.name , result_job_2_selected_datablock_identifiers))
-        return result_job_2_selected_datablock_identifiers, waiting_job_ids, result_selected_real_sched_epsilon_map, calcu_compare_epsilon, need_waiting_job_sched
+        return result_job_2_selected_datablock_identifiers, result_waiting_job_ids, result_selected_real_sched_epsilon_map, calcu_compare_epsilon, result_job_2_instant_recoming_flag

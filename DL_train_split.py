@@ -94,7 +94,7 @@ def split_and_draw(type, dataset_name, dataset, DIRICHLET_ALPHA, N_CLIENTS):
     return client_idcs
 
 if __name__ == "__main__":
-    TRAIN_N_CLIENTS = 24
+    TRAIN_N_CLIENTS = 144
     TRAIN_DIRICHLET_ALPHA = 1.0
 
     dataset_name = "EMNIST"
@@ -143,6 +143,7 @@ if __name__ == "__main__":
         current_subtrain_config[dataset_name][sub_train_key]["name"] = [dataset_name]
         current_subtrain_config[dataset_name][sub_train_key]["path"] = raw_data_path
         current_subtrain_config[dataset_name][sub_train_key]["indexes"] = [client_indexes.tolist()]
+        current_subtrain_config[dataset_name][sub_train_key]["length"] = [len(client_indexes)]
         
     with open(result_subtrain_config_path, 'w+') as f:
         json.dump(current_subtrain_config, f)

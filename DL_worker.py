@@ -29,9 +29,9 @@ def do_system_calculate_func(worker_ip, worker_port,
                             sub_train_key_ids, sub_test_key_id, 
                             device_index, 
                             model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
-                            LR, EPSILON, DELTA, MAX_GRAD_NORM, 
+                            LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
                             BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
-                            begin_epoch_num, run_epoch_num, final_significance, simulation_flag):
+                            begin_epoch_num, siton_run_epoch_num, final_significance, simulation_flag):
     execute_cmds = []
     # execute_cmds.append("conda run -n py39torch113") # 会卡住, 没有任何log, 这个时候最好做重定向!
     execute_cmds.append("python -u DL_do_calculate.py")
@@ -55,14 +55,14 @@ def do_system_calculate_func(worker_ip, worker_port,
     if len(model_save_path) > 0:
         execute_cmds.append("--model_save_path {}".format(model_save_path))
     execute_cmds.append("--LR {}".format(LR))
-    execute_cmds.append("--EPSILON {}".format(EPSILON))
+    execute_cmds.append("--EPSILON_one_siton {}".format(EPSILON_one_siton))
     execute_cmds.append("--DELTA {}".format(DELTA))
     execute_cmds.append("--MAX_GRAD_NORM {}".format(MAX_GRAD_NORM))
 
     execute_cmds.append("--BATCH_SIZE {}".format(BATCH_SIZE))
     execute_cmds.append("--MAX_PHYSICAL_BATCH_SIZE {}".format(MAX_PHYSICAL_BATCH_SIZE))
     execute_cmds.append("--begin_epoch_num {}".format(begin_epoch_num))
-    execute_cmds.append("--run_epoch_num {}".format(run_epoch_num))
+    execute_cmds.append("--siton_run_epoch_num {}".format(siton_run_epoch_num))
     execute_cmds.append("--final_significance {}".format(final_significance))
     if simulation_flag:
         execute_cmds.append("--simulation_flag")
@@ -140,8 +140,8 @@ class Worker_server(object):
             client.worker_gpu_status_callback(worker_gpu_identifier, new_status_map[gpu_id])
     """
 
-    def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info, sched_epsilon_per_epoch,
-                  begin_epoch_num, update_sched_epoch_num, 
+    def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info, 
+                  sched_epsilon_one_siton_run, begin_epoch_num, siton_run_epoch_num, 
                   model_save_path, summary_writer_path, summary_writer_key, logging_file_path, final_significance, simulation_flag):
         # self.worker_logger.info("[bugxlc] job_id: {} call caculate => info: {}".format(job_id, origin_info))
         self.jobid_2_origininfo[job_id] = origin_info
@@ -151,15 +151,13 @@ class Worker_server(object):
                 'train_loss': 0.0,
                 'test_acc': 0.0,
                 'test_loss': 0.0,
-                'epsilon_consume': update_sched_epoch_num * sched_epsilon_per_epoch,
+                'epsilon_consume': sched_epsilon_one_siton_run,
                 'begin_epoch_num': begin_epoch_num,
-                'run_epoch_num': update_sched_epoch_num,
+                'run_epoch_num': siton_run_epoch_num,
                 'final_significance': final_significance
             }
             self.finished_job_callback(job_id, all_results, 0.0)
-            return 
-        
-        
+            return     
         try:
             # GPU调度
             device_index = worker_gpu_id
@@ -173,12 +171,12 @@ class Worker_server(object):
             model_name = origin_info["model_name"]
             
             LR = origin_info["LR"]
-            EPSILON = sched_epsilon_per_epoch
+            EPSILON_one_siton = sched_epsilon_one_siton_run
             DELTA = origin_info["DELTA"]
             MAX_GRAD_NORM = origin_info["MAX_GRAD_NORM"]
             BATCH_SIZE = origin_info["BATCH_SIZE"]
             MAX_PHYSICAL_BATCH_SIZE = origin_info["MAX_PHYSICAL_BATCH_SIZE"]
-            self.worker_logger.info("EPSILON in begin_job {}: [{}]".format(job_id, EPSILON))
+            self.worker_logger.info("EPSILON_one_siton in begin_job {}: [{}]".format(job_id, EPSILON_one_siton))
 
             worker_ip = self.local_ip
             worker_port = self.local_port
@@ -189,8 +187,8 @@ class Worker_server(object):
                 sub_train_key_ids, sub_test_key_id, 
                 device_index, 
                 model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
-                LR, EPSILON, DELTA, MAX_GRAD_NORM, 
-                BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, begin_epoch_num, update_sched_epoch_num, final_significance, simulation_flag), daemon=True)
+                LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
+                BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, begin_epoch_num, siton_run_epoch_num, final_significance, simulation_flag), daemon=True)
             self.jobid_2_thread[job_id] = p
             p.start()
         except Exception as e:

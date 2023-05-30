@@ -8,8 +8,8 @@ import json
 
 
 class HISBasePolicy(Policy):
-    def __init__(self, beta, job_sequence_all_num, seed, logger):
-        super().__init__(job_sequence_all_num)
+    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, seed, logger):
+        super().__init__(pipeline_sequence_all_num, job_request_all_num)
         self.beta = beta
         self.logger = logger
         self.waiting_queue_capacity = 1
@@ -132,4 +132,97 @@ class HISBasePolicy(Policy):
         sign_matrix = np.array(sign_matrix)
         return sign_matrix, temp_index_2_datablock_identifier
 
-    
+    def get_his_single_job_require_epsilon(self, current_all_job_budget_consumes, current_all_job_target_datablock_selected_nums, batch_size_for_one_epoch):
+        current_all_job_budget_consumes_np = np.array(current_all_job_budget_consumes)
+        current_all_job_target_datablock_selected_nums_np = np.array(current_all_job_target_datablock_selected_nums)
+        one_block_require_mean = np.sum(current_all_job_budget_consumes_np) / len(current_all_job_budget_consumes)
+        all_blocks_require_mean = np.sum(current_all_job_budget_consumes_np * current_all_job_target_datablock_selected_nums_np) / len(current_all_job_budget_consumes)
+        need_siton_block_num_mean = int(batch_size_for_one_epoch * all_blocks_require_mean / one_block_require_mean)
+        
+        self.logger.debug(f"one_block_require_mean: {one_block_require_mean}")
+        self.logger.debug(f"all_blocks_require_mean: {all_blocks_require_mean}")
+        self.logger.debug(f"need_siton_block_num_mean: {need_siton_block_num_mean}")
+        return one_block_require_mean, all_blocks_require_mean, need_siton_block_num_mean
+
+    # def get_his_right_capacity_for_single_job_version_predict(self, current_all_job_budget_consumes,
+    #                                             target_epsilon_require,
+    #                                             current_all_job_target_datablock_selected_nums,
+    #                                             target_datablock_select_num,
+    #                                             datablock_privacy_budget_remain_list, 
+    #                                             batch_size_for_one_epoch):
+    #     one_block_require_mean, all_blocks_require_mean, need_siton_block_num_mean = self.get_his_single_job_require_epsilon(
+    #         current_all_job_budget_consumes, current_all_job_target_datablock_selected_nums, batch_size_for_one_epoch
+    #     )
+
+    #     siton_block_epsilon_capacity = one_block_require_mean
+        
+
+    def get_his_right_capacity_for_single_job(self, current_all_job_budget_consumes,
+                                                target_epsilon_require,
+                                                current_all_job_target_datablock_selected_nums,
+                                                target_datablock_select_num,
+                                                datablock_privacy_budget_remain_list, 
+                                                datablock_privacy_budget_capacity_list,
+                                                batch_size_for_one_epoch):
+        one_block_require_mean, all_blocks_require_mean, need_siton_block_num_mean = self.get_his_single_job_require_epsilon(
+            current_all_job_budget_consumes, current_all_job_target_datablock_selected_nums, batch_size_for_one_epoch
+        )
+        siton_block_epsilon_capacity = one_block_require_mean
+        
+        valid_remain_siton_num_per_block = np.floor_divide(datablock_privacy_budget_remain_list, siton_block_epsilon_capacity)
+        valid_remain_siton_all_blocks = np.sum(valid_remain_siton_num_per_block)
+        
+        result = np.zeros_like(datablock_privacy_budget_remain_list)
+        current_require = need_siton_block_num_mean
+        if valid_remain_siton_all_blocks < current_require:
+            # 需要全部开放
+            result = valid_remain_siton_num_per_block
+            current_require -= np.sum(valid_remain_siton_num_per_block)
+        else:
+            # 每次获取非0的index, 均匀取一个, 直到满足需求或者全部非0
+            non_zero_valid_remain_siton_num_per_block_index = np.nonzero(valid_remain_siton_num_per_block)[0]
+            while current_require > 0 and len(non_zero_valid_remain_siton_num_per_block_index) > 0:
+                if len(non_zero_valid_remain_siton_num_per_block_index) > current_require:
+                    # 需要根据当前数量进行采样
+                    non_zero_valid_remain_sition_num_per_block_value = valid_remain_siton_num_per_block[non_zero_valid_remain_siton_num_per_block_index]
+                    non_zero_valid_remain_sition_num_per_block_value = non_zero_valid_remain_sition_num_per_block_value / np.sum(non_zero_valid_remain_sition_num_per_block_value)
+                    
+                    samples = np.random.choice(non_zero_valid_remain_siton_num_per_block_index, size=int(current_require), p=non_zero_valid_remain_sition_num_per_block_value)
+                else:
+                    samples = non_zero_valid_remain_siton_num_per_block_index
+                result[samples] += 1
+                valid_remain_siton_num_per_block[samples] -= 1
+                current_require -= len(samples)
+                non_zero_valid_remain_siton_num_per_block_index = np.nonzero(valid_remain_siton_num_per_block)[0]
+        
+        datablock_privacy_budget_used_list = np.subtract(datablock_privacy_budget_capacity_list, datablock_privacy_budget_remain_list)
+        valid_used_siton_num_per_block = np.floor_divide(datablock_privacy_budget_used_list, siton_block_epsilon_capacity)
+        valid_used_siton_all_blocks = np.sum(valid_used_siton_num_per_block)
+
+        if valid_used_siton_all_blocks < current_require:
+            result += valid_used_siton_num_per_block
+            current_require -= np.sum(valid_used_siton_num_per_block)
+        else:
+            non_zero_valid_used_siton_num_per_block_index = np.nonzero(valid_used_siton_num_per_block)[0]
+            while current_require > 0 and len(non_zero_valid_used_siton_num_per_block_index) > 0:
+                if len(non_zero_valid_used_siton_num_per_block_index) > current_require:
+                    samples = np.random.choice(non_zero_valid_used_siton_num_per_block_index, size=int(current_require))
+                else:
+                    samples = non_zero_valid_used_siton_num_per_block_index
+                result[samples] += 1
+                valid_used_siton_num_per_block[samples] -= 1
+                current_require -= len(samples)
+                non_zero_valid_used_siton_num_per_block_index = np.nonzero(valid_used_siton_num_per_block)[0]
+
+        
+        right_capacity_for_single_job = siton_block_epsilon_capacity * result
+
+        result_zero_index = np.where(result == 0)[0]
+        for index in result_zero_index:
+            if datablock_privacy_budget_remain_list[index] >= target_epsilon_require:
+                right_capacity_for_single_job[index] = datablock_privacy_budget_remain_list[index]
+
+        self.logger.debug(f"right_capacity_for_single_job: {right_capacity_for_single_job}")
+        self.logger.debug(f"sum(right_capacity_for_single_job): {np.sum(right_capacity_for_single_job)}")
+        self.logger.debug(f"this batch jobs consume: {np.sum(np.multiply(current_all_job_budget_consumes, current_all_job_target_datablock_selected_nums))}")
+        return right_capacity_for_single_job

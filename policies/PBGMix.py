@@ -8,8 +8,8 @@ import math
 import json
 
 class PBGMixPolicy(Policy):
-    def __init__(self, job_sequence_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, seed, logger):
-        super().__init__(job_sequence_all_num)
+    def __init__(self, pipeline_sequence_all_num, job_request_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, seed, logger):
+        super().__init__(pipeline_sequence_all_num, job_request_all_num)
         self._name = 'PBGMixPolicy'
         self.comparison_cost_epsilon = comparison_cost_epsilon
         self.comparison_z_threshold = comparison_z_threshold
@@ -65,7 +65,6 @@ class PBGMixPolicy(Policy):
         return is_select, real_sched_epsilon, compare_epsilon
         
     def get_allocation(self, state, all_or_nothing_flag, enable_waiting_flag):
-        need_waiting_job_sched = False
         job_id, train_dataset_name = self.get_allocation_judge_one_job(state)
         self.add_to_policy_profiler(job_id)
         
@@ -106,18 +105,21 @@ class PBGMixPolicy(Policy):
         
         result_job_2_selected_datablock_identifiers = {}
         result_selected_real_sched_epsilon_map = {}
+        result_job_2_instant_recoming_flag = {}
+        result_waiting_job_ids = []
+
         temp_sched_failed_flag = False
         if ((not all_or_nothing_flag) and len(temp_selected_datablock_identifiers) > 0) or (all_or_nothing_flag and len(temp_selected_datablock_identifiers) == target_datablock_select_num):
             result_job_2_selected_datablock_identifiers[job_id] = temp_selected_datablock_identifiers
             result_selected_real_sched_epsilon_map = temp_selected_real_sched_epsilon_map
         else:
             temp_sched_failed_flag = True
-        waiting_job_ids = []
-        need_waiting_job_sched = False
-        if enable_waiting_flag:
-            need_waiting_job_sched = need_waiting_job_sched or False
+        
+        if enable_waiting_flag: 
             if temp_sched_failed_flag:
-                waiting_job_ids.append(job_id)
+                result_waiting_job_ids.append(job_id)
+            else:
+                result_job_2_instant_recoming_flag[job_id] = True
 
         self.logger.debug("from policy [{}] selected_datablock_identifiers: {}".format(self.name , result_job_2_selected_datablock_identifiers))
-        return result_job_2_selected_datablock_identifiers, waiting_job_ids, result_selected_real_sched_epsilon_map, calcu_compare_epsilon, need_waiting_job_sched
+        return result_job_2_selected_datablock_identifiers, result_waiting_job_ids, result_selected_real_sched_epsilon_map, calcu_compare_epsilon, result_job_2_instant_recoming_flag
