@@ -57,7 +57,6 @@ def get_df_config():
 
     parser.add_argument("--final_significance", type=float, required=True)
     parser.add_argument("--simulation_flag", action="store_true")
-    parser.add_argument("--not_need_callback", action="store_false")
     args = parser.parse_args()
     return args
 
@@ -142,7 +141,7 @@ def do_calculate_func(job_id, model_name,
         print("check sub_test_key_id: {}".format(sub_test_key_id), file=f)
         print("check device_index: {}".format(device_index), file=f)
         print("check final_significance: {}".format(final_significance), file=f)
-        print("check EPSILON_one_siton: {}",format(EPSILON_one_siton), file=f)
+        print("check EPSILON_one_siton: {}".format(EPSILON_one_siton), file=f)
         
     train_dataset = get_concat_dataset(train_dataset_name, sub_train_key_ids, 
                                     DATASET_PATH, SUB_TRAIN_DATASET_CONFIG_PATH, 
@@ -339,10 +338,7 @@ if __name__ == "__main__":
     simulation_flag = args.simulation_flag
 
     begin_epoch_num = args.begin_epoch_num
-    siton_run_epoch_num = args.siton_run_epoch_num
-
-    not_need_callback = args.not_need_callback
-    
+    siton_run_epoch_num = args.siton_run_epoch_num    
 
     job_id, all_results, real_duration_time = do_calculate_func(
         job_id, model_name, 
@@ -356,8 +352,8 @@ if __name__ == "__main__":
         simulation_flag
     )
     
-    if not not_need_callback:
-        tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)
-        client = zerorpc.Client()
-        client.connect(tcp_ip_port)
-        client.finished_job_callback(job_id, all_results, real_duration_time)
+    print(f"callback to worker: {worker_ip}:{worker_port}")
+    tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)
+    client = zerorpc.Client()
+    client.connect(tcp_ip_port)
+    client.finished_job_callback(job_id, all_results, real_duration_time)

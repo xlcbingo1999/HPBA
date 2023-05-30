@@ -45,7 +45,7 @@ class Worker_server(object):
         logging_file_path = prefix_dir + f"/{job_id}.log"
         model_save_path = prefix_dir + f"/{job_id}.pt"
         
-        device_index = 0
+        device_index = 2
         LR = details["LR"]
         EPSILON_one_siton = details["EPSILON_one_siton"]
         DELTA = details["DELTA"]
@@ -58,13 +58,11 @@ class Worker_server(object):
         siton_run_epoch_num = details["SITON_RUN_EPOCH_NUM"]
 
         simulation_flag = False
-        model_save_flag = True
-        not_need_callback = False
 
         begin_epoch_num = self.success_time * siton_run_epoch_num
         final_significance = 0.1
         train_dataset_name = "EMNIST"
-        test_dataset_name = "EMNIST-2000"
+        test_dataset_name = "EMNIST_MNIST-1000_1000"
         sub_train_key_ids = [f"train_sub_{index}" for index in np.random.choice(range(self.sub_train_num), size=SELECT_BLOCK_NUM)]
         sub_train_key_ids_str = ":".join(sub_train_key_ids)
         sub_test_key_id = "test_sub_0"
@@ -103,8 +101,6 @@ class Worker_server(object):
         cal_job_cmds.append("--final_significance {}".format(final_significance))
         if simulation_flag:
             cal_job_cmds.append("--simulation_flag")
-        if not_need_callback:
-            cal_job_cmds.append("--not_need_callback")
 
         finally_execute_cmd = " ".join(cal_job_cmds)
         print(finally_execute_cmd)
@@ -135,7 +131,7 @@ def get_specific_model_config(model_name):
             "DELTA": 1e-8,
             "MAX_GRAD_NORM": 1.2,
             "LR": 1e-3,
-            "SELECT_BLOCK_NUM": 20
+            "SELECT_BLOCK_NUM": 10
         }
     elif model_name == "FF":
         return {
@@ -148,12 +144,12 @@ def get_specific_model_config(model_name):
             "DELTA": 1e-8,
             "MAX_GRAD_NORM": 1.2,
             "LR": 1e-3,
-            "SELECT_BLOCK_NUM": 20
+            "SELECT_BLOCK_NUM": 10
         }
 
 if __name__ == "__main__":
-    worker_ip = "172.18.162.5"
-    worker_port = 10205
+    worker_ip = "172.18.162.3"
+    worker_port = 162332
 
     max_success_time = 100
     sub_train_num = 144
