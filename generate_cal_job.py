@@ -57,6 +57,7 @@ class Worker_server(object):
         logging_file_path = os.path.join(prefix_dir, f"{job_id}.log") 
         model_save_path = os.path.join(prefix_dir, f"{job_id}.pt")
         
+        device_index = 2
         LR = details["LR"]
         DELTA = details["DELTA"]
         MAX_GRAD_NORM = details["MAX_GRAD_NORM"]
@@ -69,6 +70,8 @@ class Worker_server(object):
 
         begin_epoch_num = self.success_time * SITON_RUN_EPOCH_NUM
         final_significance = 0.1
+        train_dataset_name = "EMNIST"
+        test_dataset_name = "EMNIST_MNIST-1000_1000"
         sub_train_key_ids = [f"train_sub_{index}" for index in np.random.choice(range(self.sub_train_num), size=SELECT_BLOCK_NUM)]
         sub_train_key_ids_str = ":".join(sub_train_key_ids)
 
@@ -134,7 +137,7 @@ def get_specific_model_config(model_name):
             "DELTA": 1e-8,
             "MAX_GRAD_NORM": 1.2,
             "LR": 1e-3,
-            "SELECT_BLOCK_NUM": 2
+            "SELECT_BLOCK_NUM": 10
         }
     elif model_name == "FF":
         return {
@@ -145,12 +148,12 @@ def get_specific_model_config(model_name):
             "DELTA": 1e-8,
             "MAX_GRAD_NORM": 1.2,
             "LR": 1e-3,
-            "SELECT_BLOCK_NUM": 2
+            "SELECT_BLOCK_NUM": 10
         }
 
 if __name__ == "__main__":
-    worker_ip = "172.18.162.5"
-    worker_port = 162538
+    worker_ip = "172.18.162.3"
+    worker_port = 162332
 
     max_success_time = 100
     sub_train_num = 144
