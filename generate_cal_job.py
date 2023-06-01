@@ -57,7 +57,6 @@ class Worker_server(object):
         logging_file_path = os.path.join(prefix_dir, f"{job_id}.log") 
         model_save_path = os.path.join(prefix_dir, f"{job_id}.pt")
         
-        device_index = 2
         LR = details["LR"]
         DELTA = details["DELTA"]
         MAX_GRAD_NORM = details["MAX_GRAD_NORM"]
@@ -70,8 +69,6 @@ class Worker_server(object):
 
         begin_epoch_num = self.success_time * SITON_RUN_EPOCH_NUM
         final_significance = 0.1
-        train_dataset_name = "EMNIST"
-        test_dataset_name = "EMNIST_MNIST-1000_1000"
         sub_train_key_ids = [f"train_sub_{index}" for index in np.random.choice(range(self.sub_train_num), size=SELECT_BLOCK_NUM)]
         sub_train_key_ids_str = ":".join(sub_train_key_ids)
 
