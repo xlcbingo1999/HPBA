@@ -436,6 +436,52 @@ def get_pretained_Bert(device):
     print("nothing happen!")
     return None
 
+class PrivacyCNN(nn.Module):
+    def __init__(self, output_dim):
+        super(PrivacyCNN, self).__init__()
+        self.conv1 = nn.Sequential(  # input shape (1, 28, 28)
+            nn.Conv2d(
+                in_channels=3,  # 输入通道数
+                out_channels=16,  # 输出通道数
+                kernel_size=5,   # 卷积核大小
+                stride=1,  #卷积步数
+                padding=2,  # 如果想要 con2d 出来的图片长宽没有变化, 
+                            # padding=(kernel_size-1)/2 当 stride=1
+            ),  # output shape (16, 28, 28)
+            nn.ReLU(),  # activation
+            nn.MaxPool2d(kernel_size=2),  # 在 2x2 空间里向下采样, output shape (16, 14, 14)
+        )
+        self.conv2 = nn.Sequential(  # input shape (16, 14, 14)
+            nn.Conv2d(16, 32, 5, 1, 2),  # output shape (32, 14, 14)
+            nn.ReLU(),  # activation
+            nn.MaxPool2d(2),  # output shape (32, 7, 7)
+        )
+        self.out = nn.Linear(32 * 7 * 7, output_dim)  # 全连接层，A/Z,a/z一共37个类
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = x.view(x.size(0), -1)  # 展平多维的卷积图成 (batch_size, 32 * 7 * 7)
+        output = self.out(x)
+        return output
+
+class PrivacyFF(nn.Module):
+    def __init__(self, output_dim):
+        super(PrivacyFF, self).__init__()
+        self.hidden = [128, 32]
+        self.linear = nn.Sequential(
+            nn.Linear(28 * 28 * 3, self.hidden[0], bias=True),
+            nn.ReLU(),
+            nn.Linear(self.hidden[0], self.hidden[1], bias=True),
+            nn.ReLU(),
+            nn.Linear(self.hidden[1], output_dim, bias=True)
+        )
+
+    def forward(self, x):
+        x = x.view(x.size(0), -1)
+        output = self.linear(x)
+        return output    
+
 # if __name__ == "__main__":
 #     device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 #     model = get_pretained_Bert(device)
@@ -449,3 +495,4 @@ def get_pretained_Bert(device):
 #     encoded_input = tokenizer(texts, return_tensors='pt', padding=True).to(device)
 #     output = model(**encoded_input)
 #     print(output.last_hidden_state.shape)
+

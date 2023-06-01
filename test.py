@@ -433,6 +433,7 @@ if policy_match:
         print(f"datablock_identifier_item: {item}")
 '''
 
+'''
 import concurrent.futures
 
 def process_data(arg1, arg2):
@@ -456,3 +457,35 @@ results = executor.map(process_data, args1, args2)
 # 处理结果
 for result in results:
     print(result)
+'''
+
+
+from multiprocessing import Pool
+
+# 定义一个需要并行执行的函数
+def my_function(arg1, arg2, arg3):
+    # 在这里编写你的函数逻辑
+    # 这里只是简单示例，将传入的参数相加并返回结果
+    result = arg1 + arg2 + arg3
+    return result
+
+# 创建一个Pool对象
+pool = Pool()
+
+# 定义要传递给函数的多个参数
+arg1_list = [1, 2, 3]
+arg2_list = [4, 5, 6]
+arg3_list = [7, 8, 9]
+
+# 使用zip()函数将多个参数打包为元组
+args_list = zip(arg1_list, arg2_list, arg3_list)
+
+# 使用map()方法调用函数并传递参数
+results = pool.starmap(my_function, args_list)
+
+# 打印结果
+print(results)
+
+# 关闭Pool
+pool.close()
+pool.join()

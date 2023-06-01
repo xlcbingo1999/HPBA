@@ -22,6 +22,7 @@ from utils.opacus_engine_tools import get_privacy_dataloader
 
 from utils.global_variable import DATASET_PATH, SUB_TRAIN_DATASET_CONFIG_PATH, TEST_DATASET_CONFIG_PATH
 from utils.data_loader import get_concat_dataset
+from utils.model_loader import PrivacyCNN, PrivacyFF
 
 import string
 import os
@@ -63,52 +64,6 @@ def get_df_config():
 
 def accuracy(preds, labels):
     return (preds == labels).mean()
-
-class CNN(nn.Module):
-    def __init__(self, output_dim):
-        super(CNN, self).__init__()
-        self.conv1 = nn.Sequential(  # input shape (1, 28, 28)
-            nn.Conv2d(
-                in_channels=3,  # 输入通道数
-                out_channels=16,  # 输出通道数
-                kernel_size=5,   # 卷积核大小
-                stride=1,  #卷积步数
-                padding=2,  # 如果想要 con2d 出来的图片长宽没有变化, 
-                            # padding=(kernel_size-1)/2 当 stride=1
-            ),  # output shape (16, 28, 28)
-            nn.ReLU(),  # activation
-            nn.MaxPool2d(kernel_size=2),  # 在 2x2 空间里向下采样, output shape (16, 14, 14)
-        )
-        self.conv2 = nn.Sequential(  # input shape (16, 14, 14)
-            nn.Conv2d(16, 32, 5, 1, 2),  # output shape (32, 14, 14)
-            nn.ReLU(),  # activation
-            nn.MaxPool2d(2),  # output shape (32, 7, 7)
-        )
-        self.out = nn.Linear(32 * 7 * 7, output_dim)  # 全连接层，A/Z,a/z一共37个类
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = x.view(x.size(0), -1)  # 展平多维的卷积图成 (batch_size, 32 * 7 * 7)
-        output = self.out(x)
-        return output
-
-class FF(nn.Module):
-    def __init__(self, output_dim):
-        super(FF, self).__init__()
-        self.hidden = [128, 32]
-        self.linear = nn.Sequential(
-            nn.Linear(28 * 28, self.hidden[0], bias=True),
-            nn.ReLU(),
-            nn.Linear(self.hidden[0], self.hidden[1], bias=True),
-            nn.ReLU(),
-            nn.Linear(self.hidden[1], output_dim, bias=True)
-        )
-
-    def forward(self, x):
-        x = x.view(x.size(0), -1)
-        output = self.linear(x)
-        return output    
 
 def do_calculate_func(job_id, model_name, 
                     train_dataset_name, sub_train_key_ids,
@@ -158,9 +113,9 @@ def do_calculate_func(job_id, model_name,
 
     device = torch.device("cuda:{}".format(device_index) if torch.cuda.is_available() else "cpu")
     if model_name == "CNN":
-        model = CNN(output_dim=len(train_dataset.classes))
+        model = PrivacyCNN(output_dim=len(train_dataset.classes))
     elif model_name == "FF":
-        model = CNN(output_dim=len(train_dataset.classes))
+        model = PrivacyFF(output_dim=len(train_dataset.classes))
     elif model_name == "resnet18":
         model = models.resnet18(num_classes=len(train_dataset.classes))
     if os.path.exists(model_save_path):

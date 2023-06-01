@@ -6,7 +6,9 @@ import numpy as np
 import sys
 
 class Worker_server(object):
-    def __init__(self, local_ip, local_port, max_success_time, sub_train_num):
+    def __init__(self, local_ip, local_port, max_success_time, sub_train_num, 
+                device_index, model_name, train_dataset_name, test_dataset_name, sub_test_key_id,
+                SITON_RUN_EPOCH_NUM, EPSILON_one_siton):
         self.local_ip = local_ip
         self.local_port = local_port
         self.need_next = True
@@ -16,6 +18,15 @@ class Worker_server(object):
         self.sub_train_num = sub_train_num
         self.current_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
         self.all_finished = False
+
+        self.device_index = device_index
+        self.model_name = model_name
+        self.train_dataset_name = train_dataset_name
+        self.test_dataset_name = test_dataset_name
+        self.sub_test_key_id = sub_test_key_id
+
+        self.SITON_RUN_EPOCH_NUM = SITON_RUN_EPOCH_NUM
+        self.EPSILON_one_siton = EPSILON_one_siton
 
     def finished_job_callback(self, job_id, result, real_duration_time):
         print(f"job_id: {job_id}")
@@ -27,13 +38,14 @@ class Worker_server(object):
             self.need_next = False
 
         if self.need_next:
-            self.do_cal()
+            self.do_cal(self.device_index, self.model_name, self.train_dataset_name, self.test_dataset_name, self.sub_test_key_id, 
+                        self.SITON_RUN_EPOCH_NUM, self.EPSILON_one_siton)
         else:
             self.all_finished = True
 
-    def do_cal(self):
+    def do_cal(self, device_index, model_name, train_dataset_name, test_dataset_name, sub_test_key_id,
+                SITON_RUN_EPOCH_NUM, EPSILON_one_siton):
         job_id = 0
-        model_name = "CNN"
         details = get_specific_model_config(model_name)
         
         prefix_dir = f"/home/netlab/DL_lab/opacus_testbed/log_temp_store/result_{self.current_time}/"
@@ -42,12 +54,10 @@ class Worker_server(object):
         
         summary_writer_path = prefix_dir
         summary_writer_key = f"{job_id}"
-        logging_file_path = prefix_dir + f"/{job_id}.log"
-        model_save_path = prefix_dir + f"/{job_id}.pt"
+        logging_file_path = os.path.join(prefix_dir, f"{job_id}.log") 
+        model_save_path = os.path.join(prefix_dir, f"{job_id}.pt")
         
-        device_index = 0
         LR = details["LR"]
-        EPSILON_one_siton = details["EPSILON_one_siton"]
         DELTA = details["DELTA"]
         MAX_GRAD_NORM = details["MAX_GRAD_NORM"]
         BATCH_SIZE = details["BATCH_SIZE"]
@@ -55,19 +65,12 @@ class Worker_server(object):
         TAGRET_ACC = details["TAGRET_ACC"]
         SELECT_BLOCK_NUM = details["SELECT_BLOCK_NUM"]
 
-        siton_run_epoch_num = details["SITON_RUN_EPOCH_NUM"]
-
         simulation_flag = False
-        model_save_flag = True
-        not_need_callback = False
 
-        begin_epoch_num = self.success_time * siton_run_epoch_num
+        begin_epoch_num = self.success_time * SITON_RUN_EPOCH_NUM
         final_significance = 0.1
-        train_dataset_name = "EMNIST"
-        test_dataset_name = "EMNIST-2000"
         sub_train_key_ids = [f"train_sub_{index}" for index in np.random.choice(range(self.sub_train_num), size=SELECT_BLOCK_NUM)]
         sub_train_key_ids_str = ":".join(sub_train_key_ids)
-        sub_test_key_id = "test_sub_0"
 
         print("======= cal_job =======")
         cal_job_cmds = []
@@ -99,12 +102,10 @@ class Worker_server(object):
         cal_job_cmds.append("--BATCH_SIZE {}".format(BATCH_SIZE))
         cal_job_cmds.append("--MAX_PHYSICAL_BATCH_SIZE {}".format(MAX_PHYSICAL_BATCH_SIZE))
         cal_job_cmds.append("--begin_epoch_num {}".format(begin_epoch_num))
-        cal_job_cmds.append("--siton_run_epoch_num {}".format(siton_run_epoch_num))
+        cal_job_cmds.append("--siton_run_epoch_num {}".format(SITON_RUN_EPOCH_NUM))
         cal_job_cmds.append("--final_significance {}".format(final_significance))
         if simulation_flag:
             cal_job_cmds.append("--simulation_flag")
-        if not_need_callback:
-            cal_job_cmds.append("--not_need_callback")
 
         finally_execute_cmd = " ".join(cal_job_cmds)
         print(finally_execute_cmd)
@@ -130,12 +131,10 @@ def get_specific_model_config(model_name):
             "MAX_PHYSICAL_BATCH_SIZE": 512,
             "TARGET_EPOCHS": 50,
             "TAGRET_ACC": 0.7,
-            "SITON_RUN_EPOCH_NUM": 5,
-            "EPSILON_one_siton": 0.5,
             "DELTA": 1e-8,
             "MAX_GRAD_NORM": 1.2,
             "LR": 1e-3,
-            "SELECT_BLOCK_NUM": 20
+            "SELECT_BLOCK_NUM": 2
         }
     elif model_name == "FF":
         return {
@@ -143,24 +142,34 @@ def get_specific_model_config(model_name):
             "MAX_PHYSICAL_BATCH_SIZE": 512,
             "TARGET_EPOCHS": 50,
             "TAGRET_ACC": 0.6,
-            "SITON_RUN_EPOCH_NUM": 5,
-            "EPSILON_one_siton": 0.5,
             "DELTA": 1e-8,
             "MAX_GRAD_NORM": 1.2,
             "LR": 1e-3,
-            "SELECT_BLOCK_NUM": 20
+            "SELECT_BLOCK_NUM": 2
         }
 
 if __name__ == "__main__":
     worker_ip = "172.18.162.5"
-    worker_port = 10205
+    worker_port = 162538
 
     max_success_time = 100
     sub_train_num = 144
-    worker_server_item = Worker_server(worker_ip, worker_port, max_success_time, sub_train_num)
+    device_index = 2
+    model_name = "FF"
+    train_dataset_name = "EMNIST"
+    test_dataset_name = "EMNIST_MNIST-1000_1000" # EMNIST-2000 MNIST-2000 EMNIST_MNIST-1000_1000
+    sub_test_key_id = "test_sub_0"
+
+    SITON_RUN_EPOCH_NUM = 5
+    EPSILON_one_siton = 0.25 # 0.1/5, 0.5/5
+
+    worker_server_item = Worker_server(worker_ip, worker_port, max_success_time, sub_train_num,
+                        device_index, model_name, train_dataset_name, test_dataset_name, sub_test_key_id,
+                        SITON_RUN_EPOCH_NUM, EPSILON_one_siton)
     p = worker_listener_func(worker_server_item)
 
-    worker_server_item.do_cal()
+    worker_server_item.do_cal(device_index, model_name, train_dataset_name, test_dataset_name, sub_test_key_id,
+                            SITON_RUN_EPOCH_NUM, EPSILON_one_siton)
     while not worker_server_item.all_finished:
         time.sleep(10)
     print("DL sched finished!!")

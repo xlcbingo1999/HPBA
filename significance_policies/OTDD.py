@@ -6,14 +6,13 @@ from otdd.otdd.pytorch.distance import DatasetDistance, FeatureCost
 from utils.global_variable import DATASET_PATH, SUB_TRAIN_DATASET_CONFIG_PATH, TEST_DATASET_CONFIG_PATH, SIGNIFICANCE_TRACE_PREFIX_PATH
 from utils.data_loader import get_concat_dataset
 from torch.utils.data import DataLoader
-import json
 import time
 import torch
 from torchvision import models
 import os
 from utils.global_variable import SIGNIFICANCE_TRACE_PREFIX_PATH, DATASET_CONFIG_NAME
-import concurrent.futures
-
+import multiprocessing
+from tqdm import tqdm
 
 class JobTypeItem(object): # TODO: 改成 JobTypeItem
     def __init__(self, type_identifier, train_dataset_name, test_dataset_name, sub_test_key_id):
@@ -118,17 +117,6 @@ class OTDDPolicy(SigPolicy):
         
         self.type_identifier_2_typeitem = {}
 
-    def value_in_origin_OTDD_trace(self, train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id):
-        if train_dataset_name not in self.origin_OTDD_trace:
-            return None
-        if sub_train_key_id not in self.origin_OTDD_trace[train_dataset_name]:
-            return None
-        if test_dataset_name not in self.origin_OTDD_trace[train_dataset_name][sub_train_key_id]:
-            return None
-        if sub_test_key_id not in self.origin_OTDD_trace[train_dataset_name][sub_train_key_id][test_dataset_name]:
-            return None
-        return self.origin_OTDD_trace[train_dataset_name][sub_train_key_id][test_dataset_name][sub_test_key_id]
-
     def write_to_origin_OTDD_trace(self):
         self.logger.debug("==== write_to_origin_OTDD_trace [origin_OTDD_trace] ====")
         self.logger.info(self.origin_OTDD_trace)
@@ -153,7 +141,16 @@ class OTDDPolicy(SigPolicy):
             self.origin_OTDD_trace[train_dataset_name][sub_train_key_id][test_dataset_name] = {}
         if sub_test_key_id not in self.origin_OTDD_trace[train_dataset_name][sub_train_key_id][test_dataset_name]:
             device_index = 0
-            result_d = self.cal_origin_OTDD(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id, device_index)
+            signficance_state = {
+                "train_dataset_name": train_dataset_name,
+                "sub_train_key_id": sub_train_key_id,
+                "test_dataset_name": test_dataset_name,
+                "sub_test_key_id": sub_test_key_id
+            }
+            distance_batch_size = self.distance_batch_size
+            calculate_batch_size = self.calculate_batch_size
+            result_d = cal_origin_OTDD(signficance_state, device_index, distance_batch_size, calculate_batch_size)
+            self.set_origin_OTDD_trace_value(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id, result_d) 
             self.max_OTDD = max(self.max_OTDD, result_d)
         else:
             result_d = self.origin_OTDD_trace[train_dataset_name][sub_train_key_id][test_dataset_name][sub_test_key_id]
@@ -207,11 +204,12 @@ class OTDDPolicy(SigPolicy):
         group_size = len(cal_device_list)
         split_all_significance_state = [all_significance_state[i:i+group_size] for i in range(0, len(all_significance_state), group_size)]
         
-        for sub_all_significance_state in split_all_significance_state:
-            with concurrent.futures.ThreadPoolExecutor() as executor:
+        for sub_all_significance_state in tqdm(split_all_significance_state):
+            with multiprocessing.Pool(processes=len(sub_all_significance_state)) as pool:
                 distance_batch_size_list = [self.distance_batch_size] * len(sub_all_significance_state)
                 calculate_batch_size_list = [self.calculate_batch_size] * len(sub_all_significance_state)
-                origin_otdds = executor.map(cal_origin_OTDD, sub_all_significance_state, cal_device_list, distance_batch_size_list, calculate_batch_size_list)
+                args_zip = zip(sub_all_significance_state, cal_device_list, distance_batch_size_list, calculate_batch_size_list)
+                origin_otdds = pool.map(cal_origin_OTDD, )
             
             for index, origin_otdd in enumerate(origin_otdds):
                 signficance_state = sub_all_significance_state[index]
