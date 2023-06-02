@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
     simulation = False
     policy_name = "Temp"
-    metric = "Accuracy"
+    metric = "Loss"
     current_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
     dispatcher_logger_path = f"/home/netlab/DL_lab/opacus_testbed/log_temp_store/{policy_name}_{current_time}_{metric}.log"
     logger = get_logger(dispatcher_logger_path, dispatcher_logger_path, enable_multiprocess=True)
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     sub_train_key_ids = [f"train_sub_{index}" for index in range(train_datablock_num)]
     test_dataset_names = ["EMNIST_MNIST-1000_1000", "EMNIST-2000", "MNIST-2000"] # "EMNIST_MNIST-1000_1000", "EMNIST-2000", "MNIST-2000"
     sub_test_key_ids = ["test_sub_0"]
-    model_names = ["CNN"] # 一个一个来 不然会出现延迟!
+    model_names = ["FF"] # 一个一个来 不然会出现延迟!
     
     batch_size = [1024]
     LR = [1e-3]
@@ -49,5 +49,5 @@ if __name__ == "__main__":
 
     logger.info(f"len(all_significance_state): {len(all_significance_state)}")
 
-    device_list = [0, 1, 2, 3] * 5 # 可以5组一起!
+    device_list = [0, 1, 2, 3] * 10 # CNN: 5 FF: 10
     policy.get_job_datablock_significance_async(type_id, all_significance_state, device_list)

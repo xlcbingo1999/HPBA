@@ -1,6 +1,7 @@
 import zerorpc
 from concurrent.futures import ThreadPoolExecutor
 import threading
+import multiprocessing
 
 import copy
 import numpy as np
@@ -893,7 +894,7 @@ class Scheduler_server(object):
             self.sche_reflash_job_status(job_id, origin_status, target_status)
             if not self.simulation:
                 self.finished_job_to_dispatcher(job_id, origin_info)
-                self.report_status("finished job: {}".format(job_id))
+                # self.report_status("finished job: {}".format(job_id))
 
     def get_target_job_status_update_path_and_status(self, job_id, operator):
         origin_status = self.jobid_2_status[job_id]
@@ -1262,8 +1263,8 @@ class Scheduler_server(object):
 
         self.sched_logger.debug(f"waiting job[{len(self.status_2_jobid[JOB_STATUS_KEY.WAITING])}]: {self.status_2_jobid[JOB_STATUS_KEY.WAITING]}")
         self.sched_logger.debug(f"sub_train_datasetidentifier_2_epsilon_remain: {self.sub_train_datasetidentifier_2_epsilon_remain}")
-        if not self.simulation:
-            self.report_status("after sched_dataset_for_done_significance_cal_jobs")
+        # if not self.simulation:
+            # self.report_status("after sched_dataset_for_done_significance_cal_jobs")
 
     def placement_dispatch_for_allsched_jobs(self):
         # 放置任务
@@ -1274,7 +1275,7 @@ class Scheduler_server(object):
         if self.simulation:
             max_gpu_fuzai = 1e16
         else:
-            max_gpu_fuzai = 3
+            max_gpu_fuzai = 10 # TODO(xlc): 这里很容易出错, 还是需要从实际的指标来获取!
         for job_id in all_done_all_sched_jobs_copy:
             gpuidentifier_enable_status = [k for k, v in self.gpuidentifier_2_jobinstances.items() if len(v) < max_gpu_fuzai]
             if len(gpuidentifier_enable_status) > 0:
@@ -1564,7 +1565,7 @@ class Scheduler_server(object):
         self.assignment_policy = policy_item
         self.assignment_policy.report_state()
 
-    def sched_update_significance_policy(self, significance_policy):
+    def sched_update_significance_policy(self, significance_policy, significance_args):
         if significance_policy == "HISOTDDPolicy":
             raise ValueError(f"assignment_policy: {significance_policy} is abandoned!")
             self.significance_policy = HISOTDDPolicy(self.simulation, self.sched_logger)
@@ -1577,7 +1578,8 @@ class Scheduler_server(object):
             raise ValueError(f"assignment_policy: {significance_policy} is abandoned!")
             self.significance_policy = HVPolicy(self.simulation, self.sched_logger)
         elif significance_policy == "TempPolicy":
-            self.significance_policy = TempPolicy(self.simulation, self.sched_logger)
+            metric = significance_args
+            self.significance_policy = TempPolicy(self.simulation, metric, self.sched_logger)
         self.sched_logger.info("significance_policy: {}".format(self.significance_policy.name))
         
 def scheduler_listener_func(scheduler_server_item):

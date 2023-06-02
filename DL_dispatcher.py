@@ -3,6 +3,7 @@ import time
 from utils.global_variable import RESULT_PATH, RECONSTRUCT_TRACE_PREFIX_PATH
 from utils.global_functions import get_types, convert_types
 import threading
+# import multiprocessing
 from functools import reduce
 import sys
 import argparse
@@ -79,6 +80,8 @@ def get_df_config():
 
     parser.add_argument('--dpf_his_betas', type=float, default=0.01)
     parser.add_argument('--dpf_his_waiting_queue_capacitys', type=int, default=10)
+
+    parser.add_argument('--temp_sig_metric', type=str, default="Accuracy")
 
     parser.add_argument("--worker_ips", type=str, nargs="+", default=["172.18.162.2", "172.18.162.3", "172.18.162.4", "172.18.162.5", "172.18.162.6"])
     parser.add_argument("--worker_ports", type=int, nargs="+", default=[16202, 16203, 16204, 16205, 16206])
@@ -396,8 +399,12 @@ class Dispatcher(object):
         else:
             raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             assignment_args = None
+        if significance_policy == "Temp" or significance_policy == "TempPolicy":
+            significance_args = args.temp_sig_metric
+        else:
+            significance_args = None
         client.sched_update_assignment_policy(assignment_policy, assignment_args)
-        client.sched_update_significance_policy(significance_policy)
+        client.sched_update_significance_policy(significance_policy, significance_args)
         self.dispatcher_logger.info("sched_init_sched_register finished!")
         args_message = '\n'.join([f'{k}: {v}' for k, v in vars(args).items()])
         self.dispatcher_logger.info("===== args_message =====")
