@@ -19,17 +19,17 @@ def get_specific_model_config(model_name):
     if model_name == "CNN":
         return {
             "BATCH_SIZE": 1024,
-            "MAX_PHYSICAL_BATCH_SIZE": 512,
+            "MAX_PHYSICAL_BATCH_SIZE": 256,
             "TARGET_EPOCHS": 50,
-            "TAGRET_ACC": 0.7,
+            "TAGRET_ACC": 0.8,
             "SITON_RUN_EPOCH_NUM": 5
         }
     elif model_name == "FF":
         return {
             "BATCH_SIZE": 1024,
-            "MAX_PHYSICAL_BATCH_SIZE": 512,
+            "MAX_PHYSICAL_BATCH_SIZE": 96,
             "TARGET_EPOCHS": 50,
-            "TAGRET_ACC": 0.6,
+            "TAGRET_ACC": 0.7,
             "SITON_RUN_EPOCH_NUM": 5
         }
 
@@ -303,8 +303,8 @@ def generate_alibaba_jobs(all_num,
         
         train_dataset_names = ["EMNIST"]
         
-        test_dataset_names = ["EMNIST-2000", "EMNIST_MNIST-1000_1000", "MNIST-2000"]
-        test_dataset_names_weights = [0.8, 0.15, 0.05]
+        test_dataset_names = ["EMNIST-2000"] # "EMNIST_MNIST-1000_1000", "MNIST-2000"
+        test_dataset_names_weights = [1.0] # 0.8, 0.15, 0.05
         
         jobs = []
         current_decision_num = 0
