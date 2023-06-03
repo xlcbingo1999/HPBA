@@ -245,7 +245,10 @@ class TempPolicy(SigPolicy):
 
         for origin_temp_loss in origin_temp_losses:
             # norm_otdd = math.exp(-1.0 / (origin_otdd * self.OTDD_beta)) / math.exp(-1.0 / (self.max_temp_loss * self.OTDD_beta))
-            norm_temp_loss = 1.0 / origin_temp_loss # TODO(xlc): 因为在线场景中的区分度实在不高, 因此为了避免引入新的argue点, 还是选择了直接做除法
+            if origin_temp_loss > 0.0:
+                norm_temp_loss = 1.0 / origin_temp_loss # TODO(xlc): 因为在线场景中的区分度实在不高, 因此为了避免引入新的argue点, 还是选择了直接做除法
+            else:
+                norm_temp_loss = float("inf")
             norm_temp_losses.append(norm_temp_loss)
 
         result = [
