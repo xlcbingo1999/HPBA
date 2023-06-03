@@ -11,7 +11,7 @@ if __name__ == "__main__":
     torch.multiprocessing.set_start_method('spawn')
 
     simulation = False
-    policy_name = "Temp"
+    policy_name = "OTDD"
     
     current_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
 
@@ -32,7 +32,8 @@ if __name__ == "__main__":
     if "OTDD" in policy_name:
         dispatcher_logger_path = f"/home/netlab/DL_lab/opacus_testbed/log_temp_store/{policy_name}_{current_time}.log"
         logger = get_logger(dispatcher_logger_path, dispatcher_logger_path, enable_multiprocess=True)
-        policy = OTDDPolicy(dataset_name, dataset_config_name, simulation, logger)
+        cal_otdd_batch_size = 8
+        policy = OTDDPolicy(dataset_name, dataset_config_name, simulation, logger, batch_size=cal_otdd_batch_size)
         device_list = [0, 1, 2, 3] * 5
         model_names = ["No_importance"] # 一个一个来 不然会出现延迟!
     elif "Temp" in policy_name:
