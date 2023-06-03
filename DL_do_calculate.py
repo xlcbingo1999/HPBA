@@ -20,7 +20,7 @@ from opacus.utils.batch_memory_manager import BatchMemoryManager
 from opacus.validators import ModuleValidator
 from utils.opacus_engine_tools import get_privacy_dataloader
 
-from utils.global_variable import DATASET_PATH, SUB_TRAIN_DATASET_CONFIG_PATH, TEST_DATASET_CONFIG_PATH
+from utils.global_variable import DATASET_PATH
 from utils.data_loader import get_concat_dataset
 from utils.model_loader import PrivacyCNN, PrivacyFF
 
@@ -41,6 +41,9 @@ def get_df_config():
     parser.add_argument("--test_dataset_name", type=str, required=True)
     parser.add_argument("--sub_train_key_ids", type=str, required=True) # : 用这个进行split
     parser.add_argument("--sub_test_key_id", type=str, required=True)
+
+    parser.add_argument("--sub_train_dataset_config_path", type=str, required=True)
+    parser.add_argument("--test_dataset_config_path", type=str, required=True)
    
     parser.add_argument("--device_index", type=int, required=True)
     parser.add_argument("--logging_file_path", type=str, default="")
@@ -67,6 +70,7 @@ def accuracy(preds, labels):
 def do_calculate_func(job_id, model_name, 
                     train_dataset_name, sub_train_key_ids,
                     test_dataset_name, sub_test_key_id,
+                    sub_train_dataset_config_path, test_dataset_config_path,
                     device_index,
                     model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
                     LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
@@ -99,11 +103,11 @@ def do_calculate_func(job_id, model_name,
         print("check EPSILON_one_siton: {}".format(EPSILON_one_siton), file=f)
         
     train_dataset = get_concat_dataset(train_dataset_name, sub_train_key_ids, 
-                                    DATASET_PATH, SUB_TRAIN_DATASET_CONFIG_PATH, 
+                                    DATASET_PATH, sub_train_dataset_config_path, 
                                     "train")
     print("finished load train_dataset")
     test_dataset = get_concat_dataset(test_dataset_name, sub_test_key_id,
-                                    DATASET_PATH, TEST_DATASET_CONFIG_PATH,
+                                    DATASET_PATH, test_dataset_config_path,
                                     "test")
     print("finished load test_dataset")
     
@@ -275,6 +279,9 @@ if __name__ == "__main__":
     sub_train_key_ids = sub_train_key_ids.split(":")
     sub_test_key_id = args.sub_test_key_id
 
+    sub_train_dataset_config_path = args.sub_train_dataset_config_path
+    test_dataset_config_path = args.test_dataset_config_path
+
     device_index = args.device_index
 
     model_save_path = args.model_save_path
@@ -299,6 +306,7 @@ if __name__ == "__main__":
         job_id, model_name, 
         train_dataset_name, sub_train_key_ids,
         test_dataset_name, sub_test_key_id,
+        sub_train_dataset_config_path, test_dataset_config_path,
         device_index, 
         model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
         LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 

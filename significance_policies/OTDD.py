@@ -3,14 +3,14 @@
 from significance_policies.BaseSigPolicy import SigPolicy
 import json
 from otdd.otdd.pytorch.distance import DatasetDistance, FeatureCost
-from utils.global_variable import DATASET_PATH, SUB_TRAIN_DATASET_CONFIG_PATH, TEST_DATASET_CONFIG_PATH, SIGNIFICANCE_TRACE_PREFIX_PATH
+from utils.global_variable import DATASET_PATH, SIGNIFICANCE_TRACE_PREFIX_PATH
 from utils.data_loader import get_concat_dataset
 from torch.utils.data import DataLoader
 import time
 import torch
 from torchvision import models
 import os
-from utils.global_variable import SIGNIFICANCE_TRACE_PREFIX_PATH, DATASET_CONFIG_NAME
+from utils.global_variable import SIGNIFICANCE_TRACE_PREFIX_PATH
 import multiprocessing
 from tqdm import tqdm
 
@@ -42,7 +42,7 @@ class JobTypeItem(object): # TODO: 改成 JobTypeItem
             history_result_fenmu += weight_rho
         return history_result_fenzi / history_result_fenmu
 
-def cal_origin_OTDD(signficance_state, device_index, distance_batch_size, calculate_batch_size):
+def cal_origin_OTDD(signficance_state, device_index, distance_batch_size, calculate_batch_size, sub_train_dataset_config_path, test_dataset_config_path):
     print(f"begin: {signficance_state} in device_index {device_index}")
     train_dataset_name = signficance_state["train_dataset_name"]
     test_dataset_name = signficance_state["test_dataset_name"]
@@ -50,10 +50,10 @@ def cal_origin_OTDD(signficance_state, device_index, distance_batch_size, calcul
     sub_test_key_id = signficance_state["sub_test_key_id"]
     # 耗时操作, 计算OTDD
     train_dataset = get_concat_dataset(train_dataset_name, sub_train_key_id, 
-                            DATASET_PATH, SUB_TRAIN_DATASET_CONFIG_PATH, 
+                            DATASET_PATH, sub_train_dataset_config_path, 
                             "train")
     test_dataset = get_concat_dataset(test_dataset_name, sub_test_key_id,
-                                    DATASET_PATH, TEST_DATASET_CONFIG_PATH,
+                                    DATASET_PATH, test_dataset_config_path,
                                     "test")
     train_loader = DataLoader(train_dataset, batch_size=distance_batch_size)
     test_loader = DataLoader(test_dataset, batch_size=distance_batch_size)
@@ -89,11 +89,17 @@ def cal_origin_OTDD(signficance_state, device_index, distance_batch_size, calcul
 
 
 class OTDDPolicy(SigPolicy):
-    def __init__(self, simulation, logger, batch_size=16, history_alpha=0.5, history_rho=0.5):
+    def __init__(self, dataset_name, dataset_config_name, simulation, logger, batch_size=16, history_alpha=0.5, history_rho=0.5):
         super().__init__()
         self._name = "OTDDPolicy"
         self.distance_batch_size = batch_size
         self.calculate_batch_size = batch_size
+
+        self.dataset_name = dataset_name
+        self.dataset_config_name = dataset_config_name
+        self.sub_train_dataset_config_path = os.path.join(DATASET_PATH, dataset_name, f"{dataset_config_name}.json")
+        self.test_dataset_config_path = os.path.join(DATASET_PATH, dataset_name, f"subtest.json")
+
         self.OTDD_history_alpha = history_alpha
         self.history_rho = history_rho
 
@@ -105,9 +111,9 @@ class OTDDPolicy(SigPolicy):
         self.max_OTDD = 0.0
 
         if simulation:
-            self.OTDD_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + f"/significance_OTDDPolicy_{DATASET_CONFIG_NAME}.json"
+            self.OTDD_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + f"/significance_OTDDPolicy_{dataset_config_name}.json"
         else:
-            self.OTDD_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + f"/significance_OTDDPolicy_{DATASET_CONFIG_NAME}.json"
+            self.OTDD_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + f"/significance_OTDDPolicy_{dataset_config_name}.json"
         
         if os.path.exists(self.OTDD_trace_path):
             with open(self.OTDD_trace_path, "r+") as f:
@@ -149,7 +155,9 @@ class OTDDPolicy(SigPolicy):
             }
             distance_batch_size = self.distance_batch_size
             calculate_batch_size = self.calculate_batch_size
-            result_d = cal_origin_OTDD(signficance_state, device_index, distance_batch_size, calculate_batch_size)
+            sub_train_dataset_config_path = self.sub_train_dataset_config_path
+            test_dataset_config_path = self.test_dataset_config_path
+            result_d = cal_origin_OTDD(signficance_state, device_index, distance_batch_size, calculate_batch_size, sub_train_dataset_config_path, test_dataset_config_path)
             self.set_origin_OTDD_trace_value(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id, result_d) 
             self.max_OTDD = max(self.max_OTDD, result_d)
         else:
@@ -205,11 +213,13 @@ class OTDDPolicy(SigPolicy):
         split_all_significance_state = [all_significance_state[i:i+group_size] for i in range(0, len(all_significance_state), group_size)]
         
         for sub_all_significance_state in tqdm(split_all_significance_state):
-            with multiprocessing.Pool(processes=len(sub_all_significance_state)) as pool:
+            with multiprocessing.Pool(processes=len(sub_all_significance_state)) as pool: # TODO(xlc):需要做一个失败处理, 如果失败了其他则全部失败吧
                 distance_batch_size_list = [self.distance_batch_size] * len(sub_all_significance_state)
                 calculate_batch_size_list = [self.calculate_batch_size] * len(sub_all_significance_state)
-                args_zip = zip(sub_all_significance_state, cal_device_list, distance_batch_size_list, calculate_batch_size_list)
-                origin_otdds = pool.map(cal_origin_OTDD, )
+                sub_train_dataset_config_path_list = [self.sub_train_dataset_config_path] * len(sub_all_significance_state)
+                test_dataset_config_path_list = [self.test_dataset_config_path] * len(sub_all_significance_state)
+                args_zip = zip(sub_all_significance_state, cal_device_list, distance_batch_size_list, calculate_batch_size_list, sub_train_dataset_config_path_list, test_dataset_config_path_list)
+                origin_otdds = pool.starmap(cal_origin_OTDD, args_zip)
             
             for index, origin_otdd in enumerate(origin_otdds):
                 signficance_state = sub_all_significance_state[index]

@@ -8,10 +8,11 @@ import numpy as np
 import random
 import math
 import argparse
+import os
 from utils.data_loader import fetch_new_dataset
 from utils.get_profiler_significance import get_profiler_selection_result
 from utils.global_functions import FAILED_RESULT_KEY, JOB_STATUS_KEY, JOB_STATUS_UPDATE_PATH, DATASET_STATUS_KEY, EVENT_KEY, add_2_map, normal_counter
-from utils.global_variable import GPU_PATH, RESULT_PATH
+from utils.global_variable import GPU_PATH, RESULT_PATH, DATASET_PATH
 from utils.logging_tools import get_logger
 
 from policies.PBG import PBGPolicy
@@ -165,6 +166,9 @@ class Scheduler_server(object):
         self.job_request_all_num = 0
         self.global_job_arrival_index = 0
 
+        self.dataset_name = ""
+        self.dataset_config_name = ""
+
         self.assignment_policy = None
         self.significance_policy = None
 
@@ -176,7 +180,8 @@ class Scheduler_server(object):
 
     def initialize_sched_configs(self, simulation, simulation_index, seed, current_test_all_dir, 
                                 all_or_nothing_flag, enable_waiting_flag, 
-                                pipeline_sequence_all_num, job_request_all_num):
+                                pipeline_sequence_all_num, job_request_all_num,
+                                dataset_name, dataset_config_name):
         # simulation
         self.simulation = simulation
         self.simulation_index = simulation_index
@@ -199,6 +204,9 @@ class Scheduler_server(object):
         self.enable_waiting_flag = enable_waiting_flag
         self.pipeline_sequence_all_num = pipeline_sequence_all_num
         self.job_request_all_num = job_request_all_num
+
+        self.dataset_name = dataset_name
+        self.dataset_config_name = dataset_config_name
 
     def check_all_finished_or_failed(self):
         return (len(self.status_2_jobid[JOB_STATUS_KEY.SIMULATION_NO_SUMBIT]) <= 0
@@ -309,6 +317,10 @@ class Scheduler_server(object):
         self.pipeline_sequence_all_num = 0
         self.job_request_all_num = 0 # TODO(xlc): 这个值应该直接变成了任务的总数量, 注意在policy里面需要简单修改一下!
         self.global_job_arrival_index = 0
+
+        self.dataset_name = ""
+        self.dataset_config_name = ""
+
         self.min_significance_epsilon_ratio = float('inf')
         self.max_significance_epsilon_ratio = -float('inf')
 
@@ -692,18 +704,25 @@ class Scheduler_server(object):
         for job_id in self.jobid_2_results:
             job_res = self.jobid_2_results[job_id]
             self.sched_logger.debug("job [{}] last result: {}".format(job_id, job_res))
-            last_job_res = job_res[-1]
-            if "train_loss" in last_job_res:
-                all_train_loss += last_job_res["train_loss"]
-            if "train_acc" in last_job_res:
-                all_train_accuracy += last_job_res["train_acc"]
-            if "test_loss" in last_job_res:
-                all_test_loss += last_job_res["test_loss"]
-            if "test_acc" in last_job_res:
-                all_test_accuracy += last_job_res["test_acc"]
-            for sub_res in job_res:
-                if "final_significance" in sub_res:
-                    all_final_significance += sub_res["final_significance"]
+            if len(job_res) <= 0:
+                all_train_loss += 0.0
+                all_train_accuracy += 0.0
+                all_test_loss += 0.0
+                all_test_accuracy += 0.0 # TODO(xlc): 这里应该加上init, 不过其实没训练的模型基本上应该也是不准的吧, 直接设置为0.0算了, 不象处理
+                all_final_significance += 0.0
+            else:
+                last_job_res = job_res[-1]
+                if "train_loss" in last_job_res:
+                    all_train_loss += last_job_res["train_loss"]
+                if "train_acc" in last_job_res:
+                    all_train_accuracy += last_job_res["train_acc"]
+                if "test_loss" in last_job_res:
+                    all_test_loss += last_job_res["test_loss"]
+                if "test_acc" in last_job_res:
+                    all_test_accuracy += last_job_res["test_acc"]
+                for sub_res in job_res:
+                    if "final_significance" in sub_res:
+                        all_final_significance += sub_res["final_significance"]
         return all_train_loss, all_train_accuracy, all_test_loss, all_test_accuracy, all_final_significance 
 
     def report_status(self, location):
@@ -1275,7 +1294,7 @@ class Scheduler_server(object):
         if self.simulation:
             max_gpu_fuzai = 1e16
         else:
-            max_gpu_fuzai = 10 # TODO(xlc): 这里很容易出错, 还是需要从实际的指标来获取!
+            max_gpu_fuzai = 5 # TODO(xlc): 这里很容易出错, 还是需要从实际的指标来获取!
         for job_id in all_done_all_sched_jobs_copy:
             gpuidentifier_enable_status = [k for k, v in self.gpuidentifier_2_jobinstances.items() if len(v) < max_gpu_fuzai]
             if len(gpuidentifier_enable_status) > 0:
@@ -1292,7 +1311,9 @@ class Scheduler_server(object):
                     "train_dataset_name": self.jobid_2_train_dataset_name[job_id],
                     "test_dataset_name": self.jobid_2_test_dataset_name[job_id],
                     "sub_train_key_ids": self.jobid_2_sub_train_key_ids[job_id][-1],
-                    "sub_test_key_id": self.jobid_2_sub_test_key_id[job_id]
+                    "sub_test_key_id": self.jobid_2_sub_test_key_id[job_id],
+                    "sub_train_dataset_config_path": os.path.join(DATASET_PATH, self.dataset_name, f"{self.dataset_config_name}.json"),
+                    "test_dataset_config_path": os.path.join(DATASET_PATH, self.dataset_name, f"subtest.json")
                 }
                 model_save_path = self.jobid_2_model_save_path[job_id]
                 logging_file_path = self.jobid_2_logging_file_path[job_id]
@@ -1570,7 +1591,7 @@ class Scheduler_server(object):
             raise ValueError(f"assignment_policy: {significance_policy} is abandoned!")
             self.significance_policy = HISOTDDPolicy(self.simulation, self.sched_logger)
         elif significance_policy == "OTDDPolicy":
-            self.significance_policy = OTDDPolicy(self.simulation, self.sched_logger)
+            self.significance_policy = OTDDPolicy(self.dataset_name, self.dataset_config_name, self.simulation, self.sched_logger)
         elif significance_policy == "HVOTDDPolicy":
             raise ValueError(f"assignment_policy: {significance_policy} is abandoned!")
             self.significance_policy = HVOTDDPolicy(self.simulation, self.sched_logger)
@@ -1579,7 +1600,7 @@ class Scheduler_server(object):
             self.significance_policy = HVPolicy(self.simulation, self.sched_logger)
         elif significance_policy == "TempPolicy":
             metric = significance_args
-            self.significance_policy = TempPolicy(self.simulation, metric, self.sched_logger)
+            self.significance_policy = TempPolicy(self.dataset_name, self.dataset_config_name, metric, self.simulation, self.sched_logger)
         self.sched_logger.info("significance_policy: {}".format(self.significance_policy.name))
         
 def scheduler_listener_func(scheduler_server_item):

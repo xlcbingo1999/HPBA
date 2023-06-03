@@ -2,7 +2,7 @@ from significance_policies.BaseSigPolicy import SigPolicy
 import json
 import time
 
-from utils.global_variable import DATASET_PATH, DATASET_CONFIG_NAME, SUB_TRAIN_DATASET_CONFIG_PATH, TEST_DATASET_CONFIG_PATH, SIGNIFICANCE_TRACE_PREFIX_PATH
+from utils.global_variable import DATASET_PATH, SIGNIFICANCE_TRACE_PREFIX_PATH
 from utils.data_loader import get_concat_dataset
 from utils.model_loader import PrivacyCNN, PrivacyFF
 
@@ -18,7 +18,7 @@ import multiprocessing
 def accuracy(preds, labels):
     return (preds == labels).mean()
 
-def cal_origin_Temp_loss(signficance_state, device_index, metric):
+def cal_origin_Temp_loss(signficance_state, device_index, metric, sub_train_dataset_config_path, test_dataset_config_path):
     
     print(f"begin: {signficance_state} in device_index {device_index} with metric {metric}")
     train_dataset_name = signficance_state["train_dataset_name"]
@@ -34,10 +34,10 @@ def cal_origin_Temp_loss(signficance_state, device_index, metric):
     temp_loss_train_epoch_num = 30
 
     train_dataset = get_concat_dataset(train_dataset_name, sub_train_key_id, 
-                            DATASET_PATH, SUB_TRAIN_DATASET_CONFIG_PATH, 
+                            DATASET_PATH, sub_train_dataset_config_path, 
                             "train")
     test_dataset = get_concat_dataset(test_dataset_name, sub_test_key_id,
-                                    DATASET_PATH, TEST_DATASET_CONFIG_PATH,
+                                    DATASET_PATH, test_dataset_config_path,
                                     "test")
     train_loader = DataLoader(train_dataset, batch_size=batch_size)
     test_loader = DataLoader(test_dataset, batch_size=batch_size)
@@ -100,17 +100,22 @@ def cal_origin_Temp_loss(signficance_state, device_index, metric):
     return result
 
 class TempPolicy(SigPolicy):
-    def __init__(self, simulation, metric, logger):
+    def __init__(self, dataset_name, dataset_config_name, metric, simulation, logger):
         super().__init__()
         self._name = "TempPolicy"
         self.metric = metric
         self.need_update_backward = False
         self.max_temp_loss = 0.0
 
+        self.dataset_name = dataset_name
+        self.dataset_config_name = dataset_config_name
+        self.sub_train_dataset_config_path = os.path.join(DATASET_PATH, dataset_name, f"{dataset_config_name}.json")
+        self.test_dataset_config_path = os.path.join(DATASET_PATH, dataset_name, f"subtest.json")
+
         if simulation:
-            self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + f"/significance_TempPolicy_{DATASET_CONFIG_NAME}_{metric}.json"
+            self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + f"/significance_TempPolicy_{dataset_config_name}_{metric}.json"
         else:
-            self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + f"/significance_TempPolicy_{DATASET_CONFIG_NAME}_{metric}.json"
+            self.significance_trace_path = SIGNIFICANCE_TRACE_PREFIX_PATH + f"/significance_TempPolicy_{dataset_config_name}_{metric}.json"
         self.logger = logger
 
         if os.path.exists(self.significance_trace_path):
@@ -149,7 +154,7 @@ class TempPolicy(SigPolicy):
                 "sub_test_key_id": sub_test_key_id,
                 "model_name": model_name
             }
-            result_d = cal_origin_Temp_loss(signficance_state, device_index)
+            result_d = cal_origin_Temp_loss(signficance_state, device_index, self.metric, self.sub_train_dataset_config_path, self.test_dataset_config_path)
             self.set_origin_temp_loss_trace_value(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id, model_name, result_d)
             self.max_OTDD = max(self.max_OTDD, result_d)
         else:
@@ -215,8 +220,10 @@ class TempPolicy(SigPolicy):
 
         for sub_all_significance_state in tqdm(split_all_significance_state):
             with multiprocessing.Pool(processes=len(sub_all_significance_state)) as pool:
-                metric = [self.metric] * len(sub_all_significance_state)
-                args_zip = zip(sub_all_significance_state, cal_device_list, metric)
+                metric_list = [self.metric] * len(sub_all_significance_state)
+                sub_train_dataset_config_path_list = [self.sub_train_dataset_config_path] * len(sub_all_significance_state)
+                test_dataset_config_path = [self.test_dataset_config_path] * len(sub_all_significance_state)
+                args_zip = zip(sub_all_significance_state, cal_device_list, metric_list, sub_train_dataset_config_path_list, test_dataset_config_path)
                 origin_temp_loss_resultes = pool.starmap(cal_origin_Temp_loss, args_zip)
 
             for index, origin_temp_loss in enumerate(origin_temp_loss_resultes):

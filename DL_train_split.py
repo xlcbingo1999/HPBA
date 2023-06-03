@@ -94,7 +94,7 @@ def split_and_draw(type, dataset_name, dataset, DIRICHLET_ALPHA, N_CLIENTS):
     return client_idcs
 
 if __name__ == "__main__":
-    TRAIN_N_CLIENTS = 144
+    TRAIN_N_CLIENTS = 24
     TRAIN_DIRICHLET_ALPHA = 1.0
 
     dataset_name = "EMNIST"

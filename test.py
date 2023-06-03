@@ -459,7 +459,7 @@ for result in results:
     print(result)
 '''
 
-
+'''
 from multiprocessing import Pool
 
 # 定义一个需要并行执行的函数
@@ -489,3 +489,70 @@ print(results)
 # 关闭Pool
 pool.close()
 pool.join()
+'''
+
+
+import multiprocessing
+import time
+
+def process_data(a, b, pool):
+    try:
+        time.sleep(b)
+        result = a / b
+        print(f"result: {result}")
+        return result
+    except Exception as e:
+        # 处理异常的代码
+        print(f"Exception in task: {e}")
+        pool.terminate()
+        return None
+
+if __name__ == "__main__":
+    with multiprocessing.Pool() as pool:
+        data_1 = [1, 3, 4]
+        data_2 = [2, 0, 1]
+        pool_list = [pool] * 3
+        args_zip = zip(data_1, data_2, pool_list)
+        results = pool.starmap(process_data, args_zip)
+
+
+'''
+import multiprocessing
+import datetime
+import time
+import os
+import subprocess
+from subprocess import PIPE
+import pdb
+ 
+#子进程中某个进程发生异常，则结束整个进程池
+all_process = []
+
+def work_process(i):
+    time.sleep(1)
+    raise Exception(multiprocessing.current_process().name, all_process)
+    return 'a' + str(i)
+ 
+ 
+def throw_exception(name, all_process):
+    print('子进程%s发生异常,进程号为%s'%(name, os.getpid()))
+    for p in all_process:
+        os.system(f"kill -9 {p}")
+    time.sleep(2)
+ 
+ 
+ 
+if __name__ == '__main__':
+    res = []
+    with multiprocessing.Pool(processes=10) as pool:
+        for i in range(10):  # 遍历所有的文件
+            start_time_fp = datetime.datetime.now()
+            r = pool.apply_async(func=work_process,args= (i,),error_callback=throw_exception)
+            over_time_fp = datetime.datetime.now()
+            total_time = (over_time_fp - start_time_fp).total_seconds()
+            print('启动单个程序%s完成共计%s秒' % (i,total_time))
+        pool.close()  # 关闭进程池，不再接受请求
+        pool.join()  # 等待进程池中的任务执行完毕
+        print(res)#打印异步结果
+'''
+ 

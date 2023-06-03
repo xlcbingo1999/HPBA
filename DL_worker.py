@@ -28,6 +28,7 @@ def do_system_calculate_func(worker_ip, worker_port,
                             job_id, model_name, 
                             train_dataset_name, test_dataset_name,
                             sub_train_key_ids, sub_test_key_id, 
+                            sub_train_dataset_config_path, test_dataset_config_path,
                             device_index, 
                             model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
                             LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
@@ -46,6 +47,11 @@ def do_system_calculate_func(worker_ip, worker_port,
     sub_train_key_ids = ":".join(sub_train_key_ids)
     execute_cmds.append("--sub_train_key_ids {}".format(sub_train_key_ids))
     execute_cmds.append("--sub_test_key_id {}".format(sub_test_key_id))
+
+    execute_cmds.append("--sub_train_dataset_config_path {}".format(sub_train_dataset_config_path))
+    execute_cmds.append("--test_dataset_config_path {}".format(test_dataset_config_path))
+    
+    
 
     execute_cmds.append("--device_index {}".format(device_index))
     if len(summary_writer_path) > 0 and len(summary_writer_key) > 0:
@@ -168,6 +174,8 @@ class Worker_server(object):
             test_dataset_name = worker_dataset_config["test_dataset_name"]
             sub_train_key_ids = worker_dataset_config["sub_train_key_ids"]
             sub_test_key_id = worker_dataset_config["sub_test_key_id"]
+            sub_train_dataset_config_path = worker_dataset_config["sub_train_dataset_config_path"] 
+            test_dataset_config_path = worker_dataset_config["test_dataset_config_path"]
 
             model_name = origin_info["model_name"]
             
@@ -186,6 +194,7 @@ class Worker_server(object):
                 job_id, model_name, 
                 train_dataset_name, test_dataset_name,
                 sub_train_key_ids, sub_test_key_id, 
+                sub_train_dataset_config_path, test_dataset_config_path,
                 device_index, 
                 model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
                 LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 

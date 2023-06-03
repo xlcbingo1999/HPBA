@@ -245,7 +245,9 @@ def generate_jobs(all_num,
 
 def generate_alibaba_jobs(all_num, 
                 time_speed_up, need_change_interval, is_history,
-                datablock_require_epsilon_max_ratio, min_epsilon_capacity, change_job_epsilon_max_times,
+                datablock_require_epsilon_max_ratio, min_epsilon_capacity, 
+                job_require_select_block_num,
+                change_job_epsilon_max_times,
                 dispatcher_ip, dispatcher_port, enable_waiting_flag,
                 jobtrace_reconstruct_path="", save_path=""):
     min_abs_time = float("inf")
@@ -275,15 +277,17 @@ def generate_alibaba_jobs(all_num,
             current_decision_num += 1
     else:
         alibaba_dp_trace_path = ALIBABA_DP_TRACE_PATH + "/privacy_tasks_30_days_extend.csv"
-        df = pd.read_csv(alibaba_dp_trace_path)
+        valid_sample_df = pd.read_csv(alibaba_dp_trace_path)
         if datablock_require_epsilon_max_ratio is not None:
             max_job_epsilon_require = min_epsilon_capacity * datablock_require_epsilon_max_ratio
-            valid_sample_df = df[df["epsilon_per_epoch"] < max_job_epsilon_require]
-            print("min df[epsilon_per_epoch]: {}".format(min(df["epsilon_per_epoch"])))
+            valid_sample_df = valid_sample_df[valid_sample_df["epsilon_per_epoch"] < max_job_epsilon_require]
+            # print("min df[epsilon_per_epoch]: {}".format(min(df["epsilon_per_epoch"])))
             print("check max_job_epsilon_require: {}".format(max_job_epsilon_require))
             print("check valid_sample_df: {}".format(len(valid_sample_df)))
-        else:
-            valid_sample_df = df
+        if job_require_select_block_num is not None:
+            valid_sample_df = valid_sample_df[valid_sample_df["n_blocks"] < job_require_select_block_num]
+            print("check job_require_select_block_num: {}".format(job_require_select_block_num))
+            print("check valid_sample_df: {}".format(len(valid_sample_df)))
         if len(valid_sample_df) > all_num:
             result_df = valid_sample_df.sample(n=all_num, replace=False)
         else:
@@ -332,10 +336,13 @@ def generate_alibaba_jobs(all_num,
 
             DELTA = result_df_line["delta"]
 
-            if need_change_interval:
-                arrival_time = result_df_line["norm_submit_time"] / time_speed_up
+            if enable_waiting_flag:
+                arrival_time = 0.0
             else:
-                arrival_time = result_df_line["norm_submit_time"]
+                if need_change_interval:
+                    arrival_time = result_df_line["norm_submit_time"] / time_speed_up
+                else:
+                    arrival_time = result_df_line["norm_submit_time"]
             job = generate_normal_one_job(
                 arrival_time, model_name, train_dataset_name, test_dataset_name, datablock_select_num, 
                 BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPSILON_PER_EPOCH, DELTA, 

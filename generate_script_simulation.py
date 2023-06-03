@@ -17,8 +17,11 @@ significance_policy = "TempPolicy"
 test_jobtrace_reconstruct_path = "schedule-review-simulation-05-29-09-25-36" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
 dataset_reconstruct_path = "schedule-review-simulation-05-29-09-25-36" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
 history_jobtrace_reconstruct_path = "schedule-review-simulation-05-29-09-25-36" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
+dataset_name = "EMNIST"
+dataset_config_name = "subtrain_24_split_1.0_dirichlet"
 
 datablock_require_epsilon_max_ratio = 0.1
+job_require_select_block_num = 10
 change_job_epsilon_max_times = 1.0
 all_history_num = 0
 his_betas = 0.0
@@ -79,8 +82,12 @@ if len(dataset_reconstruct_path) > 0:
 if len(history_jobtrace_reconstruct_path) > 0:
     dispatcher_cmds.append(f"--history_jobtrace_reconstruct_path {history_jobtrace_reconstruct_path}")
 
+dispatcher_cmds.append(f"--dataset_name {dataset_name}")
+dispatcher_cmds.append(f"--dataset_config_name {dataset_config_name}")
+
 dispatcher_cmds.append(f"--pipeline_sequence_all_num {pipeline_sequence_all_num}")
 dispatcher_cmds.append(f"--datablock_require_epsilon_max_ratio {datablock_require_epsilon_max_ratio}")
+dispatcher_cmds.append(f"--job_require_select_block_num {job_require_select_block_num}")
 dispatcher_cmds.append(f"--change_job_epsilon_max_times {change_job_epsilon_max_times}")
 dispatcher_cmds.append(f"--base_capacity {base_capacity}")
 dispatcher_cmds.append(f"--change_datablock_epsilon_max_times {change_datablock_epsilon_max_times}")

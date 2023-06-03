@@ -31,6 +31,9 @@ def get_df_config():
     parser.add_argument("--need_save_jobtrace_flag", action="store_true")
     parser.add_argument("--all_datablock_num", type=int, default=100)
     parser.add_argument("--offline_datablock_num", type=int, default=100)
+
+    parser.add_argument("--dataset_name", type=str, default="EMNIST")
+    parser.add_argument("--dataset_config_name", type=int, default="subtrain_100_split_1.0_dirichlet")
     
     parser.add_argument("--simulation_flag", action="store_true")
     parser.add_argument("--simulation_time", type=int, default=1)
@@ -44,6 +47,7 @@ def get_df_config():
     # parser.add_argument("--job_recoming_flag",action="store_true")
     
     parser.add_argument("--datablock_require_epsilon_max_ratio", type=float, default=0.1)
+    parser.add_argument("--job_require_select_block_num", type=float, default=10)
     parser.add_argument("--change_job_epsilon_max_times", type=float, default=1.0)
 
     parser.add_argument("--base_capacity", type=float, default=10.0)
@@ -97,8 +101,10 @@ def get_df_config():
     return args
 
 class Dispatcher(object):
-    def __init__(self):
+    def __init__(self, dispatcher_ip, dispatcher_port):
         self.all_finished = True
+        self.dispatcher_ip = dispatcher_ip
+        self.dispatcher_port = dispatcher_port
     
     def restart_dispatcher(self, jobs_list, history_jobs_list, datasets_map, current_test_all_dir, simulation, simulation_index, restart_trace):
         self.current_test_all_dir = current_test_all_dir
@@ -198,6 +204,7 @@ class Dispatcher(object):
                 if count > self.dispatch_jobs_count:
                     self.dispatch_jobs_count = count
                     client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
+                    dispatch_jobs_detail = convert_types(dispatch_jobs_detail)
                     client.update_jobs(dispatch_jobs_detail) # 提交上去后, 任务即进入NO_SCHED状态, 之后就是调度器自身会启动一个不断循环的获取计算Siginificane策略和调度策略
                 if self.dispatch_datasets_count == len(self.jobs_detail):
                     client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
@@ -215,7 +222,8 @@ class Dispatcher(object):
     def dispatch_history_jobs(self, sched_ip, sched_port, update_timeout):
         def thread_func_once_dispatch_his_job(sched_ip, sched_port, update_timeout):
             client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
-            client.update_history_jobs(self.history_jobs_detail)
+            history_jobs_detail = convert_types(self.history_jobs_detail)
+            client.update_history_jobs(history_jobs_detail)
             self.dispatcher_logger.info("Thread [thread_func_once_dispatch_his_job] finished!")
         p = threading.Thread(target=thread_func_once_dispatch_his_job, args=(sched_ip, sched_port, update_timeout), daemon=True)
         p.start()
@@ -255,6 +263,7 @@ class Dispatcher(object):
                 if count > self.dispatch_datasets_count:
                     self.dispatch_datasets_count = count
                     client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
+                    subtrain_datasetidentifier_info = convert_types(subtrain_datasetidentifier_info)
                     client.update_dataset(subtrain_datasetidentifier_info)
                 if self.dispatch_datasets_count == self.all_datasets_count:
                     self.dispatcher_logger.info("Finished Dataset Dispatch!")
@@ -333,6 +342,7 @@ class Dispatcher(object):
     def sched_end(self, ip, port):
         client = self.get_zerorpc_client(ip, port)
         client.sched_end()
+        client.end_and_report_dispatchers_by_sched([(self.dispatcher_ip, self.dispatcher_port)])
 
     def sched_report_status(self, ip, port, location):
         client = self.get_zerorpc_client(ip, port)
@@ -345,6 +355,7 @@ class Dispatcher(object):
     def sched_init_sched_register(self, ip, port, args, seed, 
                                 assignment_policy, significance_policy, 
                                 pipeline_sequence_all_num, job_request_all_num,
+                                dataset_name, dataset_config_name,
                                 all_or_nothing_flag, enable_waiting_flag,
                                 simulation, simulation_index):
         client = self.get_zerorpc_client(ip, port)
@@ -357,7 +368,9 @@ class Dispatcher(object):
             all_or_nothing_flag, 
             enable_waiting_flag,
             pipeline_sequence_all_num,
-            job_request_all_num
+            job_request_all_num,
+            dataset_name, 
+            dataset_config_name
         )
         if assignment_policy == "PBGPolicy" or assignment_policy == "PBG":
             comparison_cost_epsilon_list = args.pbg_comparison_cost_epsilons
@@ -468,15 +481,15 @@ class Dispatcher(object):
                 np.mean(target_datablock_num_arr), min(target_datablock_num_arr), max(target_datablock_num_arr), np.mean(target_datablock_num_arr), min(target_datablock_num_arr), max(target_datablock_num_arr)
             ), file=f)
 
-def scheduler_listener_func(dispatcher_server_item, port):
-    def dispatcher_func_timely(dispatcher_server_item, port):
+def scheduler_listener_func(dispatcher_server_item):
+    def dispatcher_func_timely(dispatcher_server_item):
         dispatcher_server = zerorpc.Server(dispatcher_server_item)
-        ip_port = "tcp://0.0.0.0:{}".format(port)
+        ip_port = "tcp://0.0.0.0:{}".format(dispatcher_server_item.port)
         dispatcher_server.bind(ip_port)
         print("DL_server running in {}".format(ip_port))
         dispatcher_server.run()
         print("Thread [dispatcher_func_timely] finished!")
-    p = threading.Thread(target=dispatcher_func_timely, args=(dispatcher_server_item, port), daemon=True)
+    p = threading.Thread(target=dispatcher_func_timely, args=(dispatcher_server_item, ), daemon=True)
     p.start()
     return p
 
@@ -495,12 +508,14 @@ def testbed_experiment_start(args, sched_ip, sched_port,
                             cal_significance_sleep_time, sched_best_serve_sleep_time, 
                             placement_sleep_time, waiting_time,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
+                            dataset_name, dataset_config_name,
                             budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times,
                             job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             pipeline_sequence_all_num, all_history_num, time_interval, need_change_interval,
                             all_datablock_num, offline_datablock_num, 
                             all_or_nothing_flag, enable_waiting_flag,
-                            datablock_require_epsilon_max_ratio, change_job_epsilon_max_times):
+                            datablock_require_epsilon_max_ratio, job_require_select_block_num,
+                            change_job_epsilon_max_times):
     assert args.simulation_time == 1 and len(args.seeds) == 1
     simulation_flag = False
     min_epsilon_capacity = base_capacity * budget_capacity_ratio
@@ -509,7 +524,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
         num=all_datablock_num,
         offline_num=offline_datablock_num,
         time_speed_up=simulation_time_speed_up,
-        dataset_names=["EMNIST"],
+        dataset_names=[dataset_name],
         fix_epsilon=min_epsilon_capacity,
         fix_delta=1e-5,
         change_datablock_epsilon_max_times=change_datablock_epsilon_max_times,
@@ -523,6 +538,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
         is_history=False,
         datablock_require_epsilon_max_ratio=datablock_require_epsilon_max_ratio,
         min_epsilon_capacity=min_epsilon_capacity,
+        job_require_select_block_num=job_require_select_block_num,
         change_job_epsilon_max_times=change_job_epsilon_max_times,
         dispatcher_ip=dispatcher_ip,
         dispatcher_port=dispatcher_port,
@@ -537,6 +553,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
         is_history=True,
         datablock_require_epsilon_max_ratio=datablock_require_epsilon_max_ratio,
         min_epsilon_capacity=min_epsilon_capacity,
+        job_require_select_block_num=job_require_select_block_num,
         change_job_epsilon_max_times=change_job_epsilon_max_times,
         dispatcher_ip=dispatcher_ip,
         dispatcher_port=dispatcher_port,
@@ -548,92 +565,94 @@ def testbed_experiment_start(args, sched_ip, sched_port,
     job_request_all_num = sys.maxsize if enable_waiting_flag else pipeline_sequence_all_num
 
     processes = []
-    try:
-        dispatcher = Dispatcher()
-        dispatcher.restart_dispatcher(
-            jobs_list, 
-            history_jobs_list, 
-            datasets_list, 
-            current_test_all_dir,
-            simulation=False,
-            simulation_index=0,
-            restart_trace=restart_trace
-        )
-        
-        remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
-        processes.append(remote_server_p)
+    dispatcher = Dispatcher(dispatcher_ip, dispatcher_port)
+    dispatcher.restart_dispatcher(
+        jobs_list, 
+        history_jobs_list, 
+        datasets_list, 
+        current_test_all_dir,
+        simulation=False,
+        simulation_index=0,
+        restart_trace=restart_trace
+    )
+    
+    remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
+    processes.append(remote_server_p)
 
-        dispatcher.sched_init_sched_register(
-            sched_ip, sched_port, 
-            args, args.seeds[0], 
-            args.assignment_policy, args.significance_policy, 
-            pipeline_sequence_all_num, 
-            job_request_all_num,
-            all_or_nothing_flag=all_or_nothing_flag,
-            enable_waiting_flag=enable_waiting_flag,
-            simulation=False, simulation_index=0)
-        dispatcher.sched_update_gpu_status_start(
-            sched_ip, sched_port, 
-            init_workerip_2_ports, init_gpuidentifiers, 
-            current_test_all_dir, simulation_index=0
-        )
-        if not args.without_start_load_job:
-            dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout)
-            processes.append(dataset_p)
-        
-        time.sleep(waiting_time)
-        time_p = dispatcher.sched_update_current_time()
-        processes.append(time_p)
+    dispatcher.sched_init_sched_register(
+        sched_ip, sched_port, 
+        args, args.seeds[0], 
+        args.assignment_policy, args.significance_policy, 
+        pipeline_sequence_all_num, 
+        job_request_all_num,
+        dataset_name=dataset_name, 
+        dataset_config_name=dataset_config_name,
+        all_or_nothing_flag=all_or_nothing_flag,
+        enable_waiting_flag=enable_waiting_flag,
+        simulation=False, simulation_index=0)
+    dispatcher.sched_update_gpu_status_start(
+        sched_ip, sched_port, 
+        init_workerip_2_ports, init_gpuidentifiers, 
+        current_test_all_dir, simulation_index=0
+    )
+    if not args.without_start_load_job:
+        dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout)
+        processes.append(dataset_p)
+    
+    time.sleep(waiting_time)
+    time_p = dispatcher.sched_update_current_time()
+    processes.append(time_p)
 
-        if not args.without_start_load_history_job:
-            history_job_p = dispatcher.dispatch_history_jobs(sched_ip, sched_port, update_timeout)
-            processes.append(history_job_p)
-        if not args.without_start_load_job:
-            job_p = dispatcher.dispatch_jobs(pipeline_sequence_all_num, sched_ip, sched_port, update_timeout)
-            processes.append(job_p)
+    if not args.without_start_load_history_job:
+        history_job_p = dispatcher.dispatch_history_jobs(sched_ip, sched_port, update_timeout)
+        processes.append(history_job_p)
+    if not args.without_start_load_job:
+        job_p = dispatcher.dispatch_jobs(pipeline_sequence_all_num, sched_ip, sched_port, update_timeout)
+        processes.append(job_p)
 
-        print("Waiting for load datasets and jobs {} s".format(waiting_time))
-        time.sleep(waiting_time)
-        dispatcher.sched_dispatch_start(sched_ip, sched_port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time, sched_best_serve_sleep_time)
-        
-        # 主线程的最后一个操作!
+    print("Waiting for load datasets and jobs {} s".format(waiting_time))
+    time.sleep(waiting_time)
+    dispatcher.sched_dispatch_start(sched_ip, sched_port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time, sched_best_serve_sleep_time)
+    
+    # 主线程的最后一个操作!
+    all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
+    while not all_finished_label:
+        time.sleep(global_sleep_time)
         all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
-        while not all_finished_label:
-            time.sleep(global_sleep_time)
-            all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
-        dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
-        print("logically all stoped!")
-        dispatcher.sched_end(sched_ip, sched_port)
-        if not args.without_finished_clear_all:
-            dispatcher.sched_clear_all(sched_ip, sched_port)
-        print("Stop workers and scheduler")
-        time.sleep(waiting_time)
-        
-        if not args.without_stop_all:
-            dispatcher.stop_all(sched_ip, sched_port)
-        print("Waiting for stop threads {} s".format(waiting_time))
-        time.sleep(waiting_time)
-    except Exception as e:
-        print("[xlc] Exception: ", e)
+    dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
+    print("logically all stoped!")
+    dispatcher.all_finished = True
+    dispatcher.sched_end(sched_ip, sched_port)
+    print("Stop workers and scheduler")
+    time.sleep(waiting_time)
+    if not args.without_finished_clear_all:
+        dispatcher.sched_clear_all(sched_ip, sched_port)
+    
+    if not args.without_stop_all:
+        dispatcher.stop_all(sched_ip, sched_port)
+    print("Waiting for stop threads {} s".format(waiting_time))
+    time.sleep(waiting_time)
 
 def simulation_experiment_start(args, sched_ip, sched_port,
                             dispatcher_ip, dispatcher_port,
                             worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
+                            dataset_name, dataset_config_name,
                             budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times, 
                             job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             pipeline_sequence_all_num, all_history_num, need_change_interval,
                             all_datablock_num, offline_datablock_num, 
                             simulation_time, simulation_time_speed_up, 
                             all_or_nothing_flag, enable_waiting_flag,
-                            datablock_require_epsilon_max_ratio, change_job_epsilon_max_times
+                            datablock_require_epsilon_max_ratio, job_require_select_block_num,
+                            change_job_epsilon_max_times
                             ):
     min_epsilon_capacity = base_capacity * budget_capacity_ratio
     datasets_list, time_2_datablock_num = generate_alibaba_dataset(
         num=all_datablock_num,
         offline_num=offline_datablock_num,
         time_speed_up=simulation_time_speed_up,
-        dataset_names=["EMNIST"],
+        dataset_names=[dataset_name],
         fix_epsilon=min_epsilon_capacity,
         fix_delta=1e-5,
         change_datablock_epsilon_max_times=change_datablock_epsilon_max_times,
@@ -647,6 +666,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
         is_history=False,
         datablock_require_epsilon_max_ratio=datablock_require_epsilon_max_ratio,
         min_epsilon_capacity=min_epsilon_capacity,
+        job_require_select_block_num=job_require_select_block_num,
         change_job_epsilon_max_times=change_job_epsilon_max_times,
         dispatcher_ip=dispatcher_ip,
         dispatcher_port=dispatcher_port,
@@ -661,6 +681,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
         is_history=True,
         datablock_require_epsilon_max_ratio=datablock_require_epsilon_max_ratio,
         min_epsilon_capacity=min_epsilon_capacity,
+        job_require_select_block_num=job_require_select_block_num,
         change_job_epsilon_max_times=change_job_epsilon_max_times,
         dispatcher_ip=dispatcher_ip,
         dispatcher_port=dispatcher_port,
@@ -671,54 +692,53 @@ def simulation_experiment_start(args, sched_ip, sched_port,
     pipeline_sequence_all_num = len(jobs_list)
     job_request_all_num = sys.maxsize if enable_waiting_flag else pipeline_sequence_all_num
     processes = []
-    dispatcher = Dispatcher()
-    remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
+    dispatcher = Dispatcher(dispatcher_ip, dispatcher_port)
+    remote_server_p = scheduler_listener_func(dispatcher)
     processes.append(remote_server_p)
     for simulation_index in range(simulation_time):
         print("start simulation_index: {}".format(simulation_index))
-        try:
-            dispatcher.restart_dispatcher(
-                jobs_list, 
-                history_jobs_list, 
-                datasets_list, 
-                current_test_all_dir, 
-                simulation=True, 
-                simulation_index=simulation_index,
-                restart_trace=restart_trace)
-            
-            dispatcher.sched_init_sched_register(
-                sched_ip, sched_port, 
-                args, args.seeds[simulation_index], 
-                args.assignment_policy, args.significance_policy, 
-                pipeline_sequence_all_num, 
-                job_request_all_num,
-                all_or_nothing_flag=all_or_nothing_flag,
-                enable_waiting_flag=enable_waiting_flag,
-                simulation=True,
-                simulation_index=simulation_index
-            )
-            dispatcher.sched_update_gpu_status_start(
-                sched_ip, sched_port, 
-                init_workerip_2_ports, init_gpuidentifiers, 
-                current_test_all_dir, simulation_index
-            )
+        dispatcher.restart_dispatcher(
+            jobs_list, 
+            history_jobs_list, 
+            datasets_list, 
+            current_test_all_dir, 
+            simulation=True, 
+            simulation_index=simulation_index,
+            restart_trace=restart_trace)
+        
+        dispatcher.sched_init_sched_register(
+            sched_ip, sched_port, 
+            args, args.seeds[simulation_index], 
+            args.assignment_policy, args.significance_policy, 
+            pipeline_sequence_all_num, 
+            job_request_all_num,
+            dataset_name=dataset_name, 
+            dataset_config_name=dataset_config_name,
+            all_or_nothing_flag=all_or_nothing_flag,
+            enable_waiting_flag=enable_waiting_flag,
+            simulation=True,
+            simulation_index=simulation_index
+        )
+        dispatcher.sched_update_gpu_status_start(
+            sched_ip, sched_port, 
+            init_workerip_2_ports, init_gpuidentifiers, 
+            current_test_all_dir, simulation_index
+        )
 
-            # 合并成统一的事件队列, 需要等待所有的
-            dispatcher.sched_simulation_start(sched_ip, sched_port) # 同样直接启动一个线程, 完成一大堆队列操作即可
+        # 合并成统一的事件队列, 需要等待所有的
+        dispatcher.sched_simulation_start(sched_ip, sched_port) # 同样直接启动一个线程, 完成一大堆队列操作即可
 
-            # 主线程的最后一个操作!
-            while not dispatcher.all_finished:
-                time.sleep(global_sleep_time)
-            dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
-            print("logically all stoped!")
-            dispatcher.all_finished = True
-            dispatcher.sched_end(sched_ip, sched_port)
-            if not args.without_finished_clear_all:
-                dispatcher.sched_clear_all(sched_ip, sched_port)
-            print("Stop workers and scheduler")
-            time.sleep(waiting_time)
-        except Exception as e:
-            print("[xlc] Exception: ", e)
+        # 主线程的最后一个操作!
+        while not dispatcher.all_finished:
+            time.sleep(global_sleep_time)
+        dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
+        print("logically all stoped!")
+        dispatcher.all_finished = True
+        dispatcher.sched_end(sched_ip, sched_port)
+        if not args.without_finished_clear_all:
+            dispatcher.sched_clear_all(sched_ip, sched_port)
+        print("Stop workers and scheduler")
+        time.sleep(waiting_time)
         print("end simulation_index: {}".format(simulation_index))
     if not args.without_stop_all:
         dispatcher.stop_all(sched_ip, sched_port)
@@ -750,6 +770,9 @@ if __name__ == "__main__":
     history_jobtrace_reconstruct_path = args.history_jobtrace_reconstruct_path
     save_to_origin_trace_path = args.save_to_origin_trace_path
 
+    dataset_name = args.dataset_name
+    dataset_config_name = args.dataset_config_name
+
     budget_capacity_ratio = args.budget_capacity_ratio
     base_capacity = args.base_capacity
     change_datablock_epsilon_max_times = args.change_datablock_epsilon_max_times
@@ -780,6 +803,7 @@ if __name__ == "__main__":
     offline_datablock_num = args.offline_datablock_num
 
     datablock_require_epsilon_max_ratio = args.datablock_require_epsilon_max_ratio
+    job_require_select_block_num = args.job_require_select_block_num
     change_job_epsilon_max_times = args.change_job_epsilon_max_times
 
     global_sleep_time = args.global_sleep_time 
@@ -795,13 +819,15 @@ if __name__ == "__main__":
                             dispatcher_ip, dispatcher_port,
                             worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
+                            dataset_name, dataset_config_name,
                             budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times,
                             job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             pipeline_sequence_all_num, all_history_num, need_change_interval,
                             all_datablock_num, offline_datablock_num, 
                             simulation_time, simulation_time_speed_up, 
                             all_or_nothing_flag, enable_waiting_flag,
-                            datablock_require_epsilon_max_ratio, change_job_epsilon_max_times)
+                            datablock_require_epsilon_max_ratio, job_require_select_block_num,
+                            change_job_epsilon_max_times)
     else:
         testbed_experiment_start(args, sched_ip, sched_port,
                             dispatcher_ip, dispatcher_port,
@@ -810,11 +836,13 @@ if __name__ == "__main__":
                             cal_significance_sleep_time, sched_best_serve_sleep_time, 
                             placement_sleep_time, waiting_time,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
+                            dataset_name, dataset_config_name,
                             budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times,
                             job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             pipeline_sequence_all_num, all_history_num, time_interval, need_change_interval,
                             all_datablock_num, offline_datablock_num, 
                             all_or_nothing_flag, enable_waiting_flag,
-                            datablock_require_epsilon_max_ratio, change_job_epsilon_max_times)    
+                            datablock_require_epsilon_max_ratio, job_require_select_block_num,
+                            change_job_epsilon_max_times)    
     
         

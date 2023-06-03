@@ -7,23 +7,26 @@ enable_waiting_flag = True
 pipeline_sequence_all_num = 10
 
 need_save_jobtrace_flag = False
-worker_indexes = [2, 3]
+worker_indexes = [0, 1]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 
-assignment_policy = "SagewithRemainPolicy"
+assignment_policy = "BestFitwithRemainPolicy"
 his_batch_size_for_one_epochs = 5
 significance_policy = "OTDDPolicy"
-test_jobtrace_reconstruct_path = "schedule-review-testbed-06-02-23-30-51" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
-dataset_reconstruct_path = "schedule-review-testbed-06-02-23-30-51" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
-history_jobtrace_reconstruct_path = "schedule-review-testbed-06-02-23-30-51" # "schedule-review-simulation-05-03-19-49-14"
+test_jobtrace_reconstruct_path = "schedule-review-testbed-06-03-11-05-26" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
+dataset_reconstruct_path = "schedule-review-testbed-06-03-11-05-26" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
+history_jobtrace_reconstruct_path = "schedule-review-testbed-06-03-11-05-26" # "schedule-review-simulation-05-03-19-49-14"
+dataset_name = "EMNIST"
+dataset_config_name = "subtrain_24_split_1.0_dirichlet"
 
 datablock_require_epsilon_max_ratio = 0.1
+job_require_select_block_num = 10
 change_job_epsilon_max_times = 1.0
 all_history_num = 0
 his_betas = 0.0
-all_datablock_num = 100
-offline_datablock_num = 100
+all_datablock_num = 24
+offline_datablock_num = 24
 base_capacity = 10.0
 change_datablock_epsilon_max_times = 1.0
 simulation_time = 5
@@ -79,8 +82,12 @@ if len(dataset_reconstruct_path) > 0:
 if len(history_jobtrace_reconstruct_path) > 0:
     dispatcher_cmds.append(f"--history_jobtrace_reconstruct_path {history_jobtrace_reconstruct_path}")
 
+dispatcher_cmds.append(f"--dataset_name {dataset_name}")
+dispatcher_cmds.append(f"--dataset_config_name {dataset_config_name}")
+
 dispatcher_cmds.append(f"--pipeline_sequence_all_num {pipeline_sequence_all_num}")
 dispatcher_cmds.append(f"--datablock_require_epsilon_max_ratio {datablock_require_epsilon_max_ratio}")
+dispatcher_cmds.append(f"--job_require_select_block_num {job_require_select_block_num}")
 dispatcher_cmds.append(f"--change_job_epsilon_max_times {change_job_epsilon_max_times}")
 dispatcher_cmds.append(f"--base_capacity {base_capacity}")
 dispatcher_cmds.append(f"--change_datablock_epsilon_max_times {change_datablock_epsilon_max_times}")

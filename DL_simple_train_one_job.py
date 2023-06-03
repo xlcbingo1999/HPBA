@@ -21,7 +21,7 @@ from opacus import PrivacyEngine
 from opacus.utils.batch_memory_manager import BatchMemoryManager
 from opacus.validators import ModuleValidator
 from utils.opacus_engine_tools import get_privacy_dataloader
-from utils.global_variable import DATASET_PATH, SUB_TRAIN_DATASET_CONFIG_PATH, TEST_DATASET_CONFIG_PATH
+from utils.global_variable import DATASET_PATH
 from utils.data_loader import get_concat_dataset
 from utils.model_loader import PrivacyCNN, PrivacyFF
 from tqdm import tqdm
