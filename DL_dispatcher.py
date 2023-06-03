@@ -33,7 +33,7 @@ def get_df_config():
     parser.add_argument("--offline_datablock_num", type=int, default=100)
 
     parser.add_argument("--dataset_name", type=str, default="EMNIST")
-    parser.add_argument("--dataset_config_name", type=int, default="subtrain_100_split_1.0_dirichlet")
+    parser.add_argument("--dataset_config_name", type=str, default="subtrain_100_split_1.0_dirichlet")
     
     parser.add_argument("--simulation_flag", action="store_true")
     parser.add_argument("--simulation_time", type=int, default=1)
@@ -85,7 +85,7 @@ def get_df_config():
     parser.add_argument('--dpf_his_betas', type=float, default=0.01)
     parser.add_argument('--dpf_his_waiting_queue_capacitys', type=int, default=10)
 
-    parser.add_argument('--temp_sig_metric', type=str, default="Accuracy")
+    parser.add_argument('--temp_sig_metric', type=str, default="Loss")
 
     parser.add_argument("--worker_ips", type=str, nargs="+", default=["172.18.162.2", "172.18.162.3", "172.18.162.4", "172.18.162.5", "172.18.162.6"])
     parser.add_argument("--worker_ports", type=int, nargs="+", default=[16202, 16203, 16204, 16205, 16206])
