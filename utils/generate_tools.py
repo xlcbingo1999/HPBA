@@ -246,7 +246,7 @@ def generate_jobs(all_num,
 def generate_alibaba_jobs(all_num, 
                 time_speed_up, need_change_interval, is_history,
                 datablock_require_epsilon_max_ratio, min_epsilon_capacity, 
-                job_require_select_block_num,
+                job_require_select_block_min_num, job_require_select_block_max_num,
                 change_job_epsilon_max_times,
                 dispatcher_ip, dispatcher_port, enable_waiting_flag,
                 jobtrace_reconstruct_path="", save_path=""):
@@ -284,9 +284,13 @@ def generate_alibaba_jobs(all_num,
             # print("min df[epsilon_per_epoch]: {}".format(min(df["epsilon_per_epoch"])))
             print("check max_job_epsilon_require: {}".format(max_job_epsilon_require))
             print("check valid_sample_df: {}".format(len(valid_sample_df)))
-        if job_require_select_block_num is not None:
-            valid_sample_df = valid_sample_df[valid_sample_df["n_blocks"] < job_require_select_block_num]
-            print("check job_require_select_block_num: {}".format(job_require_select_block_num))
+        if job_require_select_block_min_num is not None:
+            valid_sample_df = valid_sample_df[valid_sample_df["n_blocks"] >= job_require_select_block_min_num]
+            print("check job_require_select_block_min_num: {}".format(job_require_select_block_min_num))
+            print("check valid_sample_df: {}".format(len(valid_sample_df)))
+        if job_require_select_block_max_num is not None:
+            valid_sample_df = valid_sample_df[valid_sample_df["n_blocks"] <= job_require_select_block_max_num]
+            print("check job_require_select_block_max_num: {}".format(job_require_select_block_max_num))
             print("check valid_sample_df: {}".format(len(valid_sample_df)))
         if len(valid_sample_df) > all_num:
             result_df = valid_sample_df.sample(n=all_num, replace=False)

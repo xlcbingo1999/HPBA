@@ -47,7 +47,8 @@ def get_df_config():
     # parser.add_argument("--job_recoming_flag",action="store_true")
     
     parser.add_argument("--datablock_require_epsilon_max_ratio", type=float, default=0.1)
-    parser.add_argument("--job_require_select_block_num", type=float, default=10)
+    parser.add_argument("--job_require_select_block_min_num", type=float, default=5)
+    parser.add_argument("--job_require_select_block_max_num", type=float, default=25)
     parser.add_argument("--change_job_epsilon_max_times", type=float, default=1.0)
 
     parser.add_argument("--base_capacity", type=float, default=10.0)
@@ -484,7 +485,7 @@ class Dispatcher(object):
 def scheduler_listener_func(dispatcher_server_item):
     def dispatcher_func_timely(dispatcher_server_item):
         dispatcher_server = zerorpc.Server(dispatcher_server_item)
-        ip_port = "tcp://0.0.0.0:{}".format(dispatcher_server_item.port)
+        ip_port = "tcp://0.0.0.0:{}".format(dispatcher_server_item.dispatcher_port)
         dispatcher_server.bind(ip_port)
         print("DL_server running in {}".format(ip_port))
         dispatcher_server.run()
@@ -514,7 +515,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
                             pipeline_sequence_all_num, all_history_num, time_interval, need_change_interval,
                             all_datablock_num, offline_datablock_num, 
                             all_or_nothing_flag, enable_waiting_flag,
-                            datablock_require_epsilon_max_ratio, job_require_select_block_num,
+                            datablock_require_epsilon_max_ratio, job_require_select_block_min_num, job_require_select_block_max_num,
                             change_job_epsilon_max_times):
     assert args.simulation_time == 1 and len(args.seeds) == 1
     simulation_flag = False
@@ -538,7 +539,8 @@ def testbed_experiment_start(args, sched_ip, sched_port,
         is_history=False,
         datablock_require_epsilon_max_ratio=datablock_require_epsilon_max_ratio,
         min_epsilon_capacity=min_epsilon_capacity,
-        job_require_select_block_num=job_require_select_block_num,
+        job_require_select_block_min_num=job_require_select_block_min_num,
+        job_require_select_block_max_num=job_require_select_block_max_num,
         change_job_epsilon_max_times=change_job_epsilon_max_times,
         dispatcher_ip=dispatcher_ip,
         dispatcher_port=dispatcher_port,
@@ -553,7 +555,8 @@ def testbed_experiment_start(args, sched_ip, sched_port,
         is_history=True,
         datablock_require_epsilon_max_ratio=datablock_require_epsilon_max_ratio,
         min_epsilon_capacity=min_epsilon_capacity,
-        job_require_select_block_num=job_require_select_block_num,
+        job_require_select_block_min_num=job_require_select_block_min_num,
+        job_require_select_block_max_num=job_require_select_block_max_num,
         change_job_epsilon_max_times=change_job_epsilon_max_times,
         dispatcher_ip=dispatcher_ip,
         dispatcher_port=dispatcher_port,
@@ -576,7 +579,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
         restart_trace=restart_trace
     )
     
-    remote_server_p = scheduler_listener_func(dispatcher, dispatcher_port)
+    remote_server_p = scheduler_listener_func(dispatcher)
     processes.append(remote_server_p)
 
     dispatcher.sched_init_sched_register(
@@ -644,7 +647,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
                             all_datablock_num, offline_datablock_num, 
                             simulation_time, simulation_time_speed_up, 
                             all_or_nothing_flag, enable_waiting_flag,
-                            datablock_require_epsilon_max_ratio, job_require_select_block_num,
+                            datablock_require_epsilon_max_ratio, job_require_select_block_min_num, job_require_select_block_max_num,
                             change_job_epsilon_max_times
                             ):
     min_epsilon_capacity = base_capacity * budget_capacity_ratio
@@ -666,7 +669,8 @@ def simulation_experiment_start(args, sched_ip, sched_port,
         is_history=False,
         datablock_require_epsilon_max_ratio=datablock_require_epsilon_max_ratio,
         min_epsilon_capacity=min_epsilon_capacity,
-        job_require_select_block_num=job_require_select_block_num,
+        job_require_select_block_min_num=job_require_select_block_min_num,
+        job_require_select_block_max_num=job_require_select_block_max_num,
         change_job_epsilon_max_times=change_job_epsilon_max_times,
         dispatcher_ip=dispatcher_ip,
         dispatcher_port=dispatcher_port,
@@ -681,7 +685,8 @@ def simulation_experiment_start(args, sched_ip, sched_port,
         is_history=True,
         datablock_require_epsilon_max_ratio=datablock_require_epsilon_max_ratio,
         min_epsilon_capacity=min_epsilon_capacity,
-        job_require_select_block_num=job_require_select_block_num,
+        job_require_select_block_min_num=job_require_select_block_min_num,
+        job_require_select_block_max_num=job_require_select_block_max_num,
         change_job_epsilon_max_times=change_job_epsilon_max_times,
         dispatcher_ip=dispatcher_ip,
         dispatcher_port=dispatcher_port,
@@ -803,7 +808,8 @@ if __name__ == "__main__":
     offline_datablock_num = args.offline_datablock_num
 
     datablock_require_epsilon_max_ratio = args.datablock_require_epsilon_max_ratio
-    job_require_select_block_num = args.job_require_select_block_num
+    job_require_select_block_min_num = args.job_require_select_block_min_num
+    job_require_select_block_max_num = args.job_require_select_block_max_num
     change_job_epsilon_max_times = args.change_job_epsilon_max_times
 
     global_sleep_time = args.global_sleep_time 
@@ -826,7 +832,7 @@ if __name__ == "__main__":
                             all_datablock_num, offline_datablock_num, 
                             simulation_time, simulation_time_speed_up, 
                             all_or_nothing_flag, enable_waiting_flag,
-                            datablock_require_epsilon_max_ratio, job_require_select_block_num,
+                            datablock_require_epsilon_max_ratio, job_require_select_block_min_num, job_require_select_block_max_num,
                             change_job_epsilon_max_times)
     else:
         testbed_experiment_start(args, sched_ip, sched_port,
@@ -842,7 +848,7 @@ if __name__ == "__main__":
                             pipeline_sequence_all_num, all_history_num, time_interval, need_change_interval,
                             all_datablock_num, offline_datablock_num, 
                             all_or_nothing_flag, enable_waiting_flag,
-                            datablock_require_epsilon_max_ratio, job_require_select_block_num,
+                            datablock_require_epsilon_max_ratio, job_require_select_block_min_num, job_require_select_block_max_num,
                             change_job_epsilon_max_times)    
     
         

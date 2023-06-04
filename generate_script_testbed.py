@@ -1,5 +1,5 @@
 current_ip_index = 5
-current_cmd_index = 1
+current_cmd_index = 7
 
 is_simulation = False
 all_or_nothing_flag = True
@@ -14,20 +14,21 @@ worker_indexes_str = " ".join(worker_indexes)
 assignment_policy = "BestFitwithRemainPolicy"
 his_batch_size_for_one_epochs = 5
 significance_policy = "OTDDPolicy"
-test_jobtrace_reconstruct_path = "schedule-review-testbed-06-03-11-05-26" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
-dataset_reconstruct_path = "schedule-review-testbed-06-03-11-05-26" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
-history_jobtrace_reconstruct_path = "schedule-review-testbed-06-03-11-05-26" # "schedule-review-simulation-05-03-19-49-14"
+test_jobtrace_reconstruct_path = "schedule-review-testbed-06-03-23-37-06" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
+dataset_reconstruct_path = "schedule-review-testbed-06-03-23-37-06" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
+history_jobtrace_reconstruct_path = "schedule-review-testbed-06-03-23-37-06" # "schedule-review-simulation-05-03-19-49-14"
 dataset_name = "EMNIST"
-dataset_config_name = "subtrain_24_split_1.0_dirichlet"
+dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
 datablock_require_epsilon_max_ratio = 0.1
-job_require_select_block_num = 10
+job_require_select_block_min_num = 5
+job_require_select_block_max_num = 25
 change_job_epsilon_max_times = 1.0
 all_history_num = 0
 his_betas = 0.0
-all_datablock_num = 24
-offline_datablock_num = 24
-base_capacity = 10.0
+all_datablock_num = 100
+offline_datablock_num = 100
+base_capacity = 3.0
 change_datablock_epsilon_max_times = 1.0
 simulation_time = 5
 waiting_time = 2 if is_simulation else 10
@@ -87,7 +88,8 @@ dispatcher_cmds.append(f"--dataset_config_name {dataset_config_name}")
 
 dispatcher_cmds.append(f"--pipeline_sequence_all_num {pipeline_sequence_all_num}")
 dispatcher_cmds.append(f"--datablock_require_epsilon_max_ratio {datablock_require_epsilon_max_ratio}")
-dispatcher_cmds.append(f"--job_require_select_block_num {job_require_select_block_num}")
+dispatcher_cmds.append(f"--job_require_select_block_min_num {job_require_select_block_min_num}")
+dispatcher_cmds.append(f"--job_require_select_block_max_num {job_require_select_block_max_num}")
 dispatcher_cmds.append(f"--change_job_epsilon_max_times {change_job_epsilon_max_times}")
 dispatcher_cmds.append(f"--base_capacity {base_capacity}")
 dispatcher_cmds.append(f"--change_datablock_epsilon_max_times {change_datablock_epsilon_max_times}")
