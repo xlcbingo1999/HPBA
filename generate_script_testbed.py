@@ -1,5 +1,5 @@
 current_ip_index = 5
-current_cmd_index = 7
+current_cmd_index = 3
 
 is_simulation = False
 all_or_nothing_flag = True
@@ -11,7 +11,7 @@ worker_indexes = [0, 1]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 
-assignment_policy = "BestFitwithRemainPolicy"
+assignment_policy = "IterativeHISwithOrderProVersionPolicy"
 his_batch_size_for_one_epochs = 5
 significance_policy = "OTDDPolicy"
 test_jobtrace_reconstruct_path = "schedule-review-testbed-06-03-23-37-06" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
@@ -26,8 +26,8 @@ job_require_select_block_max_num = 25
 change_job_epsilon_max_times = 1.0
 all_history_num = 0
 his_betas = 0.0
-all_datablock_num = 100
-offline_datablock_num = 100
+all_datablock_num = 30
+offline_datablock_num = 30
 base_capacity = 3.0
 change_datablock_epsilon_max_times = 1.0
 simulation_time = 5

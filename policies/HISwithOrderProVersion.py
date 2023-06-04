@@ -15,7 +15,6 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         # self.gamma = gamma
         # self.delta = delta
         # self.only_small = only_small
-        self.job_request_all_num = job_request_all_num
         self.logger = logger
         self.waiting_queue_capacity = 1
         self.only_one = True
@@ -308,6 +307,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         if enable_waiting_flag: 
             if temp_sched_failed_flag:
                 result_waiting_job_ids.append(job_id)
+                result_job_2_instant_recoming_flag[job_id] = True
             else:
                 result_job_2_instant_recoming_flag[job_id] = True
         

@@ -1199,7 +1199,7 @@ class Scheduler_server(object):
             if instant_recoming_flag:
                 instant_recoming_flag_num += 1
                 self.jobid_2_need_instantly_recoming[temp_job_id] = True
-        if instant_recoming_flag_num > 0:
+        if self.simulation and instant_recoming_flag_num > 0:
             self.simulation_queue.put(SchedEvent(self.simulation_global_time, EVENT_KEY.JOB_SIGCAL_SCHED_RUNNING, {}))
         
         success_datasetidentifier_2_consume_epsilon = {}
@@ -1539,8 +1539,8 @@ class Scheduler_server(object):
             beta, pipeline_sequence_all_num = assignment_args
             policy_item = HISwithOrderRemainVersionPolicy(beta, pipeline_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "HISwithOrderProVersionPolicy" or assignment_policy == "HISwithOrderProVersion":
-            beta, pipeline_sequence_all_num, job_request_all_num, job_request_all_num = assignment_args
-            policy_item = HISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, job_request_all_num, self.seed, self.sched_logger)
+            beta, pipeline_sequence_all_num, job_request_all_num = assignment_args
+            policy_item = HISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "HISwithOrderProVersionBestEffortPolicy" or assignment_policy == "HISwithOrderProVersionBestEffort":
             raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
             beta, pipeline_sequence_all_num = assignment_args
