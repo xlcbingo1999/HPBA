@@ -1,34 +1,34 @@
 current_ip_index = 5
-current_cmd_index = 3
+current_cmd_index = 2
 
 is_simulation = False
 all_or_nothing_flag = True
 enable_waiting_flag = True
-pipeline_sequence_all_num = 10
+pipeline_sequence_all_num = 20
 
 need_save_jobtrace_flag = False
-worker_indexes = [0, 1]
+worker_indexes = [2, 3]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 
-assignment_policy = "IterativeHISwithOrderProVersionPolicy"
+assignment_policy = "SagewithRemainPolicy"
 his_batch_size_for_one_epochs = 5
 significance_policy = "OTDDPolicy"
-test_jobtrace_reconstruct_path = "schedule-review-testbed-06-03-23-37-06" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
-dataset_reconstruct_path = "schedule-review-testbed-06-03-23-37-06" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
-history_jobtrace_reconstruct_path = "schedule-review-testbed-06-03-23-37-06" # "schedule-review-simulation-05-03-19-49-14"
+test_jobtrace_reconstruct_path = "" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
+dataset_reconstruct_path = "" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
+history_jobtrace_reconstruct_path = "" # "schedule-review-simulation-05-03-19-49-14"
 dataset_name = "EMNIST"
 dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
 datablock_require_epsilon_max_ratio = 0.1
-job_require_select_block_min_num = 5
-job_require_select_block_max_num = 25
+job_require_select_block_min_num = 1
+job_require_select_block_max_num = 10
 change_job_epsilon_max_times = 1.0
 all_history_num = 0
 his_betas = 0.0
 all_datablock_num = 30
 offline_datablock_num = 30
-base_capacity = 3.0
+base_capacity = 5.0
 change_datablock_epsilon_max_times = 1.0
 simulation_time = 5
 waiting_time = 2 if is_simulation else 10

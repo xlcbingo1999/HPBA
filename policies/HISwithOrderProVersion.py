@@ -43,7 +43,10 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
                       enable_waiting_flag,
                       solver=cp.ECOS):
         job_num, datablock_num = sign_matrix.shape[0], sign_matrix.shape[1]
-        
+        valid_sched_datablock_indices = np.where(datablock_privacy_budget_remain_list >= job_privacy_budget_consume_list[-1])[0]
+        if len(valid_sched_datablock_indices) <= 0:
+            return np.zeros((job_num, datablock_num))  
+            
         # 检查本身就无法调度上岸的方案
         invalid_sched_datablock_indices = np.where(datablock_privacy_budget_remain_list < job_privacy_budget_consume_list[-1])[0]
         
@@ -51,6 +54,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         job_privacy_budget_consume_list = np.array(job_privacy_budget_consume_list)[np.newaxis, :]
         datablock_privacy_budget_capacity_list = np.array(datablock_privacy_budget_capacity_list)[np.newaxis, :]
 
+        self.logger.debug(f"HIS check solving shape: ({job_num}, {datablock_num})")
         matrix_X = cp.Variable((job_num, datablock_num), nonneg=True)
         objective = cp.Maximize(
             cp.sum(cp.multiply(sign_matrix, matrix_X))
@@ -181,8 +185,8 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
                                                 datablock_privacy_budget_remain_list,
                                                 datablock_arrival_time_list, 
                                                 current_all_job_target_datablock_selected_nums,
-                                                current_all_job_arrival_times,
                                                 current_all_job_budget_consumes,
+                                                current_all_job_arrival_times,
                                                 all_or_nothing_flag, 
                                                 enable_waiting_flag)
         current_job_probability = assign_result_matrix[-1] # 这里其实相当于算出了一个分数, 如果为了这个分数不被泄露, 可以用指数机制加噪, 该方案被证实为满足DP-差分隐私.

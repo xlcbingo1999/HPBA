@@ -65,9 +65,13 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
                       job_arrival_time_list,
                       all_or_nothing_flag, 
                       enable_waiting_flag,
-                      solver=cp.ECOS_BB):
+                      solver=cp.ECOS):
         begin_time = time.time()
         job_num, datablock_num = sign_matrix.shape[0], sign_matrix.shape[1]
+
+        valid_sched_datablock_indices = np.where(datablock_privacy_budget_remain_list >= job_privacy_budget_consume_list[-1])[0]
+        if len(valid_sched_datablock_indices) <= 0:
+            return np.zeros((job_num, datablock_num))  
 
         # 检查本身就无法调度上岸的方案
         invalid_sched_datablock_indices = np.where(datablock_privacy_budget_remain_list < job_privacy_budget_consume_list[-1])[0]
@@ -327,7 +331,8 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
         if enable_waiting_flag: 
             if temp_sched_failed_flag:
                 result_waiting_job_ids.append(job_id)
-                result_job_2_instant_recoming_flag[job_id] = need_failed_job_instantly_recoming
+                # result_job_2_instant_recoming_flag[job_id] = need_failed_job_instantly_recoming
+                result_job_2_instant_recoming_flag[job_id] = True
             else:
                 result_job_2_instant_recoming_flag[job_id] = True
         

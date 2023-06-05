@@ -116,6 +116,7 @@ class PBGPolicy(Policy):
         if enable_waiting_flag: 
             if temp_sched_failed_flag:
                 result_waiting_job_ids.append(job_id)
+                result_job_2_instant_recoming_flag[job_id] = True
             else:
                 result_job_2_instant_recoming_flag[job_id] = True
             

@@ -21,7 +21,7 @@ def get_specific_model_config(model_name):
             "BATCH_SIZE": 1024,
             "MAX_PHYSICAL_BATCH_SIZE": 256,
             "TARGET_EPOCHS": 50,
-            "TAGRET_ACC": 0.8,
+            "TAGRET_ACC": 0.9,
             "SITON_RUN_EPOCH_NUM": 5
         }
     elif model_name == "FF":
@@ -29,10 +29,11 @@ def get_specific_model_config(model_name):
             "BATCH_SIZE": 1024,
             "MAX_PHYSICAL_BATCH_SIZE": 96,
             "TARGET_EPOCHS": 50,
-            "TAGRET_ACC": 0.7,
+            "TAGRET_ACC": 0.8,
             "SITON_RUN_EPOCH_NUM": 5
         }
 
+'''
 def generate_dataset(dataset_names, 
                      fix_epsilon=10.0, fix_delta=1e-5, change_datablock_epsilon_max_times=1.0,
                      fix_time=0, num=6, 
@@ -81,6 +82,7 @@ def generate_dataset(dataset_names,
             json.dump(datasets_list, f)
         print("save dataset trace in {}".format(dataset_path))
     return datasets_list
+'''
 
 def generate_job_type(model_name, train_dataset_name, test_dataset_name):
     waiting_select_tuple = (model_name, train_dataset_name, test_dataset_name)
@@ -147,6 +149,7 @@ def poisson_arrival_times(last_arrival_time, lambdas):
     arrival_time = last_arrival_time + np.random.exponential(scale=1/lambdas)
     return arrival_time
 
+'''
 def generate_jobs(all_num, 
                 per_epoch_EPSILONs, datablock_require_epsilon_max_ratio, change_job_epsilon_max_times, 
                 time_interval, need_change_interval, is_history, 
@@ -242,6 +245,7 @@ def generate_jobs(all_num,
             json.dump(jobs, f)
         
     return jobs
+'''
 
 def generate_alibaba_jobs(all_num, 
                 time_speed_up, need_change_interval, is_history,
@@ -311,8 +315,8 @@ def generate_alibaba_jobs(all_num,
         
         train_dataset_names = ["EMNIST"]
         
-        test_dataset_names = ["EMNIST-2000"] # "EMNIST_MNIST-1000_1000", "MNIST-2000"
-        test_dataset_names_weights = [1.0] # 0.8, 0.15, 0.05
+        test_dataset_names = ["EMNIST-2000", "EMNIST_MNIST-1000_1000", "MNIST-2000"] 
+        test_dataset_names_weights = [0.8, 0.15, 0.05] # 0.8, 0.15, 0.05
         
         jobs = []
         current_decision_num = 0
