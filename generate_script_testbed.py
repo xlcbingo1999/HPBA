@@ -1,4 +1,4 @@
-current_ip_index = 5
+current_ip_index = 3
 current_cmd_index = 0
 worker_indexes = [0, 1]
 
@@ -12,7 +12,7 @@ pipeline_sequence_all_num = 20
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 
-assignment_policy = "PBGMixPolicy"
+assignment_policy = "IterativeHISwithOrderProVersionPolicy"
 his_batch_size_for_one_epochs = 5
 significance_policy = "OTDDPolicy"
 test_jobtrace_reconstruct_path = "schedule-review-testbed-06-05-11-25-06" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"

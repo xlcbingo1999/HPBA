@@ -122,10 +122,10 @@ class Worker_server(object):
         if job_id in self.jobid_2_thread:
             del self.jobid_2_thread[job_id]
 
-    def failed_job_callback(self, job_id, failed_result_key):
+    def runtime_failed_job_callback(self, job_id, exception_log):
         origin_info = self.jobid_2_origininfo[job_id]
         client = self.get_scheduler_zerorpc_client()
-        client.worker_failed_job_callback(job_id, origin_info, failed_result_key)
+        client.worker_runtime_failed_job_callback(job_id, origin_info, exception_log)
         if job_id in self.jobid_2_origininfo:
             del self.jobid_2_origininfo[job_id]
         if job_id in self.jobid_2_thread:
@@ -165,45 +165,39 @@ class Worker_server(object):
             }
             self.finished_job_callback(job_id, all_results, 0.0)
             return     
-        try:
-            # GPU调度
-            device_index = worker_gpu_id
-            
-            # DATASET调度
-            train_dataset_name = worker_dataset_config["train_dataset_name"]
-            test_dataset_name = worker_dataset_config["test_dataset_name"]
-            sub_train_key_ids = worker_dataset_config["sub_train_key_ids"]
-            sub_test_key_id = worker_dataset_config["sub_test_key_id"]
-            sub_train_dataset_config_path = worker_dataset_config["sub_train_dataset_config_path"] 
-            test_dataset_config_path = worker_dataset_config["test_dataset_config_path"]
+        device_index = worker_gpu_id
+        
+        train_dataset_name = worker_dataset_config["train_dataset_name"]
+        test_dataset_name = worker_dataset_config["test_dataset_name"]
+        sub_train_key_ids = worker_dataset_config["sub_train_key_ids"]
+        sub_test_key_id = worker_dataset_config["sub_test_key_id"]
+        sub_train_dataset_config_path = worker_dataset_config["sub_train_dataset_config_path"] 
+        test_dataset_config_path = worker_dataset_config["test_dataset_config_path"]
 
-            model_name = origin_info["model_name"]
-            
-            LR = origin_info["LR"]
-            EPSILON_one_siton = sched_epsilon_one_siton_run
-            DELTA = origin_info["DELTA"]
-            MAX_GRAD_NORM = origin_info["MAX_GRAD_NORM"]
-            BATCH_SIZE = origin_info["BATCH_SIZE"]
-            MAX_PHYSICAL_BATCH_SIZE = origin_info["MAX_PHYSICAL_BATCH_SIZE"]
-            self.worker_logger.info("EPSILON_one_siton in begin_job {}: [{}]".format(job_id, EPSILON_one_siton))
+        model_name = origin_info["model_name"]
+        
+        LR = origin_info["LR"]
+        EPSILON_one_siton = sched_epsilon_one_siton_run
+        DELTA = origin_info["DELTA"]
+        MAX_GRAD_NORM = origin_info["MAX_GRAD_NORM"]
+        BATCH_SIZE = origin_info["BATCH_SIZE"]
+        MAX_PHYSICAL_BATCH_SIZE = origin_info["MAX_PHYSICAL_BATCH_SIZE"]
+        self.worker_logger.info("EPSILON_one_siton in begin_job {}: [{}]".format(job_id, EPSILON_one_siton))
 
-            worker_ip = self.local_ip
-            worker_port = self.local_port
+        worker_ip = self.local_ip
+        worker_port = self.local_port
 
-            p = threading.Thread(target=do_system_calculate_func, args=(worker_ip, worker_port, 
-                job_id, model_name, 
-                train_dataset_name, test_dataset_name,
-                sub_train_key_ids, sub_test_key_id, 
-                sub_train_dataset_config_path, test_dataset_config_path,
-                device_index, 
-                model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
-                LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
-                BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, begin_epoch_num, siton_run_epoch_num, final_significance, simulation_flag), daemon=True)
-            self.jobid_2_thread[job_id] = p
-            p.start()
-        except Exception as e:
-            self.failed_job_callback(job_id, "FAILED_RESULT_KEY.JOB_FAILED")
-            raise ValueError("No this calculate func: {}".format(e))
+        p = threading.Thread(target=do_system_calculate_func, args=(worker_ip, worker_port, 
+            job_id, model_name, 
+            train_dataset_name, test_dataset_name,
+            sub_train_key_ids, sub_test_key_id, 
+            sub_train_dataset_config_path, test_dataset_config_path,
+            device_index, 
+            model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
+            LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
+            BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, begin_epoch_num, siton_run_epoch_num, final_significance, simulation_flag), daemon=True)
+        self.jobid_2_thread[job_id] = p
+        p.start()
 
     def report_result(self, job_id, origin_info, result, real_duration_time):
         self.worker_logger.info("Worker finished job [{}] => result: {}; time: {}".format(job_id, result, real_duration_time))

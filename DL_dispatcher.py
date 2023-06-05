@@ -56,9 +56,9 @@ def get_df_config():
     parser.add_argument("--budget_capacity_ratio", type=float, default=1)
     parser.add_argument("--change_datablock_epsilon_max_times", type=float, default=1.0)
     
-    parser.add_argument("--scheduler_update_sleep_time", type=float, default=0.0)
-    parser.add_argument("--cal_significance_sleep_time", type=float, default=0.0)
-    parser.add_argument("--placement_sleep_time", type=float, default=1.0)
+    parser.add_argument("--scheduler_update_sleep_time", type=float, default=1.0)
+    parser.add_argument("--cal_significance_sleep_time", type=float, default=1.0)
+    parser.add_argument("--placement_sleep_time", type=float, default=2.0)
     parser.add_argument("--sched_best_serve_sleep_time", type=float, default=1.0)
 
     parser.add_argument("--waiting_time", type=int, default=2)

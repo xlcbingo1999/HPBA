@@ -196,7 +196,7 @@ class HISBasePolicy(Policy):
                 non_zero_valid_remain_siton_num_per_block_index = np.nonzero(valid_remain_siton_num_per_block)[0]
         self.logger.debug(f"valid_remain_siton_num_per_block: {valid_remain_siton_num_per_block}")
         self.logger.debug(f"first open from remain result: {result}")
-        self.logger.debug(f"current_require: {current_require}")
+        self.logger.debug(f"first current_require: {current_require}")
 
         datablock_privacy_budget_used_list = np.subtract(datablock_privacy_budget_capacity_list, datablock_privacy_budget_remain_list)
         valid_used_siton_num_per_block = np.floor_divide(datablock_privacy_budget_used_list, siton_block_epsilon_capacity)
@@ -219,7 +219,7 @@ class HISBasePolicy(Policy):
 
         self.logger.debug(f"valid_used_siton_num_per_block: {valid_used_siton_num_per_block}")
         self.logger.debug(f"second open from used result: {result}")
-        self.logger.debug(f"current_require: {current_require}")
+        self.logger.debug(f"second current_require: {current_require}")
 
         right_capacity_for_single_job = siton_block_epsilon_capacity * result
         self.logger.debug(f"first right_capacity_for_single_job: {right_capacity_for_single_job}")

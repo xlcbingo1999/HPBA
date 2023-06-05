@@ -270,6 +270,7 @@ if __name__ == "__main__":
     worker_ip = args.worker_ip 
     worker_port = args.worker_port 
     job_id = args.job_id 
+    
     model_name = args.model_name
 
     train_dataset_name = args.train_dataset_name
@@ -301,22 +302,29 @@ if __name__ == "__main__":
 
     begin_epoch_num = args.begin_epoch_num
     siton_run_epoch_num = args.siton_run_epoch_num    
-
-    job_id, all_results, real_duration_time = do_calculate_func(
-        job_id, model_name, 
-        train_dataset_name, sub_train_key_ids,
-        test_dataset_name, sub_test_key_id,
-        sub_train_dataset_config_path, test_dataset_config_path,
-        device_index, 
-        model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
-        LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
-        BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
-        begin_epoch_num, siton_run_epoch_num, final_significance, 
-        simulation_flag
-    )
-    
-    print(f"callback to worker: {worker_ip}:{worker_port}")
-    tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)
-    client = zerorpc.Client()
-    client.connect(tcp_ip_port)
-    client.finished_job_callback(job_id, all_results, real_duration_time)
+    try:
+        job_id, all_results, real_duration_time = do_calculate_func(
+            job_id, model_name, 
+            train_dataset_name, sub_train_key_ids,
+            test_dataset_name, sub_test_key_id,
+            sub_train_dataset_config_path, test_dataset_config_path,
+            device_index, 
+            model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
+            LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
+            BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
+            begin_epoch_num, siton_run_epoch_num, final_significance, 
+            simulation_flag
+        )
+        
+        print(f"finished callback to worker: {worker_ip}:{worker_port}")
+        tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)
+        client = zerorpc.Client()
+        client.connect(tcp_ip_port)
+        client.finished_job_callback(job_id, all_results, real_duration_time)
+    except Exception as e:
+        print(f"runtime_failed callback to worker: {worker_ip}:{worker_port} with info {e}")
+        print(f"\n\n\n\n\n\n\n\n\n")
+        tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)
+        client = zerorpc.Client()
+        client.connect(tcp_ip_port)
+        client.runtime_failed_job_callback(job_id, str(e))

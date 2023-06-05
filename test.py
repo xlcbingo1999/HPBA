@@ -491,7 +491,7 @@ pool.close()
 pool.join()
 '''
 
-
+'''
 import multiprocessing
 import time
 
@@ -514,7 +514,7 @@ if __name__ == "__main__":
         pool_list = [pool] * 3
         args_zip = zip(data_1, data_2, pool_list)
         results = pool.starmap(process_data, args_zip)
-
+'''
 
 '''
 import multiprocessing
@@ -555,4 +555,24 @@ if __name__ == '__main__':
         pool.join()  # 等待进程池中的任务执行完毕
         print(res)#打印异步结果
 '''
- 
+
+import torch
+import time
+device_0 = torch.device('cuda:0')  # 使用GPU
+dtype = torch.float
+
+# 定义一个大张量（根据需要修改大小）
+try:
+    tensor_size = (10000, 10000)
+    tensor = torch.ones(tensor_size, device=device_0, dtype=dtype)
+    num_copies = 18  # 复制的次数（根据需要修改）
+    tensors = [tensor.clone() for _ in range(num_copies)]
+except Exception as e:
+    if isinstance(e, torch.cuda.OutOfMemoryError):
+        print("OutOfMemoryError: ", str(e))
+    else:
+        print("Normal: ", str(e))
+
+# while True:
+#     print("test")
+#     time.sleep(10)
