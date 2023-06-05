@@ -13,7 +13,7 @@ import os
 import numpy as np
 from queue import PriorityQueue
 from utils.logging_tools import get_logger
-from utils.generate_tools import generate_dataset, generate_jobs, generate_alibaba_jobs, generate_alibaba_dataset
+from utils.generate_tools import generate_alibaba_jobs, generate_alibaba_dataset
 from utils.data_operator import read_DL_dispatcher_result_func
 
 def get_df_config():
@@ -50,6 +50,7 @@ def get_df_config():
     parser.add_argument("--job_require_select_block_min_num", type=float, default=5)
     parser.add_argument("--job_require_select_block_max_num", type=float, default=25)
     parser.add_argument("--change_job_epsilon_max_times", type=float, default=1.0)
+    parser.add_argument("--config_max_operate_siton_run_num", type=int, default=50)
 
     parser.add_argument("--base_capacity", type=float, default=10.0)
     parser.add_argument("--budget_capacity_ratio", type=float, default=1)
@@ -355,7 +356,7 @@ class Dispatcher(object):
 
     def sched_init_sched_register(self, ip, port, args, seed, 
                                 assignment_policy, significance_policy, 
-                                pipeline_sequence_all_num, job_request_all_num,
+                                pipeline_sequence_all_num, job_request_all_num, config_max_operate_siton_run_num,
                                 dataset_name, dataset_config_name,
                                 all_or_nothing_flag, enable_waiting_flag,
                                 simulation, simulation_index):
@@ -370,6 +371,7 @@ class Dispatcher(object):
             enable_waiting_flag,
             pipeline_sequence_all_num,
             job_request_all_num,
+            config_max_operate_siton_run_num,
             dataset_name, 
             dataset_config_name
         )
@@ -588,6 +590,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
         args.assignment_policy, args.significance_policy, 
         pipeline_sequence_all_num, 
         job_request_all_num,
+        args.config_max_operate_siton_run_num,
         dataset_name=dataset_name, 
         dataset_config_name=dataset_config_name,
         all_or_nothing_flag=all_or_nothing_flag,
@@ -717,6 +720,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
             args.assignment_policy, args.significance_policy, 
             pipeline_sequence_all_num, 
             job_request_all_num,
+            args.config_max_operate_siton_run_num,
             dataset_name=dataset_name, 
             dataset_config_name=dataset_config_name,
             all_or_nothing_flag=all_or_nothing_flag,

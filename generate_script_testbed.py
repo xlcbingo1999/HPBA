@@ -1,22 +1,23 @@
 current_ip_index = 5
-current_cmd_index = 2
+current_cmd_index = 0
+worker_indexes = [2, 3]
+
 
 is_simulation = False
 all_or_nothing_flag = True
 enable_waiting_flag = True
-pipeline_sequence_all_num = 20
-
 need_save_jobtrace_flag = False
-worker_indexes = [2, 3]
+
+pipeline_sequence_all_num = 20
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 
-assignment_policy = "SagewithRemainPolicy"
+assignment_policy = "PBGPolicy"
 his_batch_size_for_one_epochs = 5
 significance_policy = "OTDDPolicy"
-test_jobtrace_reconstruct_path = "" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
-dataset_reconstruct_path = "" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
-history_jobtrace_reconstruct_path = "" # "schedule-review-simulation-05-03-19-49-14"
+test_jobtrace_reconstruct_path = "schedule-review-testbed-06-05-11-25-06" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
+dataset_reconstruct_path = "schedule-review-testbed-06-05-11-25-06" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-03-19-49-14"
+history_jobtrace_reconstruct_path = "schedule-review-testbed-06-05-11-25-06" # "schedule-review-simulation-05-03-19-49-14"
 dataset_name = "EMNIST"
 dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
@@ -32,6 +33,7 @@ base_capacity = 5.0
 change_datablock_epsilon_max_times = 1.0
 simulation_time = 5
 waiting_time = 2 if is_simulation else 10
+config_max_operate_siton_run_num = 50
 seeds = [1234, 2345, 3456, 6789, 7890] if is_simulation else [1234]
 seeds = [str(seed) for seed in seeds]
 seed_str = " ".join(seeds)
@@ -93,10 +95,11 @@ dispatcher_cmds.append(f"--job_require_select_block_max_num {job_require_select_
 dispatcher_cmds.append(f"--change_job_epsilon_max_times {change_job_epsilon_max_times}")
 dispatcher_cmds.append(f"--base_capacity {base_capacity}")
 dispatcher_cmds.append(f"--change_datablock_epsilon_max_times {change_datablock_epsilon_max_times}")
+dispatcher_cmds.append(f"--config_max_operate_siton_run_num {config_max_operate_siton_run_num}")
 dispatcher_cmds.append(f"--all_history_num {all_history_num}")
-dispatcher_cmds.append(f"--his_betas {his_betas}")
 dispatcher_cmds.append(f"--all_datablock_num {all_datablock_num}")
 dispatcher_cmds.append(f"--offline_datablock_num {offline_datablock_num}")
+
 
 if "PBG" in assignment_policy:
     dispatcher_cmds.append(f"--pbg_comparison_cost_epsilons {pbg_comparison_cost_epsilons}")
@@ -106,6 +109,7 @@ if "PBG" in assignment_policy:
     dispatcher_cmds.append(f"--pbg_gittas {pbg_gittas}")
 
 if "HIS" in assignment_policy:
+    dispatcher_cmds.append(f"--his_betas {his_betas}")
     dispatcher_cmds.append(f"--his_batch_size_for_one_epochs {his_batch_size_for_one_epochs}")
 
 if is_simulation:

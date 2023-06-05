@@ -94,7 +94,6 @@ dispatcher_cmds.append(f"--change_job_epsilon_max_times {change_job_epsilon_max_
 dispatcher_cmds.append(f"--base_capacity {base_capacity}")
 dispatcher_cmds.append(f"--change_datablock_epsilon_max_times {change_datablock_epsilon_max_times}")
 dispatcher_cmds.append(f"--all_history_num {all_history_num}")
-dispatcher_cmds.append(f"--his_betas {his_betas}")
 dispatcher_cmds.append(f"--all_datablock_num {all_datablock_num}")
 dispatcher_cmds.append(f"--offline_datablock_num {offline_datablock_num}")
 
@@ -106,6 +105,7 @@ if "PBG" in assignment_policy:
     dispatcher_cmds.append(f"--pbg_gittas {pbg_gittas}")
 
 if "HIS" in assignment_policy:
+    dispatcher_cmds.append(f"--his_betas {his_betas}")
     dispatcher_cmds.append(f"--his_batch_size_for_one_epochs {his_batch_size_for_one_epochs}")
 
 if is_simulation:

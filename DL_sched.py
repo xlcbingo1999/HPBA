@@ -165,6 +165,7 @@ class Scheduler_server(object):
         self.pipeline_sequence_all_num = 0
         self.job_request_all_num = 0
         self.global_job_arrival_index = 0
+        self.config_max_operate_siton_run_num = 0
 
         self.dataset_name = ""
         self.dataset_config_name = ""
@@ -180,7 +181,7 @@ class Scheduler_server(object):
 
     def initialize_sched_configs(self, simulation, simulation_index, seed, current_test_all_dir, 
                                 all_or_nothing_flag, enable_waiting_flag, 
-                                pipeline_sequence_all_num, job_request_all_num,
+                                pipeline_sequence_all_num, job_request_all_num, config_max_operate_siton_run_num,
                                 dataset_name, dataset_config_name):
         # simulation
         self.simulation = simulation
@@ -204,6 +205,7 @@ class Scheduler_server(object):
         self.enable_waiting_flag = enable_waiting_flag
         self.pipeline_sequence_all_num = pipeline_sequence_all_num
         self.job_request_all_num = job_request_all_num
+        self.config_max_operate_siton_run_num = config_max_operate_siton_run_num
 
         self.dataset_name = dataset_name
         self.dataset_config_name = dataset_config_name
@@ -317,6 +319,7 @@ class Scheduler_server(object):
         self.pipeline_sequence_all_num = 0
         self.job_request_all_num = 0 # TODO(xlc): 这个值应该直接变成了任务的总数量, 注意在policy里面需要简单修改一下!
         self.global_job_arrival_index = 0
+        self.config_max_operate_siton_run_num = 0
 
         self.dataset_name = ""
         self.dataset_config_name = ""
@@ -505,7 +508,7 @@ class Scheduler_server(object):
             self.jobid_2_target_siton_run_num[id] = int(np.ceil(origin_info["TARGET_EPOCHS"] / origin_info["SITON_RUN_EPOCH_NUM"]))
             self.jobid_2_success_siton_run_num[id] = 0
             self.jobid_2_failed_siton_run_num[id] = 0
-            self.jobid_2_max_operate_siton_run_num[id] = 10000
+            self.jobid_2_max_operate_siton_run_num[id] = self.config_max_operate_siton_run_num
             self.jobid_2_current_operate_siton_run_index[id] = 0
             
             self.jobid_2_need_instantly_recoming[id] = False
