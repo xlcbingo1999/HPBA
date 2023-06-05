@@ -391,6 +391,8 @@ def generate_alibaba_jobs(all_num,
 def generate_alibaba_dataset(num, offline_num, time_speed_up,
                     dataset_names, fix_epsilon, fix_delta, change_datablock_epsilon_max_times,
                     dataset_reconstruct_path="", save_path=""):
+    offline_time_default = -100.0
+    online_time_iterval = 1.0 / time_speed_up # 1分钟1个块?
     if len(dataset_reconstruct_path) > 0:
         print("load from path: {}".format(dataset_reconstruct_path))
         dataset_path = RESULT_PATH + "/{}/datasets.json".format(dataset_reconstruct_path)
@@ -417,7 +419,6 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
                 break
     else:
         print("check dataset_names: {}".format(dataset_names))
-        online_time_iterval = 3600.0 * 4 / time_speed_up # 4个小时一个块?
         datasets_list = {}
         time_2_datablock_num = {}
         for name in dataset_names:
@@ -427,7 +428,7 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
             for index in range(num):
                 sub_datablock_name = "train_sub_{}".format(index)
                 if index < offline_num:
-                    arrival_time = -100.0
+                    arrival_time = offline_time_default
                 else:
                     arrival_time = online_time_iterval * (index - offline_num)
                 if arrival_time not in time_2_datablock_num:
