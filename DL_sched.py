@@ -1156,6 +1156,8 @@ class Scheduler_server(object):
                 self.min_significance_epsilon_ratio = min(self.jobid_2_target_significance[job_id].values()) / self.jobid_2_target_siton_run_epsilon[job_id]
             if max(self.jobid_2_target_significance[job_id].values()) / self.jobid_2_target_siton_run_epsilon[job_id] > self.max_significance_epsilon_ratio:
                 self.max_significance_epsilon_ratio = max(self.jobid_2_target_significance[job_id].values()) / self.jobid_2_target_siton_run_epsilon[job_id]
+            self.sched_logger.info(f"min_significance_epsilon_ratio(L): {self.min_significance_epsilon_ratio}")
+            self.sched_logger.info(f"max_significance_epsilon_ratio(U): {self.max_significance_epsilon_ratio}")
             # self.jobid_2_real_significance[job_id].append(copy.deepcopy(self.jobid_2_target_significance[job_id]))
             self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.NO_SCHE, JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL)
 
