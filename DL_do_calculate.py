@@ -21,6 +21,7 @@ from opacus.validators import ModuleValidator
 from utils.opacus_engine_tools import get_privacy_dataloader
 
 from utils.global_variable import DATASET_PATH
+from utils.global_functions import print_console_file
 from utils.data_loader import get_concat_dataset
 from utils.model_loader import PrivacyCNN, PrivacyFF
 
@@ -94,22 +95,24 @@ def do_calculate_func(job_id, model_name,
         return job_id, all_results, real_duration_time
     
     with open(logging_file_path, "a+") as f:
-        print("check train_dataset_name: {}".format(train_dataset_name), file=f)
-        print("check sub_train_key_ids: {}".format(sub_train_key_ids), file=f)
-        print("check test_dataset_name: {}".format(test_dataset_name), file=f)
-        print("check sub_test_key_id: {}".format(sub_test_key_id), file=f)
-        print("check device_index: {}".format(device_index), file=f)
-        print("check final_significance: {}".format(final_significance), file=f)
-        print("check EPSILON_one_siton: {}".format(EPSILON_one_siton), file=f)
+        print_console_file("check train_dataset_name: {}".format(train_dataset_name), fileHandler=f)
+        print_console_file("check sub_train_key_ids: {}".format(sub_train_key_ids), fileHandler=f)
+        print_console_file("check test_dataset_name: {}".format(test_dataset_name), fileHandler=f)
+        print_console_file("check sub_test_key_id: {}".format(sub_test_key_id), fileHandler=f)
+        print_console_file("check device_index: {}".format(device_index), fileHandler=f)
+        print_console_file("check final_significance: {}".format(final_significance), fileHandler=f)
+        print_console_file("check EPSILON_one_siton: {}".format(EPSILON_one_siton), fileHandler=f)
         
     train_dataset = get_concat_dataset(train_dataset_name, sub_train_key_ids, 
                                     DATASET_PATH, sub_train_dataset_config_path, 
                                     "train")
-    print("finished load train_dataset")
+    
     test_dataset = get_concat_dataset(test_dataset_name, sub_test_key_id,
                                     DATASET_PATH, test_dataset_config_path,
                                     "test")
-    print("finished load test_dataset")
+    with open(logging_file_path, "a+") as f:
+        print_console_file("finished load train_dataset", fileHandler=f)
+        print_console_file("finished load test_dataset", fileHandler=f)
     
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
@@ -123,27 +126,32 @@ def do_calculate_func(job_id, model_name,
         model = models.resnet18(num_classes=len(train_dataset.classes))
     if os.path.exists(model_save_path):
         model.load_state_dict(torch.load(model_save_path))
+    with open(logging_file_path, "a+") as f:
+        print_console_file("finished load model and state_dict", fileHandler=f)
     model.train()
 
     if EPSILON_one_siton > 0.0:
         model = ModuleValidator.fix(model)
         errors = ModuleValidator.validate(model, strict=False)
-        print("error: {}".format(errors))
+        with open(logging_file_path, "a+") as f:
+            print_console_file("error: {}".format(errors), fileHandler=f)
 
     model = model.to(device)
+    with open(logging_file_path, "a+") as f:
+        print_console_file(f"model to device({device_index})", fileHandler=f)
     criterion = nn.CrossEntropyLoss()
     optimizer = optimizer = torch.optim.Adam(model.parameters(), lr=LR)  # optimize all cnn parameters
-
+    with open(logging_file_path, "a+") as f:
+        print_console_file("finished criterion optimizer", fileHandler=f)
     
     privacy_engine = PrivacyEngine() if EPSILON_one_siton > 0.0 else None
     model, optimizer, train_loader = \
         get_privacy_dataloader(privacy_engine, model, optimizer, 
                                 train_loader, siton_run_epoch_num, 
                                 EPSILON_one_siton, DELTA, MAX_GRAD_NORM) 
-
+    
     with open(logging_file_path, "a+") as f:
-        print("job [{}] - epoch [{} to {}] begining ...".format(job_id, begin_epoch_num, begin_epoch_num + siton_run_epoch_num))
-        print("job [{}] - epoch [{} to {}] begining ...".format(job_id, begin_epoch_num, begin_epoch_num + siton_run_epoch_num), file=f)
+        print_console_file("job [{}] - epoch [{} to {}] begining ...".format(job_id, begin_epoch_num, begin_epoch_num + siton_run_epoch_num), fileHandler=f)
         
     summary_writer = SummaryWriter(summary_writer_path)
     for epoch in range(siton_run_epoch_num):
@@ -173,8 +181,8 @@ def do_calculate_func(job_id, model_name,
                     optimizer.step()
                     if (i + 1) % 100 == 0:
                         with open(logging_file_path, "a+") as f:
-                            print("epoch[{}]: temp_train_loss: {}".format(begin_epoch_num + epoch, np.mean(total_train_loss)), file=f)
-                            print("epoch[{}]: temp_train_acc: {}".format(begin_epoch_num + epoch, np.mean(total_train_acc)), file=f)
+                            print_console_file("epoch[{}]: temp_train_loss: {}".format(begin_epoch_num + epoch, np.mean(total_train_loss)), fileHandler=f)
+                            print_console_file("epoch[{}]: temp_train_acc: {}".format(begin_epoch_num + epoch, np.mean(total_train_acc)), fileHandler=f)
         else:
             for i, (inputs, labels) in enumerate(train_loader):
                 inputs = inputs.to(device)
@@ -193,20 +201,17 @@ def do_calculate_func(job_id, model_name,
                 optimizer.step()
                 if (i + 1) % 100 == 0:
                     with open(logging_file_path, "a+") as f:
-                        print("epoch[{}]: temp_train_loss: {}".format(begin_epoch_num + epoch, np.mean(total_train_loss)), file=f)
-                        print("epoch[{}]: temp_train_acc: {}".format(begin_epoch_num + epoch, np.mean(total_train_acc)), file=f)
+                        print_console_file("epoch[{}]: temp_train_loss: {}".format(begin_epoch_num + epoch, np.mean(total_train_loss)), fileHandler=f)
+                        print_console_file("epoch[{}]: temp_train_acc: {}".format(begin_epoch_num + epoch, np.mean(total_train_acc)), fileHandler=f)
   
         if privacy_engine is not None:
             epsilon = privacy_engine.get_epsilon(DELTA)
         else:
             epsilon = 0.0
         with open(logging_file_path, "a+") as f:
-            print("epoch[{}]: total_train_loss: {}".format(begin_epoch_num + epoch, np.mean(total_train_loss)))
-            print("epoch[{}]: total_train_acc: {}".format(begin_epoch_num + epoch, np.mean(total_train_acc)))
-            print("epoch[{}]: epsilon_consume: {}".format(begin_epoch_num + epoch, epsilon))
-            print("epoch[{}]: total_train_loss: {}".format(begin_epoch_num + epoch, np.mean(total_train_loss)), file=f)
-            print("epoch[{}]: total_train_acc: {}".format(begin_epoch_num + epoch, np.mean(total_train_acc)), file=f)
-            print("epoch[{}]: epsilon_consume: {}".format(begin_epoch_num + epoch, epsilon), file=f)
+            print_console_file("epoch[{}]: total_train_loss: {}".format(begin_epoch_num + epoch, np.mean(total_train_loss)), fileHandler=f)
+            print_console_file("epoch[{}]: total_train_acc: {}".format(begin_epoch_num + epoch, np.mean(total_train_acc)), fileHandler=f)
+            print_console_file("epoch[{}]: epsilon_consume: {}".format(begin_epoch_num + epoch, epsilon), fileHandler=f)
         summary_writer.add_scalar('{}/total_train_loss'.format(summary_writer_key), np.mean(total_train_loss), begin_epoch_num + epoch)
         summary_writer.add_scalar('{}/total_train_acc'.format(summary_writer_key), np.mean(total_train_acc), begin_epoch_num + epoch)
         summary_writer.add_scalar('{}/epsilon_consume'.format(summary_writer_key), epsilon, begin_epoch_num + epoch)
@@ -227,14 +232,12 @@ def do_calculate_func(job_id, model_name,
             total_val_acc.append(acc)
             if (i + 1) % 10 == 0:
                 with open(logging_file_path, "a+") as f:
-                    print("val epoch[{}]: temp_val_loss: {}".format(begin_epoch_num + epoch, np.mean(total_val_loss)), file=f)
-                    print("val epoch[{}]: temp_val_acc: {}".format(begin_epoch_num + epoch, np.mean(total_val_acc)), file=f)
+                    print_console_file("val epoch[{}]: temp_val_loss: {}".format(begin_epoch_num + epoch, np.mean(total_val_loss)), fileHandler=f)
+                    print_console_file("val epoch[{}]: temp_val_acc: {}".format(begin_epoch_num + epoch, np.mean(total_val_acc)), fileHandler=f)
 
         with open(logging_file_path, "a+") as f:
-            print("val epoch[{}]: total_val_loss: {}".format(begin_epoch_num + epoch, np.mean(total_val_loss)))
-            print("val epoch[{}]: total_val_acc: {}".format(begin_epoch_num + epoch, np.mean(total_val_acc)))
-            print("val epoch[{}]: total_val_loss: {}".format(begin_epoch_num + epoch, np.mean(total_val_loss)), file=f)
-            print("val epoch[{}]: total_val_acc: {}".format(begin_epoch_num + epoch, np.mean(total_val_acc)), file=f)
+            print_console_file("val epoch[{}]: total_val_loss: {}".format(begin_epoch_num + epoch, np.mean(total_val_loss)), fileHandler=f)
+            print_console_file("val epoch[{}]: total_val_acc: {}".format(begin_epoch_num + epoch, np.mean(total_val_acc)), fileHandler=f)
         summary_writer.add_scalar('{}/total_val_loss'.format(summary_writer_key), np.mean(total_val_loss), begin_epoch_num + epoch)
         summary_writer.add_scalar('{}/total_val_acc'.format(summary_writer_key), np.mean(total_val_acc), begin_epoch_num + epoch)
     
@@ -257,10 +260,8 @@ def do_calculate_func(job_id, model_name,
     }
 
     with open(logging_file_path, "a+") as f:
-        print("job [{}] - epoch [{} to {}] end ".format(job_id, begin_epoch_num, begin_epoch_num + siton_run_epoch_num))
-
-        print("job [{}] saves in {}".format(job_id, model_save_path), file=f)
-        print("job [{}] - epoch [{} to {}] end ".format(job_id, begin_epoch_num, begin_epoch_num + siton_run_epoch_num), file=f)
+        print_console_file("job [{}] saves in {}".format(job_id, model_save_path), fileHandler=f)
+        print_console_file("job [{}] - epoch [{} to {}] end ".format(job_id, begin_epoch_num, begin_epoch_num + siton_run_epoch_num), fileHandler=f)
 
     return job_id, all_results, real_duration_time
 
@@ -316,14 +317,15 @@ if __name__ == "__main__":
             simulation_flag
         )
         
-        print(f"finished callback to worker: {worker_ip}:{worker_port}")
+        with open(logging_file_path, "a+") as f:
+            print_console_file(f"finished callback to worker: {worker_ip}:{worker_port}", fileHandler=f)
         tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)
         client = zerorpc.Client()
         client.connect(tcp_ip_port)
         client.finished_job_callback(job_id, all_results, real_duration_time)
     except Exception as e:
-        print(f"runtime_failed callback to worker: {worker_ip}:{worker_port} with info {e}")
-        print(f"\n\n\n\n\n\n\n\n\n")
+        with open(logging_file_path, "a+") as f:
+            print_console_file(f"runtime_failed callback to worker: {worker_ip}:{worker_port} with info {e}", fileHandler=f)
         tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)
         client = zerorpc.Client()
         client.connect(tcp_ip_port)

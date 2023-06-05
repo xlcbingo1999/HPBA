@@ -829,14 +829,16 @@ class Scheduler_server(object):
         self.sched_logger.info("job_id {} call finished_job_to_dispatcher".format(job_id))
         dispatcher_ip = origin_info["dispatcher_ip"]
         dispatcher_port = origin_info["dispatcher_port"]
+        results = self.jobid_2_results[job_id]
         dispatcher_client = self.get_zerorpc_client(dispatcher_ip, dispatcher_port)
-        dispatcher_client.finished_job_callback(job_id)
+        dispatcher_client.finished_job_callback(job_id, results)
 
     def failed_job_to_dispatcher(self, job_id, origin_info):
         dispatcher_ip = origin_info["dispatcher_ip"]
         dispatcher_port = origin_info["dispatcher_port"]
+        results = self.jobid_2_results[job_id]
         dispatcher_client = self.get_zerorpc_client(dispatcher_ip, dispatcher_port)
-        dispatcher_client.failed_job_callback(job_id)
+        dispatcher_client.failed_job_callback(job_id, results)
 
     def worker_waiting_job_callback(self, job_id, origin_info):
         self.sched_logger.info(f"Waiting callback job_id: {job_id} => origin_info: {origin_info}")
@@ -886,8 +888,8 @@ class Scheduler_server(object):
         if gpu_identifier is not None and job_id in self.gpuidentifier_2_jobinstances[gpu_identifier]:
             self.gpuidentifier_2_jobinstances[gpu_identifier].remove(job_id)
         
-        if len(self.jobid_2_started_time) > 0:
-            self.jobid_2_started_time = self.jobid_2_started_time[:len(self.jobid_2_started_time)-1]
+        if len(self.jobid_2_started_time[job_id]) > 0:
+            self.jobid_2_started_time[job_id] = self.jobid_2_started_time[job_id][:len(self.jobid_2_started_time)-1]
 
         self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.RUNNING, JOB_STATUS_KEY.DONE_ALL_SCHED) # 恢复等待下一次调度即可
 
@@ -1121,7 +1123,7 @@ class Scheduler_server(object):
     '''
                 
     def calculate_significance_for_nosched_jobs(self):
-        self.sched_logger.debug("in calculate_significance_for_nosched_jobs")
+        # self.sched_logger.debug("in calculate_significance_for_nosched_jobs")
         all_no_sche_jobs = self.status_2_jobid[JOB_STATUS_KEY.NO_SCHE]
         if len(all_no_sche_jobs) <= 0:
             return 
@@ -1159,7 +1161,7 @@ class Scheduler_server(object):
 
     def sched_dataset_for_jobs(self, sched_job_origin_state):
         assert sched_job_origin_state == JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL or sched_job_origin_state == JOB_STATUS_KEY.WAITING
-        self.sched_logger.debug("in sched_dataset_for_jobs")
+        # self.sched_logger.debug("in sched_dataset_for_jobs")
         need_operator_jobs = self.status_2_jobid[sched_job_origin_state]
         if sched_job_origin_state == JOB_STATUS_KEY.WAITING:
             need_operator_jobs = [job_id for job_id in need_operator_jobs if self.jobid_2_need_instantly_recoming[job_id]]
@@ -1302,7 +1304,7 @@ class Scheduler_server(object):
             # self.report_status("after sched_dataset_for_done_significance_cal_jobs")
 
     def placement_dispatch_for_allsched_jobs(self):
-        self.sched_logger.debug("in placement_dispatch_for_allsched_jobs")
+        # self.sched_logger.debug("in placement_dispatch_for_allsched_jobs")
         # 放置任务
         all_done_all_sched_jobs_copy = copy.deepcopy(self.status_2_jobid[JOB_STATUS_KEY.DONE_ALL_SCHED])
         if len(all_done_all_sched_jobs_copy) <= 0:

@@ -231,15 +231,44 @@ class Dispatcher(object):
         p.start()
         return p
 
-    def finished_job_callback(self, job_id):
+    def show_job_results(self, job_id, results):
+        self.dispatcher_logger.info("job [{}] last result: {}".format(job_id, results))
+        if len(results) <= 0:
+            all_train_loss = 0.0
+            all_train_accuracy = 0.0
+            all_test_loss = 0.0
+            all_test_accuracy = 0.0
+            all_final_significance = 0.0
+        else:
+            last_job_res = results[-1]
+            if "train_loss" in last_job_res:
+                all_train_loss = last_job_res["train_loss"]
+            if "train_acc" in last_job_res:
+                all_train_accuracy = last_job_res["train_acc"]
+            if "test_loss" in last_job_res:
+                all_test_loss = last_job_res["test_loss"]
+            if "test_acc" in last_job_res:
+                all_test_accuracy = last_job_res["test_acc"]
+            for sub_res in results:
+                if "final_significance" in sub_res:
+                    all_final_significance = sub_res["final_significance"]
+        self.dispatcher_logger.info(f"{job_id} all_train_loss: {all_train_loss}")
+        self.dispatcher_logger.info(f"{job_id} all_train_accuracy: {all_train_accuracy}")
+        self.dispatcher_logger.info(f"{job_id} all_test_loss: {all_test_loss}")
+        self.dispatcher_logger.info(f"{job_id} all_test_accuracy: {all_test_accuracy}")
+        self.dispatcher_logger.info(f"{job_id} all_final_significance: {all_final_significance}")
+
+    def finished_job_callback(self, job_id, results):
         current_time = time.time()
         self.dispatcher_logger.info("[finished job end job_id: {}] current_time: {}".format(job_id, current_time))
-        self.finished_labels[job_id] = True   
+        self.finished_labels[job_id] = True
+        self.show_job_results(job_id, results)
 
-    def failed_job_callback(self, job_id):
+    def failed_job_callback(self, job_id, results):
         current_time = time.time()
         self.dispatcher_logger.info("[failed job end job_id: {}] current_time: {}".format(job_id, current_time))
         self.finished_labels[job_id] = True
+        self.show_job_results(job_id, results)
 
     def sched_update_dataset(self, sched_ip, sched_port, update_timeout):
         def thread_func_timely_dispatch_dataset(sched_ip, sched_port, update_timeout):

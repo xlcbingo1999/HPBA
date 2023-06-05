@@ -316,7 +316,7 @@ def generate_alibaba_jobs(all_num,
         train_dataset_names = ["EMNIST"]
         
         test_dataset_names = ["EMNIST-2000", "EMNIST_MNIST-1000_1000", "MNIST-2000"] 
-        test_dataset_names_weights = [0.8, 0.15, 0.05] # 0.8, 0.15, 0.05
+        test_dataset_names_weights = [0.7, 0.2, 0.1] # 0.8, 0.15, 0.05
         
         jobs = []
         current_decision_num = 0
