@@ -450,7 +450,7 @@ class Scheduler_server(object):
                 all_test_loss += job_res["test_loss"]
             if "test_acc" in job_res:
                 all_test_accuracy += job_res["test_acc"]
-        self.sched_logger.debug("all test jobs num: {}".format(self.job_sequence_all_num))
+        self.sched_logger.debug("all_test_jobs_num: {}".format(self.job_sequence_all_num))
         self.sched_logger.debug("all_train_loss: {}".format(all_train_loss /  self.job_sequence_all_num))
         self.sched_logger.debug("all_train_accuracy: {}".format(all_train_accuracy /  self.job_sequence_all_num))
         self.sched_logger.debug("all_test_loss: {}".format(all_test_loss /  self.job_sequence_all_num))

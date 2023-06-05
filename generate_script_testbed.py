@@ -1,5 +1,5 @@
 current_ip_index = 5
-current_cmd_index = 0
+current_cmd_index = 1
 worker_indexes = [2, 3]
 
 
@@ -12,7 +12,7 @@ pipeline_sequence_all_num = 20
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 
-assignment_policy = "PBGPolicy"
+assignment_policy = "SagewithRemainPolicy"
 his_batch_size_for_one_epochs = 5
 significance_policy = "OTDDPolicy"
 test_jobtrace_reconstruct_path = "schedule-review-testbed-06-05-11-25-06" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
@@ -27,9 +27,9 @@ job_require_select_block_max_num = 10
 change_job_epsilon_max_times = 1.0
 all_history_num = 0
 his_betas = 0.0
-all_datablock_num = 30
-offline_datablock_num = 30
-base_capacity = 5.0
+all_datablock_num = 48
+offline_datablock_num = 48
+base_capacity = 10.0
 change_datablock_epsilon_max_times = 1.0
 simulation_time = 5
 waiting_time = 2 if is_simulation else 10

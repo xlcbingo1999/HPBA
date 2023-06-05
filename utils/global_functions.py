@@ -46,6 +46,11 @@ def convert_types(var):
     else:
         return var
 
+def print_console_file(content, fileHandler=None):
+    if fileHandler is not None:
+        print(content, file=fileHandler)
+    print(content)
+
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):

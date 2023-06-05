@@ -14,7 +14,7 @@ import numpy as np
 from queue import PriorityQueue
 from utils.logging_tools import get_logger
 from utils.generate_tools import generate_alibaba_jobs, generate_alibaba_dataset
-from utils.data_operator import read_DL_dispatcher_result_func
+from utils.data_operator import read_DL_dispatcher_result_func, final_log_result
 
 def get_df_config():
     parser = argparse.ArgumentParser(
@@ -167,7 +167,7 @@ class Dispatcher(object):
             current_done_sig_num, current_done_sche_num, current_running_num, current_recoming_num
         ))
         job_sequence_all_num = len(self.jobs_detail)
-        self.dispatcher_logger.debug("all test jobs num: {}".format(job_sequence_all_num))
+        self.dispatcher_logger.debug("all_test_jobs_num: {}".format(job_sequence_all_num))
         self.dispatcher_logger.debug("all_train_loss: {}".format(all_train_loss / job_sequence_all_num))
         self.dispatcher_logger.debug("all_train_accuracy: {}".format(all_train_accuracy / job_sequence_all_num))
         self.dispatcher_logger.debug("all_test_loss: {}".format(all_test_loss / job_sequence_all_num))
@@ -233,7 +233,7 @@ class Dispatcher(object):
 
     def finished_job_callback(self, job_id):
         current_time = time.time()
-        self.dispatcher_logger.info("[finished job end job_id: {}] current_time: {};".format(job_id, current_time))
+        self.dispatcher_logger.info("[finished job end job_id: {}] current_time: {}".format(job_id, current_time))
         self.finished_labels[job_id] = True   
 
     def failed_job_callback(self, job_id):
@@ -430,60 +430,6 @@ class Dispatcher(object):
         client = self.get_zerorpc_client(ip, port)
         client.update_history_jobs(history_jobs_map)
 
-    def final_operate_data(self, current_test_all_dir):
-        trace_save_path = "{}/{}".format(RESULT_PATH, current_test_all_dir)
-        final_used_num, success_num_arr, failed_num_arr, all_final_significance_arr, success_final_significance_arr, \
-            success_datablock_num_arr, failed_datablock_num_arr, target_datablock_num_arr = read_DL_dispatcher_result_func(trace_save_path)
-        
-        # 新建一个全新的log进行保存
-        all_result_path = "{}/all_result.log".format(trace_save_path)
-        with open(all_result_path, "w+") as f:
-            print("final_used_num: {}".format(final_used_num))
-            print("final_used_num: {}".format(final_used_num), file=f)
-            print("[success_info] {}({}-{}) === success_num_mean: {} ; success_num_min: {} ; success_num_max: {}".format(
-                np.mean(success_num_arr), min(success_num_arr), max(success_num_arr), np.mean(success_num_arr), min(success_num_arr), max(success_num_arr)
-            ))
-            print("[success_info] {}({}-{}) === success_num_mean: {} ; success_num_min: {} ; success_num_max: {}".format(
-                np.mean(success_num_arr), min(success_num_arr), max(success_num_arr), np.mean(success_num_arr), min(success_num_arr), max(success_num_arr)
-            ), file=f)
-            print("[failed_info] {}({}-{}) === failed_num_mean: {} ; failed_num_min: {} ; failed_num_max: {}".format(
-                np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr), np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr)
-            ))
-            print("[failed_info] {}({}-{}) === failed_num_mean: {} ; failed_num_min: {} ; failed_num_max: {}".format(
-                np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr), np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr)
-            ), file=f)
-            print("[allsig_info] {}({}-{}) === all_final_significance_mean: {} ; all_final_significance_min: {} ; all_final_significance_max: {}".format(
-                np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr), np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr)
-            ))
-            print("[allsig_info] {}({}-{}) === all_final_significance_mean: {} ; all_final_significance_min: {} ; all_final_significance_max: {}".format(
-                np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr), np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr)
-            ), file=f)
-            print("[successsig_info] {}({}-{}) === success_final_significance_mean: {} ; success_final_significance_min: {} ; success_final_significance_max: {}".format(
-                np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr), np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr)
-            ))
-            print("[successsig_info] {}({}-{}) === success_final_significance_mean: {} ; success_final_significance_min: {} ; success_final_significance_max: {}".format(
-                np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr), np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr)
-            ), file=f)
-
-            print("[successblock_info] {}({}-{}) === success_datablock_num_mean: {} ; success_datablock_num_min: {} ; success_datablock_num_max: {}".format(
-                np.mean(success_datablock_num_arr), min(success_datablock_num_arr), max(success_datablock_num_arr), np.mean(success_datablock_num_arr), min(success_datablock_num_arr), max(success_datablock_num_arr)
-            ))
-            print("[successblock_info] {}({}-{}) === success_datablock_num_mean: {} ; success_datablock_num_min: {} ; success_datablock_num_max: {}".format(
-                np.mean(success_datablock_num_arr), min(success_datablock_num_arr), max(success_datablock_num_arr), np.mean(success_datablock_num_arr), min(success_datablock_num_arr), max(success_datablock_num_arr)
-            ), file=f)
-            print("[failedblock_info] {}({}-{}) === failed_datablock_num_mean: {} ; failed_datablock_num_min: {} ; failed_datablock_num_max: {}".format(
-                np.mean(failed_datablock_num_arr), min(failed_datablock_num_arr), max(failed_datablock_num_arr), np.mean(failed_datablock_num_arr), min(failed_datablock_num_arr), max(failed_datablock_num_arr)
-            ))
-            print("[failedblock_info] {}({}-{}) === failed_datablock_num_mean: {} ; failed_datablock_num_min: {} ; failed_datablock_num_max: {}".format(
-                np.mean(failed_datablock_num_arr), min(failed_datablock_num_arr), max(failed_datablock_num_arr), np.mean(failed_datablock_num_arr), min(failed_datablock_num_arr), max(failed_datablock_num_arr)
-            ), file=f)
-            print("[targetblock_info] {}({}-{}) === target_datablock_num_mean: {} ; target_datablock_num_min: {} ; target_datablock_num_max: {}".format(
-                np.mean(target_datablock_num_arr), min(target_datablock_num_arr), max(target_datablock_num_arr), np.mean(target_datablock_num_arr), min(target_datablock_num_arr), max(target_datablock_num_arr)
-            ))
-            print("[targetblock_info] {}({}-{}) === target_datablock_num_mean: {} ; target_datablock_num_min: {} ; target_datablock_num_max: {}".format(
-                np.mean(target_datablock_num_arr), min(target_datablock_num_arr), max(target_datablock_num_arr), np.mean(target_datablock_num_arr), min(target_datablock_num_arr), max(target_datablock_num_arr)
-            ), file=f)
-
 def scheduler_listener_func(dispatcher_server_item):
     def dispatcher_func_timely(dispatcher_server_item):
         dispatcher_server = zerorpc.Server(dispatcher_server_item)
@@ -636,6 +582,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
     
     if not args.without_stop_all:
         dispatcher.stop_all(sched_ip, sched_port)
+    final_log_result(current_test_all_dir)
     print("Waiting for stop threads {} s".format(waiting_time))
     time.sleep(waiting_time)
 
@@ -751,7 +698,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
         print("end simulation_index: {}".format(simulation_index))
     if not args.without_stop_all:
         dispatcher.stop_all(sched_ip, sched_port)
-    dispatcher.final_operate_data(current_test_all_dir) # 执行数据的处理和绘图操作
+    final_log_result(current_test_all_dir) # 执行数据的处理和绘图操作
     print("Waiting for stop threads {} s".format(waiting_time))
     time.sleep(waiting_time)
 

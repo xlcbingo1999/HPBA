@@ -742,7 +742,7 @@ class Scheduler_server(object):
         ))
         self.sched_logger.debug("======== result status ========")
         all_train_loss, all_train_accuracy, all_test_loss, all_test_accuracy, all_final_significance = self.get_result_status()
-        self.sched_logger.debug("all test jobs num: {}".format(self.pipeline_sequence_all_num))
+        self.sched_logger.debug("all_test_jobs_num: {}".format(self.pipeline_sequence_all_num))
         self.sched_logger.debug("all_train_loss: {}".format(all_train_loss /  self.pipeline_sequence_all_num))
         self.sched_logger.debug("all_train_accuracy: {}".format(all_train_accuracy /  self.pipeline_sequence_all_num))
         self.sched_logger.debug("all_test_loss: {}".format(all_test_loss /  self.pipeline_sequence_all_num))
