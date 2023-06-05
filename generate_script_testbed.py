@@ -1,4 +1,4 @@
-current_ip_index = 3
+current_ip_index = 4
 current_cmd_index = 1
 worker_indexes = [2, 3]
 
@@ -12,7 +12,7 @@ pipeline_sequence_all_num = 20
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 
-assignment_policy = "HISwithOrderProVersionPolicy"
+assignment_policy = "PBGMixPolicy"
 his_batch_size_for_one_epochs = 5
 significance_policy = "OTDDPolicy"
 test_jobtrace_reconstruct_path = "schedule-review-testbed-06-05-20-32-09" # "schedule-review-simulation-05-09-21-11-48" # "schedule-review-simulation-05-04-00-43-38"
@@ -41,7 +41,7 @@ seed_str = " ".join(seeds)
 pbg_comparison_cost_epsilons = 0.0
 pbg_comparison_z_thresholds = 0.9
 pbg_Ls = 0.01
-pbg_Us = 10.0
+pbg_Us = 0.5
 pbg_gittas = 0.1
 
 print("======= worker =======")
