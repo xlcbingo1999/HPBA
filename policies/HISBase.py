@@ -194,7 +194,10 @@ class HISBasePolicy(Policy):
                 valid_remain_siton_num_per_block[samples] -= 1
                 current_require -= len(samples)
                 non_zero_valid_remain_siton_num_per_block_index = np.nonzero(valid_remain_siton_num_per_block)[0]
-        
+        self.logger.debug(f"valid_remain_siton_num_per_block: {valid_remain_siton_num_per_block}")
+        self.logger.debug(f"first open from remain result: {result}")
+        self.logger.debug(f"current_require: {current_require}")
+
         datablock_privacy_budget_used_list = np.subtract(datablock_privacy_budget_capacity_list, datablock_privacy_budget_remain_list)
         valid_used_siton_num_per_block = np.floor_divide(datablock_privacy_budget_used_list, siton_block_epsilon_capacity)
         valid_used_siton_all_blocks = np.sum(valid_used_siton_num_per_block)
@@ -214,15 +217,19 @@ class HISBasePolicy(Policy):
                 current_require -= len(samples)
                 non_zero_valid_used_siton_num_per_block_index = np.nonzero(valid_used_siton_num_per_block)[0]
 
-        
+        self.logger.debug(f"valid_used_siton_num_per_block: {valid_used_siton_num_per_block}")
+        self.logger.debug(f"second open from used result: {result}")
+        self.logger.debug(f"current_require: {current_require}")
+
         right_capacity_for_single_job = siton_block_epsilon_capacity * result
+        self.logger.debug(f"first right_capacity_for_single_job: {right_capacity_for_single_job}")
 
         result_zero_index = np.where(result == 0)[0]
         for index in result_zero_index:
-            if datablock_privacy_budget_remain_list[index] >= target_epsilon_require:
+            if datablock_privacy_budget_remain_list[index] >= target_epsilon_require and datablock_privacy_budget_remain_list[index] <= siton_block_epsilon_capacity:
                 right_capacity_for_single_job[index] = datablock_privacy_budget_remain_list[index]
 
-        self.logger.debug(f"right_capacity_for_single_job: {right_capacity_for_single_job}")
+        self.logger.debug(f"second right_capacity_for_single_job: {right_capacity_for_single_job}")
         self.logger.debug(f"sum(right_capacity_for_single_job): {np.sum(right_capacity_for_single_job)}")
         self.logger.debug(f"this batch jobs consume: {np.sum(np.multiply(current_all_job_budget_consumes, current_all_job_target_datablock_selected_nums))}")
         return right_capacity_for_single_job

@@ -181,7 +181,7 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
                 target_datablock_select_num,
                 datablock_privacy_budget_remain_list,
                 datablock_privacy_budget_capacity_list,
-                self.batch_size_for_one_epoch
+                sign_matrix.shape[0]
             )
         else:
             for temp_index, datablock_identifier in temp_index_2_datablock_identifier.items():
