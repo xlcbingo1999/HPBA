@@ -121,6 +121,6 @@ class PBGMixPolicy(Policy):
                 result_job_2_instant_recoming_flag[job_id] = True
             else:
                 result_job_2_instant_recoming_flag[job_id] = True
-
-        self.logger.debug("from policy [{}] selected_datablock_identifiers: {}".format(self.name , result_job_2_selected_datablock_identifiers))
+        self.logger.info(f"job [{job_id}] get real epsilon map: {result_selected_real_sched_epsilon_map}")
+        self.logger.debug("from policy [{}] selected_datablock_identifiers: {}".format(self.name, result_job_2_selected_datablock_identifiers))
         return result_job_2_selected_datablock_identifiers, result_waiting_job_ids, result_selected_real_sched_epsilon_map, calcu_compare_epsilon, result_job_2_instant_recoming_flag

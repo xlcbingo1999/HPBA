@@ -1,6 +1,7 @@
 from enum import Enum
 import json
 import numpy as np
+import zerorpc
 
 def normal_counter(origin_counter):
     sum_value = sum(origin_counter.values(), 0)
@@ -60,6 +61,13 @@ class NpEncoder(json.JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
+
+
+def get_zerorpc_client(ip, port, timeout=500, heartbeat=None):
+    tcp_ip_port = "tcp://{}:{}".format(ip, port)
+    client = zerorpc.Client(timeout=timeout, heartbeat=heartbeat)
+    client.connect(tcp_ip_port)
+    return client
 
 class FAILED_RESULT_KEY(Enum):
     WORKER_NO_READY = 1

@@ -9,6 +9,7 @@ import json
 import os
 import sys
 from utils.global_variable import RESULT_PATH
+from utils.global_functions import get_zerorpc_client
 from utils.logging_tools import get_logger
 
 def get_df_config():
@@ -106,16 +107,10 @@ class Worker_server(object):
     def stop_all(self):
         self.all_finished = True
 
-    def get_scheduler_zerorpc_client(self):
-        tcp_ip_port = "tcp://{}:{}".format(self.sched_ip, self.sched_port)
-        client = zerorpc.Client()
-        client.connect(tcp_ip_port)
-        return client
-
     def finished_job_callback(self, job_id, result, real_duration_time):
         origin_info = self.jobid_2_origininfo[job_id]
         self.report_result(job_id, origin_info, result, real_duration_time)
-        client = self.get_scheduler_zerorpc_client()
+        client = get_zerorpc_client(self.sched_ip, self.sched_port)
         client.worker_finished_job_callback(job_id, origin_info, result)
         if job_id in self.jobid_2_origininfo:
             del self.jobid_2_origininfo[job_id]
@@ -124,12 +119,12 @@ class Worker_server(object):
 
     def runtime_failed_job_callback(self, job_id, exception_log):
         origin_info = self.jobid_2_origininfo[job_id]
-        client = self.get_scheduler_zerorpc_client()
+        client = get_zerorpc_client(self.sched_ip, self.sched_port)
         client.worker_runtime_failed_job_callback(job_id, origin_info, exception_log)
         if job_id in self.jobid_2_origininfo:
             del self.jobid_2_origininfo[job_id]
         if job_id in self.jobid_2_thread:
-            self.jobid_2_thread[job_id].join()
+            # self.jobid_2_thread[job_id].join()
             del self.jobid_2_thread[job_id]
 
     def initialize_logging_path(self, current_test_all_dir, simulation_index):
@@ -141,7 +136,7 @@ class Worker_server(object):
         # 需要告知调度器, worker的gpu进行了更改, 同时更改worker的状态, 目前还是只考虑一起改变的情况吧
         for gpu_id in new_status_map:
             self.worker_gpus_ready[gpu_id] = new_status_map[gpu_id]
-        client = self.get_scheduler_zerorpc_client()
+        client = get_zerorpc_client(self.sched_ip, self.sched_port)
         need_update_gpus_identifier = [("{}-{}".format(self.local_ip, gpu_id), gpu_id) for gpu_id in new_status_map]
         for worker_gpu_identifier, gpu_id in need_update_gpus_identifier:
             client.worker_gpu_status_callback(worker_gpu_identifier, new_status_map[gpu_id])

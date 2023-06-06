@@ -3,7 +3,7 @@ import argparse
 import json
 import zerorpc
 import time
-
+import sys
 import numpy as np
 import torch
 import torch.nn as nn
@@ -21,14 +21,12 @@ from opacus.validators import ModuleValidator
 from utils.opacus_engine_tools import get_privacy_dataloader
 
 from utils.global_variable import DATASET_PATH
-from utils.global_functions import print_console_file
+from utils.global_functions import print_console_file, get_zerorpc_client
 from utils.data_loader import get_concat_dataset
 from utils.model_loader import PrivacyCNN, PrivacyFF
 
 import string
 import os
-
-
 
 def get_df_config():
     parser = argparse.ArgumentParser(
@@ -319,14 +317,14 @@ if __name__ == "__main__":
         
         with open(logging_file_path, "a+") as f:
             print_console_file(f"finished callback to worker: {worker_ip}:{worker_port}", fileHandler=f)
-        tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)
-        client = zerorpc.Client()
-        client.connect(tcp_ip_port)
+        client = get_zerorpc_client(worker_ip, worker_port)
         client.finished_job_callback(job_id, all_results, real_duration_time)
     except Exception as e:
         with open(logging_file_path, "a+") as f:
             print_console_file(f"runtime_failed callback to worker: {worker_ip}:{worker_port} with info {e}", fileHandler=f)
-        tcp_ip_port = "tcp://{}:{}".format(worker_ip, worker_port)
-        client = zerorpc.Client()
-        client.connect(tcp_ip_port)
+        client = get_zerorpc_client(worker_ip, worker_port)
         client.runtime_failed_job_callback(job_id, str(e))
+    finally:
+        print("finally finished!")
+        time.sleep(5)
+        sys.exit(0)

@@ -1,7 +1,7 @@
 import zerorpc
 import time
 from utils.global_variable import RESULT_PATH, RECONSTRUCT_TRACE_PREFIX_PATH
-from utils.global_functions import get_types, convert_types
+from utils.global_functions import get_types, convert_types, get_zerorpc_client
 import threading
 # import multiprocessing
 from functools import reduce
@@ -205,25 +205,25 @@ class Dispatcher(object):
                         dispatch_jobs_detail[job_id] = info
                 if count > self.dispatch_jobs_count:
                     self.dispatch_jobs_count = count
-                    client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
+                    client = get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
                     dispatch_jobs_detail = convert_types(dispatch_jobs_detail)
                     client.update_jobs(dispatch_jobs_detail) # 提交上去后, 任务即进入NO_SCHED状态, 之后就是调度器自身会启动一个不断循环的获取计算Siginificane策略和调度策略
                 if self.dispatch_datasets_count == len(self.jobs_detail):
-                    client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
+                    client = get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
                     client.set_final_job_flag(True)
                     self.dispatcher_logger.info("Finished Job Dispatch!")
                     break
                 time.sleep(1)
             self.dispatcher_logger.info("Thread [thread_func_timely_dispatch_job] finished!")
         # 在最开始一定要将真实的历史结果传过去
-        client = self.get_zerorpc_client(sched_ip, sched_port)
+        client = get_zerorpc_client(sched_ip, sched_port)
         p = threading.Thread(target=thread_func_timely_dispatch_job, args=(sched_ip, sched_port, update_timeout), daemon=True)
         p.start()
         return p
 
     def dispatch_history_jobs(self, sched_ip, sched_port, update_timeout):
         def thread_func_once_dispatch_his_job(sched_ip, sched_port, update_timeout):
-            client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
+            client = get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
             history_jobs_detail = convert_types(self.history_jobs_detail)
             client.update_history_jobs(history_jobs_detail)
             self.dispatcher_logger.info("Thread [thread_func_once_dispatch_his_job] finished!")
@@ -293,7 +293,7 @@ class Dispatcher(object):
                             }
                 if count > self.dispatch_datasets_count:
                     self.dispatch_datasets_count = count
-                    client = self.get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
+                    client = get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
                     subtrain_datasetidentifier_info = convert_types(subtrain_datasetidentifier_info)
                     client.update_dataset(subtrain_datasetidentifier_info)
                 if self.dispatch_datasets_count == self.all_datasets_count:
@@ -345,25 +345,22 @@ class Dispatcher(object):
         subtrain_datasetidentifier_info = convert_types(subtrain_datasetidentifier_info)
         temp_history_job_details = convert_types(temp_history_job_details)
         temp_submit_job_details = convert_types(temp_submit_job_details)
-        client = self.get_zerorpc_client(sched_ip, sched_port)
+        client = get_zerorpc_client(sched_ip, sched_port)
         client.sched_simulation_start(subtrain_datasetidentifier_info, temp_history_job_details, temp_submit_job_details)
-    
-    def get_zerorpc_client(self, ip, port, timeout=30):
-        tcp_ip_port = "tcp://{}:{}".format(ip, port)
-        client = zerorpc.Client(timeout=timeout)
-        client.connect(tcp_ip_port)
-        return client
 
     def sched_clear_all(self, ip, port):
-        client = self.get_zerorpc_client(ip, port)
+        client = get_zerorpc_client(ip, port)
         client.clear_all()
 
     def stop_all(self, ip, port):
-        client = self.get_zerorpc_client(ip, port)
+        client = get_zerorpc_client(ip, port)
         client.stop_all()
 
-    def sched_dispatch_start(self, ip, port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time, sched_best_serve_sleep_time):
-        client = self.get_zerorpc_client(ip, port)
+    def sched_dispatch_start(self, ip, port, 
+                            update_timeout, cal_significance_sleep_time, 
+                            scheduler_update_sleep_time, placement_sleep_time, 
+                            sched_best_serve_sleep_time):
+        client = get_zerorpc_client(ip, port)
         # client.sched_dispatch_testbed_start(cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time)
         client.cal_significance_dispatch_start(cal_significance_sleep_time)
         client.sched_dispatch_start(scheduler_update_sleep_time)
@@ -371,16 +368,16 @@ class Dispatcher(object):
         # client.sched_best_serve_start(sched_best_serve_sleep_time)
     
     def sched_end(self, ip, port):
-        client = self.get_zerorpc_client(ip, port)
+        client = get_zerorpc_client(ip, port)
         client.sched_end()
         client.end_and_report_dispatchers_by_sched([(self.dispatcher_ip, self.dispatcher_port)])
 
     def sched_report_status(self, ip, port, location):
-        client = self.get_zerorpc_client(ip, port)
+        client = get_zerorpc_client(ip, port)
         client.report_status(location)
 
     def sched_update_gpu_status_start(self, ip, port, init_workerip_2_ports, init_gpuidentifiers, current_test_all_dir, simulation_index):
-        client = self.get_zerorpc_client(ip, port)
+        client = get_zerorpc_client(ip, port)
         client.sched_update_gpu_status_start(init_workerip_2_ports, init_gpuidentifiers, current_test_all_dir, simulation_index)
 
     def sched_init_sched_register(self, ip, port, args, seed, 
@@ -389,7 +386,7 @@ class Dispatcher(object):
                                 dataset_name, dataset_config_name,
                                 all_or_nothing_flag, enable_waiting_flag,
                                 simulation, simulation_index):
-        client = self.get_zerorpc_client(ip, port)
+        client = get_zerorpc_client(ip, port)
         client.restart_sched()
         client.initialize_sched_configs(
             simulation, 
@@ -456,7 +453,7 @@ class Dispatcher(object):
         self.dispatcher_logger.info(args_message)
 
     def sched_init_history_policy(self, ip, port, history_jobs_map):
-        client = self.get_zerorpc_client(ip, port)
+        client = get_zerorpc_client(ip, port)
         client.update_history_jobs(history_jobs_map)
 
 def scheduler_listener_func(dispatcher_server_item):
@@ -593,7 +590,14 @@ def testbed_experiment_start(args, sched_ip, sched_port,
 
     print("Waiting for load datasets and jobs {} s".format(waiting_time))
     time.sleep(waiting_time)
-    dispatcher.sched_dispatch_start(sched_ip, sched_port, cal_significance_sleep_time, scheduler_update_sleep_time, placement_sleep_time, sched_best_serve_sleep_time)
+    dispatcher.sched_dispatch_start(
+        sched_ip, sched_port, 
+        update_timeout,
+        cal_significance_sleep_time, 
+        scheduler_update_sleep_time, 
+        placement_sleep_time, 
+        sched_best_serve_sleep_time
+    )
     
     # 主线程的最后一个操作!
     all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())

@@ -11,7 +11,7 @@ import argparse
 import os
 from utils.data_loader import fetch_new_dataset
 from utils.get_profiler_significance import get_profiler_selection_result
-from utils.global_functions import FAILED_RESULT_KEY, JOB_STATUS_KEY, JOB_STATUS_UPDATE_PATH, DATASET_STATUS_KEY, EVENT_KEY, add_2_map, normal_counter
+from utils.global_functions import FAILED_RESULT_KEY, JOB_STATUS_KEY, JOB_STATUS_UPDATE_PATH, DATASET_STATUS_KEY, EVENT_KEY, get_zerorpc_client
 from utils.global_variable import GPU_PATH, RESULT_PATH, DATASET_PATH
 from utils.logging_tools import get_logger
 
@@ -229,7 +229,7 @@ class Scheduler_server(object):
 
     def clear_all(self):
         for worker_ip, worker_port in self.workerip_2_ports.items():
-            client = self.get_zerorpc_client(worker_ip, worker_port)
+            client = get_zerorpc_client(worker_ip, worker_port)
             self.sched_logger.debug("xlc clear all worker_ip: {} worker_port: {}".format(worker_ip, worker_port))
             client.clear_all_jobs()
 
@@ -338,13 +338,13 @@ class Scheduler_server(object):
 
     def stop_all(self):
         for worker_ip, worker_port in self.workerip_2_ports.items():
-            client = self.get_zerorpc_client(worker_ip, worker_port)
+            client = get_zerorpc_client(worker_ip, worker_port)
             client.stop_all()
         self.all_stop = True
 
-    def get_zerorpc_client(self, ip, port):
+    def get_zerorpc_client(self, ip, port, timeout=500):
         tcp_ip_port = "tcp://{}:{}".format(ip, port)
-        client = zerorpc.Client()
+        client = zerorpc.Client(timeout=timeout)
         client.connect(tcp_ip_port)
         return client
 
@@ -830,14 +830,14 @@ class Scheduler_server(object):
         dispatcher_ip = origin_info["dispatcher_ip"]
         dispatcher_port = origin_info["dispatcher_port"]
         results = self.jobid_2_results[job_id]
-        dispatcher_client = self.get_zerorpc_client(dispatcher_ip, dispatcher_port)
+        dispatcher_client = get_zerorpc_client(dispatcher_ip, dispatcher_port)
         dispatcher_client.finished_job_callback(job_id, results)
 
     def failed_job_to_dispatcher(self, job_id, origin_info):
         dispatcher_ip = origin_info["dispatcher_ip"]
         dispatcher_port = origin_info["dispatcher_port"]
         results = self.jobid_2_results[job_id]
-        dispatcher_client = self.get_zerorpc_client(dispatcher_ip, dispatcher_port)
+        dispatcher_client = get_zerorpc_client(dispatcher_ip, dispatcher_port)
         dispatcher_client.failed_job_callback(job_id, results)
 
     def worker_waiting_job_callback(self, job_id, origin_info):

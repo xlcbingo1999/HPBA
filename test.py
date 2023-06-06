@@ -556,23 +556,56 @@ if __name__ == '__main__':
         print(res)#打印异步结果
 '''
 
-import torch
+import os
+import zerorpc
+import threading
 import time
-device_0 = torch.device('cuda:0')  # 使用GPU
-dtype = torch.float
+import torch
 
-# 定义一个大张量（根据需要修改大小）
-try:
+class Scheduler_server(object):
+    def __init__(self, sched_ip, sched_port):
+        self.sched_ip = sched_ip
+        self.sched_port = sched_port
+
+    def handle_error(self, log_content):
+        print(f"log_content: {log_content}")
+
+    def handle_finished(self, job_id):
+        print(f"job_id: {job_id}")
+
+    def start_test(self):
+        os.system("python -u test_1.py")
+        time.sleep(3)
+        os.system("python -u test_2.py")
+
+def scheduler_listener_func(scheduler_server_item):
+    def sched_func_timely(scheduler_server_item):
+        s = zerorpc.Server(scheduler_server_item)
+        ip_port = "tcp://0.0.0.0:{}".format(scheduler_server_item.sched_port)
+        s.bind(ip_port)
+        print("DL_server running in {}".format(ip_port))
+        s.run()
+        print("self.sched_logger.info sth...")
+    p = threading.Thread(target=sched_func_timely, args=(scheduler_server_item, ), daemon=True)
+    p.start()
+    return p
+
+if __name__ == "__main__":
+    sched_ip = "172.18.162.4"
+    sched_port = 11112
+
+    scheduler_server_item = Scheduler_server(sched_ip, sched_port)
+    sched_p = scheduler_listener_func(scheduler_server_item)
+    # scheduler_server_item.start_test()
+    flag = True
+
+    device_0 = torch.device('cuda:1')
     tensor_size = (10000, 10000)
-    tensor = torch.ones(tensor_size, device=device_0, dtype=dtype)
+    tensor = torch.ones(tensor_size, device=device_0)
     num_copies = 18  # 复制的次数（根据需要修改）
     tensors = [tensor.clone() for _ in range(num_copies)]
-except Exception as e:
-    if isinstance(e, torch.cuda.OutOfMemoryError):
-        print("OutOfMemoryError: ", str(e))
-    else:
-        print("Normal: ", str(e))
 
-# while True:
-#     print("test")
-#     time.sleep(10)
+    
+    while flag:
+        time.sleep(6)
+        # flag = True
