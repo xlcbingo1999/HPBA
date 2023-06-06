@@ -9,7 +9,7 @@ import json
 import os
 import sys
 from utils.global_variable import RESULT_PATH
-from utils.global_functions import get_zerorpc_client
+from utils.global_functions import get_zerorpc_client, print_console_file
 from utils.logging_tools import get_logger
 
 def get_df_config():
@@ -34,7 +34,8 @@ def do_system_calculate_func(worker_ip, worker_port,
                             model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
                             LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
                             BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
-                            begin_epoch_num, siton_run_epoch_num, final_significance, simulation_flag):
+                            begin_epoch_num, siton_run_epoch_num, final_significance, 
+                            simulation_flag, worker_logging_path):
     execute_cmds = []
     # execute_cmds.append("conda run -n py39torch113") # 会卡住, 没有任何log, 这个时候最好做重定向!
     execute_cmds.append("python -u DL_do_calculate.py")
@@ -76,8 +77,10 @@ def do_system_calculate_func(worker_ip, worker_port,
         execute_cmds.append("--simulation_flag")
 
     finally_execute_cmd = " ".join(execute_cmds)
-    # print(finally_execute_cmd)
-    print("Job {} start!".format(job_id))
+    if len(worker_logging_path) > 0:
+        with open(worker_logging_path, "a+") as f:
+            print_console_file(finally_execute_cmd, fileHandler=f)
+            print_console_file(f"Job {job_id} start!", fileHandler=f)
     os.system(finally_execute_cmd)
 
 
@@ -95,6 +98,8 @@ class Worker_server(object):
         self.jobid_2_thread = {}
 
         self.all_finished = False
+
+        self.logger_path = ""
         self.worker_logger = None
         # gpu_device_count = torch.cuda.device_count()
         # self.worker_gpus_ready = {index:True for index in range(gpu_device_count)} # 直接允许即可
@@ -128,8 +133,8 @@ class Worker_server(object):
             del self.jobid_2_thread[job_id]
 
     def initialize_logging_path(self, current_test_all_dir, simulation_index):
-        logger_path = "{}/{}/DL_worker_{}_{}_{}.log".format(RESULT_PATH, current_test_all_dir, self.local_ip, self.local_port, simulation_index) 
-        self.worker_logger = get_logger(logger_path, logger_path, enable_multiprocess=True)
+        self.logger_path = "{}/{}/DL_worker_{}_{}_{}.log".format(RESULT_PATH, current_test_all_dir, self.local_ip, self.local_port, simulation_index) 
+        self.worker_logger = get_logger(self.logger_path, self.logger_path, enable_multiprocess=True)
 
     """
     def update_worker_gpus_status_callback(self, new_status_map):
@@ -190,7 +195,8 @@ class Worker_server(object):
             device_index, 
             model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
             LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
-            BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, begin_epoch_num, siton_run_epoch_num, final_significance, simulation_flag), daemon=True)
+            BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, begin_epoch_num, siton_run_epoch_num, final_significance, 
+            simulation_flag, self.logger_path), daemon=True)
         self.jobid_2_thread[job_id] = p
         p.start()
 
