@@ -7,21 +7,21 @@ all_or_nothing_flag = True
 enable_waiting_flag = False
 need_save_jobtrace_flag = False
 
-pipeline_sequence_all_num = 50
+pipeline_sequence_all_num = 80
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 
-datablock_require_epsilon_max_ratio = 0.05 # 10.0 * 0.1会出错, 即一个epoch设置1.0的预算是有问题的
-job_require_select_block_min_num = 4
-job_require_select_block_max_num = 10
+datablock_require_epsilon_max_ratio = 0.1 # 10.0 * 0.1会出错, 即一个epoch设置1.0的预算是有问题的
+job_require_select_block_min_num = 2
+job_require_select_block_max_num = 4
 change_job_epsilon_max_times = 1.0
 all_history_num = 0
-all_datablock_num = 48
-offline_datablock_num = 48
-base_capacity = 10.0
+all_datablock_num = 24
+offline_datablock_num = 24
+base_capacity = 5.0
 change_datablock_epsilon_max_times = 1.0
 
-assignment_policy = "HISwithOrderProVersionPolicy"
+assignment_policy = "BestFitwithRemainPolicy"
 his_betas = 0.0
 his_batch_size_for_one_epochs = 5
 his_infinity_flag = True

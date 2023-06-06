@@ -54,7 +54,6 @@ def get_df_config():
     parser.add_argument("--max_gpu_fuzai", type=int, default=10)
     
     parser.add_argument("--base_capacity", type=float, default=10.0)
-    parser.add_argument("--budget_capacity_ratio", type=float, default=1)
     parser.add_argument("--change_datablock_epsilon_max_times", type=float, default=1.0)
     
     parser.add_argument("--scheduler_update_sleep_time", type=float, default=1.0)
@@ -483,7 +482,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
                             placement_sleep_time, waiting_time,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             dataset_name, dataset_config_name,
-                            budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times,
+                            base_capacity, change_datablock_epsilon_max_times,
                             job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             pipeline_sequence_all_num, all_history_num, time_interval, need_change_interval,
                             all_datablock_num, offline_datablock_num, 
@@ -492,14 +491,13 @@ def testbed_experiment_start(args, sched_ip, sched_port,
                             change_job_epsilon_max_times):
     assert args.simulation_time == 1 and len(args.seeds) == 1
     simulation_flag = False
-    min_epsilon_capacity = base_capacity * budget_capacity_ratio
 
     datasets_list, time_2_datablock_num = generate_alibaba_dataset(
         num=all_datablock_num,
         offline_num=offline_datablock_num,
         time_speed_up=simulation_time_speed_up,
         dataset_names=[dataset_name],
-        fix_epsilon=min_epsilon_capacity,
+        fix_epsilon=base_capacity,
         fix_delta=1e-5,
         change_datablock_epsilon_max_times=change_datablock_epsilon_max_times,
         dataset_reconstruct_path=dataset_reconstruct_path, 
@@ -624,7 +622,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
                             worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             dataset_name, dataset_config_name,
-                            budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times, 
+                            base_capacity, change_datablock_epsilon_max_times, 
                             job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             pipeline_sequence_all_num, all_history_num, need_change_interval,
                             all_datablock_num, offline_datablock_num, 
@@ -633,13 +631,12 @@ def simulation_experiment_start(args, sched_ip, sched_port,
                             datablock_require_epsilon_max_ratio, job_require_select_block_min_num, job_require_select_block_max_num,
                             change_job_epsilon_max_times
                             ):
-    min_epsilon_capacity = base_capacity * budget_capacity_ratio
     datasets_list, time_2_datablock_num = generate_alibaba_dataset(
         num=all_datablock_num,
         offline_num=offline_datablock_num,
         time_speed_up=simulation_time_speed_up,
         dataset_names=[dataset_name],
-        fix_epsilon=min_epsilon_capacity,
+        fix_epsilon=base_capacity,
         fix_delta=1e-5,
         change_datablock_epsilon_max_times=change_datablock_epsilon_max_times,
         dataset_reconstruct_path=dataset_reconstruct_path, 
@@ -763,7 +760,6 @@ if __name__ == "__main__":
     dataset_name = args.dataset_name
     dataset_config_name = args.dataset_config_name
 
-    budget_capacity_ratio = args.budget_capacity_ratio
     base_capacity = args.base_capacity
     change_datablock_epsilon_max_times = args.change_datablock_epsilon_max_times
 
@@ -811,7 +807,7 @@ if __name__ == "__main__":
                             worker_ips, worker_ports, init_gpuidentifiers, init_workerip_2_ports,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             dataset_name, dataset_config_name,
-                            budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times,
+                            base_capacity, change_datablock_epsilon_max_times,
                             job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             pipeline_sequence_all_num, all_history_num, need_change_interval,
                             all_datablock_num, offline_datablock_num, 
@@ -828,7 +824,7 @@ if __name__ == "__main__":
                             placement_sleep_time, waiting_time,
                             dataset_reconstruct_path, test_jobtrace_reconstruct_path, history_jobtrace_reconstruct_path,
                             dataset_name, dataset_config_name,
-                            budget_capacity_ratio, base_capacity, change_datablock_epsilon_max_times,
+                            base_capacity, change_datablock_epsilon_max_times,
                             job_dataset_trace_save_path, current_test_all_dir, restart_trace,
                             pipeline_sequence_all_num, all_history_num, time_interval, need_change_interval,
                             all_datablock_num, offline_datablock_num, 
