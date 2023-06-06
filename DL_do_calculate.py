@@ -325,6 +325,7 @@ if __name__ == "__main__":
         client = get_zerorpc_client(worker_ip, worker_port)
         client.runtime_failed_job_callback(job_id, str(e))
     finally:
-        print_console_file("finally finished!", fileHandler=f)
+        with open(logging_file_path, "a+") as f:
+            print_console_file("finally finished!", fileHandler=f)
         time.sleep(5)
         sys.exit(0)
