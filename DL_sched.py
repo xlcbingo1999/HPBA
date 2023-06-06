@@ -1483,7 +1483,8 @@ class Scheduler_server(object):
             temp_one_job_success_selected_datablock_num = 0
             for once_selected_datablock in success_selected_datablocks:
                 temp_one_job_success_selected_datablock_num += len(once_selected_datablock)
-            all_success_datablock_num += (temp_one_job_success_selected_datablock_num / len(success_selected_datablocks))
+            if len(success_selected_datablocks) > 0:
+                all_success_datablock_num += (temp_one_job_success_selected_datablock_num / len(success_selected_datablocks))
         all_failed_datablock_num = all_target_datablock_num - all_success_datablock_num
 
         self.sched_logger.info(f"all_target_datablock_num: {all_target_datablock_num}")
