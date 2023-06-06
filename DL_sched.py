@@ -1477,12 +1477,18 @@ class Scheduler_server(object):
         
         all_target_datablock_num = 0
         all_success_datablock_num = 0
-        for job_id, target_selected_num in self.jobid_2_datablock_selected_num.items():
-            all_target_datablock_num += (target_selected_num * self.jobid_2_success_siton_run_num[job_id])
-        for job_id, success_selected_datablocks in self.jobid_2_sub_train_key_ids.items():
+        for _, target_selected_num in self.jobid_2_datablock_selected_num.items():
+            all_target_datablock_num += target_selected_num
+        for _, success_selected_datablocks in self.jobid_2_sub_train_key_ids.items():
+            temp_one_job_success_selected_datablock_num = 0
             for once_selected_datablock in success_selected_datablocks:
-                all_success_datablock_num += len(once_selected_datablock)
+                temp_one_job_success_selected_datablock_num += len(once_selected_datablock)
+            all_success_datablock_num += (temp_one_job_success_selected_datablock_num / len(success_selected_datablocks))
         all_failed_datablock_num = all_target_datablock_num - all_success_datablock_num
+
+        self.sched_logger.info(f"all_target_datablock_num: {all_target_datablock_num}")
+        self.sched_logger.info(f"all_success_datablock_num: {all_success_datablock_num}")
+        self.sched_logger.info(f"all_failed_datablock_num: {all_failed_datablock_num}")
 
         result_map = {
             "current_success_num": current_success_num,
