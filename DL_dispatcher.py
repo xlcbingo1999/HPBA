@@ -50,8 +50,9 @@ def get_df_config():
     parser.add_argument("--job_require_select_block_min_num", type=float, default=5)
     parser.add_argument("--job_require_select_block_max_num", type=float, default=25)
     parser.add_argument("--change_job_epsilon_max_times", type=float, default=1.0)
-    parser.add_argument("--config_max_operate_siton_run_num", type=int, default=50)
-
+    parser.add_argument("--config_max_operate_siton_run_num", type=int, default=1)
+    parser.add_argument("--max_gpu_fuzai", type=int, default=10)
+    
     parser.add_argument("--base_capacity", type=float, default=10.0)
     parser.add_argument("--budget_capacity_ratio", type=float, default=1)
     parser.add_argument("--change_datablock_epsilon_max_times", type=float, default=1.0)
@@ -82,7 +83,7 @@ def get_df_config():
 
     parser.add_argument('--his_betas', type=float, default=0.0)
     parser.add_argument('--his_batch_size_for_one_epochs', type=int, default=25)
-    # parser.add_argument('--his_comparison_z_threshold_list', type=float, default=0.7)
+    parser.add_argument('--his_infinity_flag', action="store_true")
 
     parser.add_argument('--dpf_his_betas', type=float, default=0.01)
     parser.add_argument('--dpf_his_waiting_queue_capacitys', type=int, default=10)
@@ -383,7 +384,7 @@ class Dispatcher(object):
     def sched_init_sched_register(self, ip, port, args, seed, 
                                 assignment_policy, significance_policy, 
                                 pipeline_sequence_all_num, job_request_all_num, config_max_operate_siton_run_num,
-                                dataset_name, dataset_config_name,
+                                dataset_name, dataset_config_name, max_gpu_fuzai,
                                 all_or_nothing_flag, enable_waiting_flag,
                                 simulation, simulation_index):
         client = get_zerorpc_client(ip, port)
@@ -399,7 +400,8 @@ class Dispatcher(object):
             job_request_all_num,
             config_max_operate_siton_run_num,
             dataset_name, 
-            dataset_config_name
+            dataset_config_name,
+            max_gpu_fuzai
         )
         if assignment_policy == "PBGPolicy" or assignment_policy == "PBG":
             comparison_cost_epsilon_list = args.pbg_comparison_cost_epsilons
@@ -420,19 +422,16 @@ class Dispatcher(object):
             or assignment_policy == "HISwithOrderProVersionPolicy" or assignment_policy == "HISwithOrderProVersion" \
             or assignment_policy == "HISwithOrderProVersionBestEffortPolicy" or assignment_policy == "HISwithOrderProVersionBestEffort":
             beta_list = args.his_betas
-            assignment_args = (beta_list, pipeline_sequence_all_num, job_request_all_num)
+            infinity_flag = args.his_infinity_flag
+            assignment_args = (beta_list, pipeline_sequence_all_num, job_request_all_num, infinity_flag)
         elif assignment_policy == "IterativeHISPolicy" or assignment_policy == "IterativeHIS" \
             or assignment_policy == "IterativeHISwithOrderProVersionPolicy" or assignment_policy == "IterativeHISwithOrderProVersion" \
             or assignment_policy == "IterativeHISwithOrderRemainVersionPolicy" or assignment_policy == "IterativeHISwithOrderRemainVersion" \
             or assignment_policy == "IterativeHISwithOrderProVersionBestEffortPolicy" or assignment_policy == "IterativeHISwithOrderProVersionBestEffort":
             beta_list = args.his_betas
             batch_size_for_one_epoch_list = args.his_batch_size_for_one_epochs
-            assignment_args = (beta_list, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch_list)
-        elif assignment_policy == "DPFHISPolicy" or assignment_policy == "DPFHIS":
-            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
-            beta_list = args.dpf_his_betas
-            waiting_queue_capacity_list = args.dpf_his_waiting_queue_capacitys
-            assignment_args = (beta_list, waiting_queue_capacity_list, pipeline_sequence_all_num)
+            infinity_flag = args.his_infinity_flag
+            assignment_args = (beta_list, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch_list, infinity_flag)
         elif assignment_policy == "OfflinePolicy" or assignment_policy == "Offline" \
             or assignment_policy == "OfflineBestEffortPolicy" or assignment_policy == "OfflineBestEffort" \
             or assignment_policy == "SagewithRemainPolicy" or assignment_policy == "SagewithRemain" \
@@ -565,6 +564,7 @@ def testbed_experiment_start(args, sched_ip, sched_port,
         args.config_max_operate_siton_run_num,
         dataset_name=dataset_name, 
         dataset_config_name=dataset_config_name,
+        max_gpu_fuzai=args.max_gpu_fuzai,
         all_or_nothing_flag=all_or_nothing_flag,
         enable_waiting_flag=enable_waiting_flag,
         simulation=False, simulation_index=0)
@@ -703,6 +703,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
             args.config_max_operate_siton_run_num,
             dataset_name=dataset_name, 
             dataset_config_name=dataset_config_name,
+            max_gpu_fuzai=args.max_gpu_fuzai,
             all_or_nothing_flag=all_or_nothing_flag,
             enable_waiting_flag=enable_waiting_flag,
             simulation=True,

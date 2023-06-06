@@ -5,16 +5,17 @@ import numpy as np
 import math
 import cvxpy as cp
 import json
-
+import sys
 
 class HISBasePolicy(Policy):
-    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, seed, logger):
+    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, seed, logger):
         super().__init__(pipeline_sequence_all_num, job_request_all_num)
         self.beta = beta
         self.logger = logger
         self.waiting_queue_capacity = 1
         self.only_one = True
         self.need_history = True
+        self._infinity_flag = infinity_flag
         self.initialize_seeds(seed)
     
         self.offline_history_job_priority_weights = []
@@ -37,6 +38,10 @@ class HISBasePolicy(Policy):
         self.online_history_job_significance = []
         self.online_history_job_arrival_time = []
 
+    @property
+    def is_infinity_flag(self):
+        return self._infinity_flag or self.job_request_all_num == sys.maxsize
+    
     def initialize_seeds(self, seed):
         np.random.seed(seed)
         random.seed(seed+1)

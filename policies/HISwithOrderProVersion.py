@@ -8,8 +8,8 @@ import cvxpy as cp
 import json
 
 class HISwithOrderProVersionPolicy(HISBasePolicy):
-    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, seed, logger):
-        super().__init__(beta, pipeline_sequence_all_num, job_request_all_num, seed, logger)
+    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, seed, logger):
+        super().__init__(beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, seed, logger)
         self._name = 'HISwithOrderProVersionPolicy'
         self.beta = beta
         # self.gamma = gamma
