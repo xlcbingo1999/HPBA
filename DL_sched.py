@@ -17,27 +17,15 @@ from utils.logging_tools import get_logger
 
 from policies.PBG import PBGPolicy
 from policies.PBGMix import PBGMixPolicy
-# from policies.Sage import SagePolicy
 from policies.SagewithRemain import SagewithRemainPolicy
-# from policies.StreamingwithRemain import StreamingwithRemainPolicy
 from policies.BestFitwithRemain import BestFitwithRemainPolicy
-# from policies.HIS import HISPolicy
-# from policies.HISwithC import HISwithCPolicy
-# from policies.HISwithOrderRemainVersion import HISwithOrderRemainVersionPolicy
 from policies.HISwithOrderProVersion import HISwithOrderProVersionPolicy
-# from policies.HISwithOrderProVersionBestEffort import HISwithOrderProVersionBestEffortPolicy
-# from policies.IterativeHIS import IterativeHISPolicy
 from policies.IterativeHISwithOrderProVersion import IterativeHISwithOrderProVersionPolicy
-# from policies.IterativeHISwithOrderRemainVersion import IterativeHISwithOrderRemainVersionPolicy
-# from policies.IterativeHISwithOrderProVersionBestEffort import IterativeHISwithOrderProVersionBestEffortPolicy
-# from policies.DPF_HIS_event import DPFHISPolicy
 from policies.Offline import OfflinePolicy
-# from policies.OfflineBestEffort import OfflineBestEffortPolicy
-# from significance_policies.HISOTDD import HISOTDDPolicy
+
 from significance_policies.Temp import TempPolicy
 from significance_policies.OTDD import OTDDPolicy
-# from significance_policies.HV import HVPolicy
-# from significance_policies.HVOTDD import HVOTDDPolicy
+
 
 from functools import reduce
 
@@ -166,6 +154,7 @@ class Scheduler_server(object):
         self.job_request_all_num = 0
         self.global_job_arrival_index = 0
         self.config_max_operate_siton_run_num = 0
+        self.max_gpu_fuzai = 0
 
         self.dataset_name = ""
         self.dataset_config_name = ""
@@ -182,7 +171,7 @@ class Scheduler_server(object):
     def initialize_sched_configs(self, simulation, simulation_index, seed, current_test_all_dir, 
                                 all_or_nothing_flag, enable_waiting_flag, 
                                 pipeline_sequence_all_num, job_request_all_num, config_max_operate_siton_run_num,
-                                dataset_name, dataset_config_name):
+                                dataset_name, dataset_config_name, max_gpu_fuzai):
         # simulation
         self.simulation = simulation
         self.simulation_index = simulation_index
@@ -206,6 +195,7 @@ class Scheduler_server(object):
         self.pipeline_sequence_all_num = pipeline_sequence_all_num
         self.job_request_all_num = job_request_all_num
         self.config_max_operate_siton_run_num = config_max_operate_siton_run_num
+        self.max_gpu_fuzai = max_gpu_fuzai
 
         self.dataset_name = dataset_name
         self.dataset_config_name = dataset_config_name
@@ -320,6 +310,7 @@ class Scheduler_server(object):
         self.job_request_all_num = 0 # TODO(xlc): 这个值应该直接变成了任务的总数量, 注意在policy里面需要简单修改一下!
         self.global_job_arrival_index = 0
         self.config_max_operate_siton_run_num = 0
+        self.max_gpu_fuzai = 0
 
         self.dataset_name = ""
         self.dataset_config_name = ""
@@ -1313,9 +1304,9 @@ class Scheduler_server(object):
             return 
         args = []
         if self.simulation:
-            max_gpu_fuzai = 1e16
+            max_gpu_fuzai = self.max_gpu_fuzai
         else:
-            max_gpu_fuzai = 5 # TODO(xlc): 这里很容易出错, 还是需要从实际的指标来获取!
+            max_gpu_fuzai = self.max_gpu_fuzai # TODO(xlc): 这里很容易出错, 还是需要从实际的指标来获取!
         for job_id in all_done_all_sched_jobs_copy:
             gpuidentifier_enable_status = [k for k, v in self.gpuidentifier_2_jobinstances.items() if len(v) < max_gpu_fuzai]
             if len(gpuidentifier_enable_status) > 0:
@@ -1547,63 +1538,21 @@ class Scheduler_server(object):
         elif assignment_policy == "PBGMixPolicy" or assignment_policy == "PBGMix":
             pipeline_sequence_all_num, job_request_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta = assignment_args
             policy_item = PBGMixPolicy(pipeline_sequence_all_num, job_request_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, self.seed, self.sched_logger)
-        elif assignment_policy == "HISPolicy" or assignment_policy == "HIS":
-            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
-            beta, pipeline_sequence_all_num = assignment_args
-            policy_item = HISPolicy(beta, pipeline_sequence_all_num, self.seed, self.sched_logger)
-        elif assignment_policy == "HISwithCPolicy" or assignment_policy == "HISwithC":
-            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
-            beta, pipeline_sequence_all_num = assignment_args
-            policy_item = HISwithCPolicy(beta, pipeline_sequence_all_num, self.seed, self.sched_logger)
-        elif assignment_policy == "HISwithOrderRemainVersionPolicy" or assignment_policy == "HISwithOrderRemainVersion":
-            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
-            beta, pipeline_sequence_all_num = assignment_args
-            policy_item = HISwithOrderRemainVersionPolicy(beta, pipeline_sequence_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "HISwithOrderProVersionPolicy" or assignment_policy == "HISwithOrderProVersion":
-            beta, pipeline_sequence_all_num, job_request_all_num = assignment_args
-            policy_item = HISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, self.seed, self.sched_logger)
-        elif assignment_policy == "HISwithOrderProVersionBestEffortPolicy" or assignment_policy == "HISwithOrderProVersionBestEffort":
-            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
-            beta, pipeline_sequence_all_num = assignment_args
-            policy_item = HISwithOrderProVersionBestEffortPolicy(beta, pipeline_sequence_all_num, self.seed, self.sched_logger)
-        elif assignment_policy == "IterativeHISPolicy" or assignment_policy == "IterativeHIS":
-            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
-            beta, batch_size_for_one_epoch, pipeline_sequence_all_num = assignment_args
-            policy_item = IterativeHISPolicy(beta, pipeline_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
+            beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag = assignment_args
+            policy_item = HISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISwithOrderProVersionPolicy" or assignment_policy == "IterativeHISwithOrderProVersion":
-            beta, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch = assignment_args
-            policy_item = IterativeHISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
-        elif assignment_policy == "IterativeHISwithOrderRemainVersionPolicy" or assignment_policy == "IterativeHISwithOrderRemainVersion":
-            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
-            beta, batch_size_for_one_epoch, pipeline_sequence_all_num = assignment_args
-            policy_item = IterativeHISwithOrderRemainVersionPolicy(beta, pipeline_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
-        elif assignment_policy == "IterativeHISwithOrderProVersionBestEffortPolicy" or assignment_policy == "IterativeHISwithOrderProVersionBestEffort":
-            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
-            beta, batch_size_for_one_epoch, pipeline_sequence_all_num = assignment_args
-            policy_item = IterativeHISwithOrderProVersionBestEffortPolicy(beta, pipeline_sequence_all_num, batch_size_for_one_epoch, self.seed, self.sched_logger)
-        elif assignment_policy == "DPFHISPolicy" or assignment_policy == "DPFHIS":
-            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
-            beta, waiting_queue_capacity, pipeline_sequence_all_num = assignment_args
-            policy_item = DPFHISPolicy(beta, pipeline_sequence_all_num, waiting_queue_capacity, self.seed, self.sched_logger)
-        elif assignment_policy == "SagePolicy" or assignment_policy == "Sage":
-            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
-            policy_item = SagePolicy(self.seed, self.sched_logger)
+            beta, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch, infinity_flag = assignment_args
+            policy_item = IterativeHISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch, infinity_flag, self.seed, self.sched_logger)
         elif assignment_policy == "SagewithRemainPolicy" or assignment_policy == "SagewithRemain":
             pipeline_sequence_all_num, job_request_all_num = assignment_args
             policy_item = SagewithRemainPolicy(pipeline_sequence_all_num, job_request_all_num, self.seed, self.sched_logger)
-        elif assignment_policy == "StreamingwithRemainPolicy" or assignment_policy == "StreamingwithRemain":
-            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
-            policy_item = StreamingwithRemainPolicy(self.seed, self.sched_logger)
         elif assignment_policy == "BestFitwithRemainPolicy" or assignment_policy == "BestFitwithRemain":
             pipeline_sequence_all_num, job_request_all_num = assignment_args
             policy_item = BestFitwithRemainPolicy(pipeline_sequence_all_num, job_request_all_num, self.seed, self.sched_logger)
         elif assignment_policy == "OfflinePolicy" or assignment_policy == "Offline":
             pipeline_sequence_all_num, job_request_all_num = assignment_args
             policy_item = OfflinePolicy(pipeline_sequence_all_num, job_request_all_num, self.seed, self.sched_logger)
-        elif assignment_policy == "OfflineBestEffortPolicy" or assignment_policy == "OfflineBestEffort":
-            raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
-            pipeline_sequence_all_num = assignment_args
-            policy_item = OfflineBestEffortPolicy(pipeline_sequence_all_num, self.seed, self.sched_logger)
         self.assignment_policy = policy_item
         self.assignment_policy.report_state()
 

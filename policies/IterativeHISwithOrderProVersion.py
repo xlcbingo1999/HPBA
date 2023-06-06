@@ -16,8 +16,8 @@ class QueueItem(object):
         self.significance = significance
 
 class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
-    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch, seed, logger):
-        super().__init__(beta, pipeline_sequence_all_num, job_request_all_num, seed, logger)
+    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch, infinity_flag, seed, logger):
+        super().__init__(beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, seed, logger)
         self._name = 'IterativeHISwithOrderProVersionPolicy'
         self.beta = beta
         self.logger = logger
@@ -187,7 +187,7 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
             for temp_index, datablock_identifier in temp_index_2_datablock_identifier.items():
                 datablock_privacy_budget_right_hand_list[temp_index] = self.datablock_identifier_2_remain_epsilon[datablock_identifier] + \
                     sub_train_datasetidentifier_2_epsilon_capcity[datablock_identifier] / self.datablock_identifier_2_all_epoch_num[datablock_identifier]
-            # self.logger.debug(f"non infinity: datablock_privacy_budget_capacity_list: {datablock_privacy_budget_capacity_list}")
+            self.logger.debug(f"non infinity: datablock_privacy_budget_right_hand_list: {datablock_privacy_budget_right_hand_list}")
 
         assign_result_matrix = self.get_LP_result(sign_matrix, 
                                                 datablock_privacy_budget_right_hand_list,

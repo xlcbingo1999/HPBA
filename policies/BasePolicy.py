@@ -23,10 +23,6 @@ class Policy:
     def all_pipeline_has_coming(self):
         return len(self.has_come_pipeline_ids) == self.pipeline_sequence_all_num
 
-    @property
-    def is_infinity_flag(self):
-        return self._job_request_all_num == sys.maxsize
-
     def add_to_policy_profiler(self, job_id):
         self.has_come_pipeline_ids.add(job_id)
 
