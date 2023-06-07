@@ -119,6 +119,7 @@ class Worker_server(object):
         self.worker_logger.info("success clear all jobs in worker!")
 
     def stop_all(self):
+        print(f"worker {self.local_ip}:{self.local_port} stop_all")
         self.all_finished = True
 
     def finished_job_callback(self, job_id, result, real_duration_time):
@@ -174,7 +175,7 @@ class Worker_server(object):
                     client = get_zerorpc_client(self.sched_ip, self.sched_port)
                     client.worker_finished_job_callback(job_id, origin_info, result)
                 time.sleep(sleep_time)
-            print("Thread thread_func_timely_finished_job_callback start!")
+            print("Thread thread_func_timely_finished_job_callback finished!")
         p = threading.Thread(target=thread_func_timely_finished_job_callback, args=(1,), daemon=True)
         self.finished_job_callback_thread = p
         p.start()

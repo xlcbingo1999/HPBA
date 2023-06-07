@@ -33,74 +33,6 @@ class OfflinePolicy(Policy):
     
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
-    
-    def get_allocation(self, state, all_or_nothing_flag, enable_waiting_flag):
-        assert not enable_waiting_flag
-        need_waiting_job_sched = False
-        job_id_2_target_epsilon_require = state["job_id_2_target_epsilon_require"]
-        job_id_2_target_datablock_select_num = state["job_id_2_target_datablock_selected_num"]
-        job_id_2_job_priority_weight = state["job_id_2_job_priority_weight"]
-        job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]
-        job_id_2_significance = state["job_id_2_significance"]
-        job_id_2_arrival_index = state["job_id_2_arrival_index"]
-
-        set_dataset_name = set(job_id_2_train_dataset_name.values())
-        assert len(set_dataset_name) == 1 # 必须保证所有的任务都是针对同一个数据集的
-        train_dataset_name = list(set_dataset_name)[0]
-
-        # sub_train_datasetidentifier_2_significance = state["current_sub_train_datasetidentifier_2_significance"][train_dataset_name]
-        sub_train_datasetidentifier_2_epsilon_remain = state["current_sub_train_datasetidentifier_2_epsilon_remain"][train_dataset_name]
-        sub_train_datasetidentifier_2_epsilon_capcity = state["current_sub_train_datasetidentifier_2_epsilon_capcity"][train_dataset_name]
-        sub_train_datasetidentifier_2_arrival_time = state["current_sub_train_datasetidentifier_2_arrival_time"][train_dataset_name]
-
-        for job_id, train_dataset_name in job_id_2_train_dataset_name.items():
-            if job_id not in self.waiting_queue_jobid_set:
-                target_datablock_select_num = job_id_2_target_datablock_select_num[job_id]
-                target_epsilon_require = job_id_2_target_epsilon_require[job_id]
-                job_priority_weight = job_id_2_job_priority_weight[job_id]
-                sub_train_datasetidentifier_2_significance = job_id_2_significance[job_id]
-                arrival_time = job_id_2_arrival_index[job_id]
-                waiting_job = WaitingJob(job_id, train_dataset_name, 
-                                        target_datablock_select_num, target_epsilon_require, 
-                                        job_priority_weight, sub_train_datasetidentifier_2_significance,
-                                        arrival_time)
-                self.waiting_queue_jobid_set.add(job_id)
-                self.waiting_queue.append(waiting_job)
-        
-        result_job_2_selected_datablock_identifiers = {}
-        result_selected_real_sched_epsilon_map = {}
-        temp_sched_failed_flag = False
-        calcu_compare_epsilon = 0.0
-        waiting_job_ids = []
-        
-        
-        if len(self.waiting_queue) >= self.waiting_queue_capacity:
-            temp_job_2_selected_datablock_identifiers, \
-                temp_selected_real_sched_epsilon_map, \
-                calcu_compare_epsilon = self.get_allocation_for_small(
-                                            sub_train_datasetidentifier_2_epsilon_remain,
-                                            sub_train_datasetidentifier_2_epsilon_capcity,
-                                            sub_train_datasetidentifier_2_arrival_time,
-                                            all_or_nothing_flag, enable_waiting_flag
-                                        )
-            if len(temp_job_2_selected_datablock_identifiers) >= len(self.waiting_queue):
-                if all_or_nothing_flag:
-                    for job_id, temp_selected_datablock_identifiers in temp_job_2_selected_datablock_identifiers.items():
-                        if len(temp_selected_datablock_identifiers) < target_datablock_select_num:
-                            temp_sched_failed_flag = True
-                            break
-            else:
-                temp_sched_failed_flag = True
-        else:
-            temp_sched_failed_flag = True
-        if not temp_sched_failed_flag:
-            result_job_2_selected_datablock_identifiers = temp_job_2_selected_datablock_identifiers
-            result_selected_real_sched_epsilon_map = temp_selected_real_sched_epsilon_map
-            self.waiting_queue = []
-            self.logger.debug("from policy [{}] selected_datablock_identifiers: {}".format(self.name, result_job_2_selected_datablock_identifiers))
-        else:
-            waiting_job_ids = [job_item.job_id for job_item in self.waiting_queue]
-        return result_job_2_selected_datablock_identifiers, waiting_job_ids, result_selected_real_sched_epsilon_map, calcu_compare_epsilon, need_waiting_job_sched
 
     def get_sign_matrix(self, current_all_job_priority_weights, current_all_job_significances,
                         sub_train_datasetidentifier_2_epsilon_capcity):
@@ -125,7 +57,7 @@ class OfflinePolicy(Policy):
                       enable_waiting_flag,
                       solver=cp.ECOS_BB):
         job_num, datablock_num = sign_matrix.shape[0], sign_matrix.shape[1]
-        job_target_datablock_selected_num_list = np.array(job_target_datablock_selected_num_list)[np.newaxis, :]
+        job_target_datablock_selected_num_list = np.array(job_target_datablock_selected_num_list)
         job_privacy_budget_consume_list = np.array(job_privacy_budget_consume_list)[np.newaxis, :]
         datablock_privacy_budget_capacity_list = np.array(datablock_privacy_budget_capacity_list)[np.newaxis, :]
 
@@ -256,3 +188,71 @@ class OfflinePolicy(Policy):
                     sub_train_datasetidentifier_2_epsilon_remain[datablock_identifier] -= job_item.target_epsilon_require
 
         return temp_job_2_selected_datablock_identifiers, temp_selected_real_sched_epsilon_map, calcu_compare_epsilon
+
+    def get_allocation(self, state, all_or_nothing_flag, enable_waiting_flag):
+        assert not enable_waiting_flag
+        job_id_2_target_epsilon_require = state["job_id_2_target_epsilon_require"]
+        job_id_2_target_datablock_select_num = state["job_id_2_target_datablock_selected_num"]
+        job_id_2_job_priority_weight = state["job_id_2_job_priority_weight"]
+        job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]
+        job_id_2_significance = state["job_id_2_significance"]
+        job_id_2_arrival_index = state["job_id_2_arrival_index"]
+
+        self.logger.debug(f"in offline job_id_2_train_dataset_name: {job_id_2_train_dataset_name}")
+
+        set_dataset_name = set(job_id_2_train_dataset_name.values())
+        assert len(set_dataset_name) == 1 # 必须保证所有的任务都是针对同一个数据集的
+        train_dataset_name = list(set_dataset_name)[0]
+
+        # sub_train_datasetidentifier_2_significance = state["current_sub_train_datasetidentifier_2_significance"][train_dataset_name]
+        sub_train_datasetidentifier_2_epsilon_remain = state["current_sub_train_datasetidentifier_2_epsilon_remain"][train_dataset_name]
+        sub_train_datasetidentifier_2_epsilon_capcity = state["current_sub_train_datasetidentifier_2_epsilon_capcity"][train_dataset_name]
+        sub_train_datasetidentifier_2_arrival_time = state["current_sub_train_datasetidentifier_2_arrival_time"][train_dataset_name]
+
+        for job_id, train_dataset_name in job_id_2_train_dataset_name.items():
+            if job_id not in self.waiting_queue_jobid_set:
+                target_datablock_select_num = job_id_2_target_datablock_select_num[job_id]
+                target_epsilon_require = job_id_2_target_epsilon_require[job_id]
+                job_priority_weight = job_id_2_job_priority_weight[job_id]
+                sub_train_datasetidentifier_2_significance = job_id_2_significance[job_id]
+                arrival_time = job_id_2_arrival_index[job_id]
+                waiting_job = WaitingJob(job_id, train_dataset_name, 
+                                        target_datablock_select_num, target_epsilon_require, 
+                                        job_priority_weight, sub_train_datasetidentifier_2_significance,
+                                        arrival_time)
+                self.waiting_queue_jobid_set.add(job_id)
+                self.waiting_queue.append(waiting_job)
+        
+        result_job_2_selected_datablock_identifiers = {}
+        result_selected_real_sched_epsilon_map = {}
+        temp_sched_failed_flag = False
+        calcu_compare_epsilon = 0.0
+        waiting_job_ids = []
+        result_job_2_instant_recoming_flag = {}
+        
+        
+        if len(self.waiting_queue) >= self.waiting_queue_capacity:
+            temp_job_2_selected_datablock_identifiers, \
+                temp_selected_real_sched_epsilon_map, \
+                calcu_compare_epsilon = self.get_allocation_for_small(
+                                            sub_train_datasetidentifier_2_epsilon_remain,
+                                            sub_train_datasetidentifier_2_epsilon_capcity,
+                                            sub_train_datasetidentifier_2_arrival_time,
+                                            all_or_nothing_flag, enable_waiting_flag
+                                        )
+            if all_or_nothing_flag:
+                for job_id, temp_selected_datablock_identifiers in temp_job_2_selected_datablock_identifiers.items():
+                    if len(temp_selected_datablock_identifiers) < target_datablock_select_num:
+                        temp_sched_failed_flag = True
+                        break
+        else:
+            temp_sched_failed_flag = True
+        if not temp_sched_failed_flag:
+            result_job_2_selected_datablock_identifiers = temp_job_2_selected_datablock_identifiers
+            result_selected_real_sched_epsilon_map = temp_selected_real_sched_epsilon_map
+            self.waiting_queue = []
+            self.logger.debug("from policy [{}] selected_datablock_identifiers: {}".format(self.name, result_job_2_selected_datablock_identifiers))
+        else:
+            waiting_job_ids = [job_item.job_id for job_item in self.waiting_queue]
+            self.logger.debug(f"need waiting({len(waiting_job_ids)}): {waiting_job_ids}")
+        return result_job_2_selected_datablock_identifiers, waiting_job_ids, result_selected_real_sched_epsilon_map, calcu_compare_epsilon, result_job_2_instant_recoming_flag

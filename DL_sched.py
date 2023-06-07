@@ -246,7 +246,6 @@ class Scheduler_server(object):
         self.failed_job_to_dispatcher_list = []
         self.failed_job_to_dispatcher_thread = None
 
-        self.workerip_2_ports = {}
         self.gpuidentifier_2_jobinstances = {}
         
         self.sub_train_datasetidentifier_2_dataset_status = {} # 这里必须是一个可以伸缩的map
@@ -335,6 +334,7 @@ class Scheduler_server(object):
         self.sched_logger = None 
 
     def stop_all(self):
+        print("sched stop_all")
         for worker_ip, worker_port in self.workerip_2_ports.items():
             client = get_zerorpc_client(worker_ip, worker_port)
             client.stop_all()
@@ -515,7 +515,7 @@ class Scheduler_server(object):
             self.jobid_2_logging_file_path[id] = self.all_logger_path + "/{}.log".format(id)
             self.jobid_2_summary_writer_key[id] = "{}".format(id)
 
-        self.sched_logger.info("success add new jobs: {}".format(jobs_detail_map))
+        self.sched_logger.info(f"success add new jobs with num[{len(jobs_detail_map)}]: {jobs_detail_map}")
 
     def update_history_jobs(self, history_jobs_map):
         offline_history_job_priority_weights = []
@@ -1210,7 +1210,8 @@ class Scheduler_server(object):
     def sched_dataset_for_jobs(self, sched_job_origin_state):
         assert sched_job_origin_state == JOB_STATUS_KEY.DONE_SIGNIFICANCE_CAL or sched_job_origin_state == JOB_STATUS_KEY.WAITING
         # self.sched_logger.debug("in sched_dataset_for_jobs")
-        need_operator_jobs = self.status_2_jobid[sched_job_origin_state]
+        need_operator_jobs = copy.deepcopy(self.status_2_jobid[sched_job_origin_state])
+        # self.sched_logger.debug(f"need_operator_jobs first: {need_operator_jobs}")
         if sched_job_origin_state == JOB_STATUS_KEY.WAITING:
             need_operator_jobs = [job_id for job_id in need_operator_jobs if self.jobid_2_need_instantly_recoming[job_id]]
             for job_id in need_operator_jobs:
@@ -1221,7 +1222,8 @@ class Scheduler_server(object):
                 self.jobid_2_need_instantly_recoming[job_id] = False
         if len(need_operator_jobs) <= 0:
             return
-        self.sched_logger.info(f"sched_dataset_for_jobs in {sched_job_origin_state}")
+        self.sched_logger.debug(f"sched_dataset_for_jobs in {sched_job_origin_state} len(need_operator_jobs): {len(need_operator_jobs)}")
+        # self.sched_logger.debug(f"need_operator_jobs second: {need_operator_jobs}")
         if self.assignment_policy.only_one: # 这里其实应该改成一个for循环, 一次一次来, 直到当前所有的新来的任务完成决策
             for operator_job in need_operator_jobs:
                 current_operator_jobs = [operator_job]
@@ -1239,6 +1241,7 @@ class Scheduler_server(object):
         job_id_2_target_significance = {}
         job_id_2_arrival_index = {}
         job_id_2_arrival_time = {}
+        # self.sched_logger.debug(f"current_operator_jobs: {current_operator_jobs}")
         for job_id in current_operator_jobs:
             job_current_siton_run_index = self.jobid_2_current_operate_siton_run_index[job_id]
             job_id_2_dataset_name[job_id] = self.jobid_2_train_dataset_name[job_id]
@@ -1336,11 +1339,12 @@ class Scheduler_server(object):
             origin_status_success, target_status_success = self.get_job_status_update_origin_target(status_update_path)
             self.sche_reflash_job_status(temp_job_id, origin_status_success, target_status_success)
 
-        # self.sched_logger.info("waiting_job_ids: {}".format(waiting_job_ids))
+        # self.sched_logger.debug(f"waiting_job_ids: {waiting_job_ids}")
         for temp_job_id in waiting_job_ids:
             need_failed_job.remove(temp_job_id)
             self.worker_waiting_job_callback(temp_job_id, self.jobid_2_origininfo[temp_job_id])
         
+        # self.sched_logger.debug(f"need_failed_job: {need_failed_job}")
         for temp_job_id in need_failed_job:
             self.sched_logger.info("failed job scheduling [{}] first".format(temp_job_id))
             # TODO(xlc): 这里不应该直接设置为Failed状态, 而是考虑max_time的情况, 决定是否将任务放到NO_SCHED的状态, 同时需要知道模型的最新保存位置?
