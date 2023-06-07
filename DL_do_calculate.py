@@ -142,6 +142,22 @@ def do_calculate_func(job_id, model_name,
     with open(logging_file_path, "a+") as f:
         print_console_file("finished criterion optimizer", fileHandler=f)
     
+    model.eval()
+    origin_total_val_loss = []
+    origin_total_val_acc = []
+    for i, (inputs, labels) in enumerate(test_loader):
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+        output = model(inputs)
+        loss = criterion(output, labels)
+        origin_total_val_loss.append(loss.item())
+
+        preds = np.argmax(output.detach().cpu().numpy(), axis=1)
+        labels = labels.detach().cpu().numpy()
+        acc = accuracy(preds, labels)
+        origin_total_val_acc.append(acc)
+    model.train()
+
     privacy_engine = PrivacyEngine() if EPSILON_one_siton > 0.0 else None
     model, optimizer, train_loader = \
         get_privacy_dataloader(privacy_engine, model, optimizer, 
@@ -149,9 +165,13 @@ def do_calculate_func(job_id, model_name,
                                 EPSILON_one_siton, DELTA, MAX_GRAD_NORM) 
     
     with open(logging_file_path, "a+") as f:
+        print_console_file(f"job [{job_id}] origin_total_val_loss: {np.mean(origin_total_val_loss)}", fileHandler=f)
+        print_console_file(f"job [{job_id}] origin_total_val_acc: {np.mean(origin_total_val_acc)}", fileHandler=f)
         print_console_file("job [{}] - epoch [{} to {}] begining ...".format(job_id, begin_epoch_num, begin_epoch_num + siton_run_epoch_num), fileHandler=f)
         
+
     summary_writer = SummaryWriter(summary_writer_path)
+    
     for epoch in range(siton_run_epoch_num):
         model.train()
         total_train_loss = []
@@ -249,8 +269,8 @@ def do_calculate_func(job_id, model_name,
     all_results = {
         'train_acc': np.mean(total_train_acc),
         'train_loss': np.mean(total_train_loss),
-        'test_acc': np.mean(total_val_acc),
-        'test_loss': np.mean(total_val_loss),
+        'test_acc': np.mean(total_val_acc) - np.mean(origin_total_val_acc), # 完成delta化
+        'test_loss': np.mean(total_val_loss) - np.mean(origin_total_val_loss), # 完成delta化
         'epsilon_consume': epsilon,
         'begin_epoch_num': begin_epoch_num,
         'siton_run_epoch_num': siton_run_epoch_num,
@@ -260,7 +280,7 @@ def do_calculate_func(job_id, model_name,
     with open(logging_file_path, "a+") as f:
         print_console_file("job [{}] saves in {}".format(job_id, model_save_path), fileHandler=f)
         print_console_file("job [{}] - epoch [{} to {}] end ".format(job_id, begin_epoch_num, begin_epoch_num + siton_run_epoch_num), fileHandler=f)
-
+        print_console_file("job [{}] - result: {}".format(job_id, all_results), fileHandler=f)
     return job_id, all_results, real_duration_time
 
 if __name__ == "__main__":
