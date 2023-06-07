@@ -300,7 +300,9 @@ if __name__ == "__main__":
     simulation_flag = args.simulation_flag
 
     begin_epoch_num = args.begin_epoch_num
-    siton_run_epoch_num = args.siton_run_epoch_num    
+    siton_run_epoch_num = args.siton_run_epoch_num
+
+    do_cal_success = True
     try:
         job_id, all_results, real_duration_time = do_calculate_func(
             job_id, model_name, 
@@ -314,17 +316,18 @@ if __name__ == "__main__":
             begin_epoch_num, siton_run_epoch_num, final_significance, 
             simulation_flag
         )
-        
-        with open(logging_file_path, "a+") as f:
-            print_console_file(f"finished callback to worker: {worker_ip}:{worker_port}", fileHandler=f)
-        client = get_zerorpc_client(worker_ip, worker_port)
-        client.finished_job_callback(job_id, all_results, real_duration_time)
     except Exception as e:
+        do_cal_success = False
         with open(logging_file_path, "a+") as f:
             print_console_file(f"runtime_failed callback to worker: {worker_ip}:{worker_port} with info {e}", fileHandler=f)
         client = get_zerorpc_client(worker_ip, worker_port)
         client.runtime_failed_job_callback(job_id, str(e))
     finally:
+        if do_cal_success:
+            with open(logging_file_path, "a+") as f:
+                print_console_file(f"finished callback to worker: {worker_ip}:{worker_port}", fileHandler=f)
+            client = get_zerorpc_client(worker_ip, worker_port)
+            client.finished_job_callback(job_id, all_results, real_duration_time)
         with open(logging_file_path, "a+") as f:
             print_console_file("finally finished!", fileHandler=f)
         time.sleep(5)

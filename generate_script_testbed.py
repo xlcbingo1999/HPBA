@@ -3,7 +3,7 @@
 # 如果把时间进行压缩, 则应该修改到达速率
 # [4x] => 3s/个 30s/个 => 200个任务可以控制在1h, 20个online block
 
-current_ip_index = 2
+current_ip_index = 4
 current_cmd_index = 1
 
 # testbed
@@ -21,7 +21,7 @@ history_jobtrace_reconstruct_path = "schedule-review-testbed-06-07-12-53-43"
 need_save_jobtrace_flag = False
 
 # 全局设置
-max_gpu_fuzai = 10
+max_gpu_fuzai = 5
 all_or_nothing_flag = True
 enable_waiting_flag = False
 seeds = [1234, 2345, 3456, 6789, 7890] if simulation_flag else [1234]
@@ -47,7 +47,7 @@ base_capacity = 5.0
 dataset_name = "EMNIST"
 dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
-assignment_policy = "BestFitwithRemainPolicy"
+assignment_policy = "PBGMixPolicy"
 his_betas = 0.0
 his_batch_size_for_one_epochs = 5
 his_infinity_flag = True
