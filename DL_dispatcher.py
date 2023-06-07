@@ -631,6 +631,7 @@ def simulation_experiment_start(args, sched_ip, sched_port,
                             job_datablock_epsilon_max_ratio, job_require_select_block_min_num, job_require_select_block_max_num,
                             change_job_epsilon_max_times
                             ):
+    min_epsilon_capacity = base_capacity * change_datablock_epsilon_max_times * job_datablock_epsilon_max_ratio
     datasets_list, time_2_datablock_num = generate_alibaba_dataset(
         num=all_datablock_num,
         offline_num=offline_datablock_num,
