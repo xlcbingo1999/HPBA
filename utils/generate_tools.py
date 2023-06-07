@@ -77,9 +77,9 @@ def change_dispatcher_ip_port(job_detail, dispatcher_ip, dispatcher_port):
     job_detail["dispatcher_port"] = dispatcher_port
     return job_detail
 
-def change_arrival_time(job_detail, arrival_time):
-    job_detail["time"] = arrival_time
-    return job_detail
+def change_arrival_time(detail, arrival_time):
+    detail["time"] = arrival_time
+    return detail
 
 def change_epsilon(job_detail, new_epsilon):
     print("origin job_detail[EPSILON]: {} vs. new_epsilon: {}".format(job_detail["EPSILON"], new_epsilon))
@@ -134,7 +134,7 @@ def poisson_arrival_times(last_arrival_time, lambdas):
 '''
 def generate_jobs(all_num, 
                 per_epoch_EPSILONs, job_datablock_epsilon_max_ratio, change_job_epsilon_max_times, 
-                time_interval, need_change_interval, is_history, 
+                time_interval, is_history, 
                 dispatcher_ip, dispatcher_port, enable_waiting_flag,
                 jobtrace_reconstruct_path="", save_path=""):
     if len(jobtrace_reconstruct_path) > 0:
@@ -230,8 +230,8 @@ def generate_jobs(all_num,
 '''
 
 def generate_alibaba_jobs(all_num, 
-                time_speed_up, need_change_interval, is_history,
-                min_epsilon_capacity, 
+                time_speed_up, is_history,
+                valid_max_epsilon_require, 
                 job_require_select_block_min_num, job_require_select_block_max_num,
                 change_job_epsilon_max_times,
                 dispatcher_ip, dispatcher_port, enable_waiting_flag,
@@ -256,10 +256,9 @@ def generate_alibaba_jobs(all_num,
             jobs[job_detail_index] = change_dispatcher_ip_port(job_detail, dispatcher_ip, dispatcher_port)
             if change_job_epsilon_max_times != 1.0:
                 jobs[job_detail_index] = change_epsilon(job_detail, job_detail["EPSILON"] * change_job_epsilon_max_times)
-            if need_change_interval:
-                old_time = job_detail["time"]
-                new_arrival_time = old_time / time_speed_up
-                jobs[job_detail_index] = change_arrival_time(job_detail, new_arrival_time)
+            old_time = job_detail["time"]
+            new_arrival_time = old_time / time_speed_up
+            jobs[job_detail_index] = change_arrival_time(job_detail, new_arrival_time)
             min_abs_time = min(min_abs_time, jobs[job_detail_index]["time"])
             current_decision_num += 1
     else:
@@ -269,8 +268,8 @@ def generate_alibaba_jobs(all_num,
         sorted_normed_time = sorted(list(valid_sample_df["norm_submit_time"]))
         sample_first_normed_times = sorted_normed_time[:all_num]
 
-        valid_sample_df = valid_sample_df[valid_sample_df["epsilon_per_epoch"] * valid_sample_df["siton_run_epoch_num"] < min_epsilon_capacity]
-        print("check max_job_epsilon_require: {}".format(min_epsilon_capacity))
+        valid_sample_df = valid_sample_df[valid_sample_df["epsilon_per_epoch"] * valid_sample_df["siton_run_epoch_num"] < valid_max_epsilon_require]
+        print("check max_job_epsilon_require: {}".format(valid_max_epsilon_require))
         print("check valid_sample_df: {}".format(len(valid_sample_df)))
         if job_require_select_block_min_num is not None:
             valid_sample_df = valid_sample_df[valid_sample_df["n_blocks"] >= job_require_select_block_min_num]
@@ -315,10 +314,7 @@ def generate_alibaba_jobs(all_num,
             if enable_waiting_flag:
                 arrival_time = 0.0
             else:
-                if need_change_interval:
-                    arrival_time = sample_first_normed_times[current_decision_num] / time_speed_up
-                else:
-                    arrival_time = sample_first_normed_times[current_decision_num]
+                arrival_time = sample_first_normed_times[current_decision_num] / time_speed_up
             min_abs_time = min(min_abs_time, arrival_time)
             
             job = generate_normal_one_job(
@@ -327,6 +323,9 @@ def generate_alibaba_jobs(all_num,
                 TARGET_EPOCHS, SITON_RUN_EPOCH_NUM, TAGRET_ACC, dispatcher_ip, dispatcher_port, 
                 is_history
             )
+
+            if change_job_epsilon_max_times != 1.0:
+                job = change_epsilon(job, job["EPSILON"] * change_job_epsilon_max_times)
             jobs.append(job)
             current_decision_num += 1
         print("current_decision_num: {}".format(current_decision_num))
@@ -358,10 +357,10 @@ def generate_alibaba_jobs(all_num,
     return jobs
 
 def generate_alibaba_dataset(num, offline_num, time_speed_up,
-                    dataset_names, fix_epsilon, fix_delta, change_datablock_epsilon_max_times,
+                    dataset_names, fix_epsilon, fix_delta,
                     dataset_reconstruct_path="", save_path=""):
     offline_time_default = -100.0
-    online_time_iterval = 1.0 / time_speed_up # 1分钟1个块?
+    online_time_iterval = 120.0 / time_speed_up # 1分钟1个块?
     if len(dataset_reconstruct_path) > 0:
         print("load from path: {}".format(dataset_reconstruct_path))
         dataset_path = RESULT_PATH + "/{}/datasets.json".format(dataset_reconstruct_path)
@@ -369,6 +368,7 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
             temp_datasets_list = json.load(f)
         datasets_list = {}
         time_2_datablock_num = {}
+        arrival_time_arr = []
         current_num = 0
         for name in temp_datasets_list:
             if name not in datasets_list:
@@ -377,9 +377,9 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
                 datasets_list[name][sub_datablock_name] = temp_datasets_list[name][sub_datablock_name]
                 if datasets_list[name][sub_datablock_name]["epsilon_capacity"] != fix_epsilon:
                     datasets_list[name][sub_datablock_name] = change_epsilon_G(datasets_list[name][sub_datablock_name], fix_epsilon)
-                if change_datablock_epsilon_max_times != 1.0:
-                    datasets_list[name][sub_datablock_name] = change_epsilon_G(datasets_list[name][sub_datablock_name], datasets_list[name][sub_datablock_name]["epsilon_capacity"]*change_datablock_epsilon_max_times)
+                datasets_list[name][sub_datablock_name] = change_arrival_time(datasets_list[name][sub_datablock_name], datasets_list[name][sub_datablock_name]["time"] / time_speed_up)
                 arrival_time = datasets_list[name][sub_datablock_name]["time"]
+                arrival_time_arr.append(arrival_time)
                 if arrival_time not in time_2_datablock_num:
                     time_2_datablock_num[arrival_time] = 0
                 time_2_datablock_num[arrival_time] += 1
@@ -388,6 +388,7 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
                     break
             if current_num > num:
                 break
+        # 根据时间排序, 然后顺序延迟赋值时间
     else:
         print("check dataset_names: {}".format(dataset_names))
         datasets_list = {}
