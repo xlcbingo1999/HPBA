@@ -1,10 +1,15 @@
 # 合理的Trace: 默认任务到达间隔是 12s / 个 
 # 合理的Trace: 默认块的到达间隔是 120s / 个 (10倍)
 # 如果把时间进行压缩, 则应该修改到达速率
-# [4x] => 3s/个 30s/个 => 200个任务可以控制在1h, 20个online block
+# [4x] => 3s/个 30s/个 => 200个任务可以控制在10min, 20个online block
+import os
 
-current_ip_index = 2
-current_cmd_index = 1
+nohup_flag = True
+nohup_target_dir_prefix = "/home/netlab/DL_lab/opacus_testbed/log_temp_store/"
+target_time_minute = 60
+
+current_ip_index = 5
+current_cmd_index = 3
 
 # testbed
 worker_indexes = [2, 3]
@@ -15,10 +20,10 @@ simulation_flag = False
 simulation_time = 5
 
 # 数据集
-test_jobtrace_reconstruct_path = ""
-dataset_reconstruct_path = ""
-history_jobtrace_reconstruct_path = ""
-need_save_jobtrace_flag = True
+test_jobtrace_reconstruct_path = "schedule-review-testbed-06-08-00-42-40"
+dataset_reconstruct_path = "schedule-review-testbed-06-08-00-42-40"
+history_jobtrace_reconstruct_path = "schedule-review-testbed-06-08-00-42-40"
+need_save_jobtrace_flag = False
 
 # 全局设置
 max_gpu_fuzai = 1e16 if simulation_flag else 5 
@@ -30,8 +35,8 @@ seed_str = " ".join(seeds)
 waiting_time = 2 if simulation_flag else 10
 
 # 任务
-pipeline_sequence_all_num = 200
-all_history_num = 200
+pipeline_sequence_all_num = 800
+all_history_num = 800
 job_arrival_time_speed_up = 4.0 # 控制到达速率
 job_datablock_epsilon_max_ratio = 0.2 # 这个控制比率(离群值控制)
 change_job_epsilon_max_times = 1.0 # 这个直接从平均增大倍数(平均值控制)
@@ -60,6 +65,8 @@ pbg_gittas = 0.1
 significance_policy = "OTDDPolicy"
 temp_sig_metric = "Accuracy"
 
+
+
 print("======= worker =======")
 worker_cmds = []
 worker_cmds.append(f"python DL_worker.py")
@@ -67,7 +74,12 @@ worker_cmds.append(f"--local_ip 172.18.162.{current_ip_index}")
 worker_cmds.append(f"--local_port 162{current_cmd_index}{current_ip_index}")
 worker_cmds.append(f"--sched_ip 172.18.162.{current_ip_index}")
 worker_cmds.append(f"--sched_port 163{current_cmd_index}{current_ip_index}")
-print(" ".join(worker_cmds))
+normal_worker_cmd = " ".join(worker_cmds)
+if nohup_flag:
+    nohup_worker_dir = os.path.join(nohup_target_dir_prefix, f"worker_{target_time_minute}_{assignment_policy}_{pipeline_sequence_all_num}.log")
+    print(f"nohup {normal_worker_cmd} > {nohup_worker_dir} 2>&1 &")
+else:
+    print(normal_worker_cmd)
 print("======= =======")
 
 print("======= sched =======")
@@ -77,7 +89,12 @@ sched_cmds.append(f"--worker_ips 172.18.162.{current_ip_index}")
 sched_cmds.append(f"--worker_ports 162{current_cmd_index}{current_ip_index}")
 sched_cmds.append(f"--sched_ip 172.18.162.{current_ip_index}")
 sched_cmds.append(f"--sched_port 163{current_cmd_index}{current_ip_index}")
-print(" ".join(sched_cmds))
+normal_sched_cmd = " ".join(sched_cmds)
+if nohup_flag:
+    nohup_sched_dir = os.path.join(nohup_target_dir_prefix, f"sched_{target_time_minute}_{assignment_policy}_{pipeline_sequence_all_num}.log")
+    print(f"nohup {normal_sched_cmd} > {nohup_sched_dir} 2>&1 &")
+else:
+    print(normal_sched_cmd)
 print("======= =======")
 
 print("======= dispatcher =======")
@@ -151,5 +168,10 @@ if "HIS" in assignment_policy:
 dispatcher_cmds.append(f"--significance_policy {significance_policy}")
 dispatcher_cmds.append(f"--temp_sig_metric {temp_sig_metric}")
 
-print(" ".join(dispatcher_cmds))
+normal_dispatcher_cmd = " ".join(dispatcher_cmds)
+if nohup_flag:
+    nohup_dispatcher_dir = os.path.join(nohup_target_dir_prefix, f"dispatcher_{target_time_minute}_{assignment_policy}_{pipeline_sequence_all_num}.log")
+    print(f"nohup {normal_dispatcher_cmd} > {nohup_dispatcher_dir} 2>&1 &")
+else:
+    print(normal_dispatcher_cmd)
 print("======= =======")
