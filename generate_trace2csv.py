@@ -98,7 +98,7 @@ def update_df_real(df):
             if os.path.exists(log_trace_full_path):
                 final_used_num, success_num_arr, failed_num_arr, all_test_jobs_num_arr, all_train_loss_arr, all_train_accuracy_arr, \
                     all_test_loss_arr, all_test_accuracy_arr, all_final_significance_arr, \
-                    all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr = final_log_result(log_trace_path)
+                    all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr = final_log_result(log_trace_path, "all_result.log")
                 if final_used_num > 0:
                     df = write_to_df(df, index, 
                                     success_num_arr, 

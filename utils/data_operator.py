@@ -19,6 +19,12 @@ def is_number(s):
         pass    
         return False
 
+def log_args_var(args, all_result_path):
+    args_message = '\n'.join([f'{k}: {v}' for k, v in vars(args).items()])
+    with open(all_result_path, "a+") as f:
+        print_console_file("===== args_message =====", fileHandler=f)
+        print_console_file(args_message, fileHandler=f)
+
 def final_operate_data_old_version(current_test_all_dir):
     print(f"=============================== {current_test_all_dir} =================================")
     trace_save_path = os.path.join(RESULT_PATH, current_test_all_dir)
@@ -56,15 +62,15 @@ def final_operate_data_old_version(current_test_all_dir):
     return final_used_num, success_num_arr, failed_num_arr, all_final_significance_arr, success_final_significance_arr, \
         success_datablock_num_arr, failed_datablock_num_arr, target_datablock_num_arr
 
-def final_log_result(current_test_all_dir):
-    print(f"=============================== {current_test_all_dir} =================================")
+def final_log_result(current_test_all_dir, all_result_file_name):
     trace_save_dir_prefix = os.path.join(RESULT_PATH, current_test_all_dir)
+    all_result_path = os.path.join(trace_save_dir_prefix, all_result_file_name)
+
     final_used_num, success_num_arr, failed_num_arr, all_test_jobs_num_arr, \
         all_train_loss_arr, all_train_accuracy_arr, \
         all_test_loss_arr, all_test_accuracy_arr, all_final_significance_arr, \
         all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr = read_DL_dispatcher_result_func(trace_save_dir_prefix)
 
-    all_result_path = os.path.join(trace_save_dir_prefix, "all_result.log")
     with open(all_result_path, "w+") as f:
         print_console_file("final_used_num: {}".format(final_used_num), fileHandler=f)
         if final_used_num > 0:

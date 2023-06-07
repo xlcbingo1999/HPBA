@@ -14,7 +14,7 @@ import numpy as np
 from queue import PriorityQueue
 from utils.logging_tools import get_logger
 from utils.generate_tools import generate_alibaba_jobs, generate_alibaba_dataset
-from utils.data_operator import read_DL_dispatcher_result_func, final_log_result
+from utils.data_operator import read_DL_dispatcher_result_func, final_log_result, log_args_var
 
 def get_df_config():
     parser = argparse.ArgumentParser(
@@ -112,10 +112,10 @@ class Dispatcher(object):
         self.current_test_all_dir = current_test_all_dir
         all_logger_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
         if restart_trace:
-            dispatcher_logger_path = '{}/DL_dispatcher_restart_{}.log'.format(all_logger_path, simulation_index)
+            self.dispatcher_logger_path = '{}/DL_dispatcher_restart_{}.log'.format(all_logger_path, simulation_index)
         else:
-            dispatcher_logger_path = '{}/DL_dispatcher_{}.log'.format(all_logger_path, simulation_index)
-        self.dispatcher_logger = get_logger(dispatcher_logger_path, dispatcher_logger_path, enable_multiprocess=True)
+            self.dispatcher_logger_path = '{}/DL_dispatcher_{}.log'.format(all_logger_path, simulation_index)
+        self.dispatcher_logger = get_logger(self.dispatcher_logger_path, self.dispatcher_logger_path, enable_multiprocess=True)
         self.dispatcher_logger.info("***************** current_test_all_dir: {} *****************".format(self.current_test_all_dir))
 
         jobs_list = sorted(jobs_list, key=lambda r: r["time"])
@@ -446,9 +446,7 @@ class Dispatcher(object):
         client.sched_update_assignment_policy(assignment_policy, assignment_args)
         client.sched_update_significance_policy(significance_policy, significance_args)
         self.dispatcher_logger.info("sched_init_sched_register finished!")
-        args_message = '\n'.join([f'{k}: {v}' for k, v in vars(args).items()])
-        self.dispatcher_logger.info("===== args_message =====")
-        self.dispatcher_logger.info(args_message)
+        log_args_var(args, self.dispatcher_logger_path)
 
     def sched_init_history_policy(self, ip, port, history_jobs_map):
         client = get_zerorpc_client(ip, port)
@@ -611,7 +609,11 @@ def testbed_experiment_start(args, sched_ip, sched_port,
     
     if not args.without_stop_all:
         dispatcher.stop_all(sched_ip, sched_port)
-    final_log_result(current_test_all_dir)
+    all_result_file_name = "all_result.log"
+    trace_save_dir_prefix = os.path.join(RESULT_PATH, current_test_all_dir)
+    all_result_path = os.path.join(trace_save_dir_prefix, all_result_file_name)
+    log_args_var(args, all_result_path)
+    final_log_result(current_test_all_dir, all_result_file_name)
     print("Waiting for stop threads {} s".format(waiting_time))
     time.sleep(waiting_time)
 
@@ -727,7 +729,11 @@ def simulation_experiment_start(args, sched_ip, sched_port,
         print("end simulation_index: {}".format(simulation_index))
     if not args.without_stop_all:
         dispatcher.stop_all(sched_ip, sched_port)
-    final_log_result(current_test_all_dir) # 执行数据的处理和绘图操作
+    all_result_file_name = "all_result.log"
+    trace_save_dir_prefix = os.path.join(RESULT_PATH, current_test_all_dir)
+    all_result_path = os.path.join(trace_save_dir_prefix, all_result_file_name)
+    log_args_var(args, all_result_path)
+    final_log_result(current_test_all_dir, all_result_file_name)
     print("Waiting for stop threads {} s".format(waiting_time))
     time.sleep(waiting_time)
 
