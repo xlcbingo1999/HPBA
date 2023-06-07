@@ -45,6 +45,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         job_num, datablock_num = sign_matrix.shape[0], sign_matrix.shape[1]
         valid_sched_datablock_indices = np.where(datablock_privacy_budget_remain_list >= job_privacy_budget_consume_list[-1])[0]
         if len(valid_sched_datablock_indices) <= 0:
+            self.logger.debug(f"len(valid_sched_datablock_indices) <= 0")
             return np.zeros((job_num, datablock_num))  
             
         # 检查本身就无法调度上岸的方案
@@ -267,7 +268,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
             sample_history_job_budget_consumes = [online_history_job_budget_consumes[i] for i in online_sample_indexes] + [offline_history_job_budget_consumes[i] for i in offline_sample_indexes]
             sample_history_job_signficances = [online_history_job_signficance[i] for i in online_sample_indexes] + [offline_history_job_signficance[i] for i in offline_sample_indexes]
             sample_history_job_target_datablock_selected_nums = [online_history_job_target_datablock_selected_num[i] for i in online_sample_indexes] + [offline_history_job_target_datablock_selected_num[i] for i in offline_sample_indexes]
-            sample_history_job_arrival_times = [online_history_job_arrival_time[i] for i in online_sample_indexes] + [offline_history_job_arrival_time[i] for i in offline_history_job_arrival_time]
+            sample_history_job_arrival_times = [online_history_job_arrival_time[i] for i in online_sample_indexes] + [offline_history_job_arrival_time[i] for i in offline_sample_indexes]
 
         if job_arrival_index < self.beta * all_job_sequence_num: # TODO(xlc): 无限任务的时候, beta只能设置为0
             self.logger.info("stop due to sample caused by job_arrival_index: {}; self.beta: {}; all_job_sequence_num: {}".format(
