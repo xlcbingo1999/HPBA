@@ -3,7 +3,7 @@
 # 如果把时间进行压缩, 则应该修改到达速率
 # [4x] => 3s/个 30s/个 => 200个任务可以控制在1h, 20个online block
 
-current_ip_index = 4
+current_ip_index = 2
 current_cmd_index = 1
 
 # testbed
@@ -15,14 +15,14 @@ simulation_flag = False
 simulation_time = 5
 
 # 数据集
-test_jobtrace_reconstruct_path = "schedule-review-testbed-06-07-12-53-43"
-dataset_reconstruct_path = "schedule-review-testbed-06-07-12-53-43"
-history_jobtrace_reconstruct_path = "schedule-review-testbed-06-07-12-53-43"
-need_save_jobtrace_flag = False
+test_jobtrace_reconstruct_path = ""
+dataset_reconstruct_path = ""
+history_jobtrace_reconstruct_path = ""
+need_save_jobtrace_flag = True
 
 # 全局设置
 max_gpu_fuzai = 1e16 if simulation_flag else 5 
-all_or_nothing_flag = True
+all_or_nothing_flag = False
 enable_waiting_flag = False
 seeds = [1234, 2345, 3456, 6789, 7890] if simulation_flag else [1234]
 seeds = [str(seed) for seed in seeds]
@@ -35,7 +35,7 @@ all_history_num = 200
 job_arrival_time_speed_up = 4.0 # 控制到达速率
 job_datablock_epsilon_max_ratio = 0.2 # 这个控制比率(离群值控制)
 change_job_epsilon_max_times = 1.0 # 这个直接从平均增大倍数(平均值控制)
-job_require_select_block_min_num = 2
+job_require_select_block_min_num = 4
 job_require_select_block_max_num = 4
 config_max_operate_siton_run_num = 1
 
@@ -47,7 +47,7 @@ base_capacity = 5.0
 dataset_name = "EMNIST"
 dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
-assignment_policy = "PBGMixPolicy"
+assignment_policy = "IterativeHISwithOrderProVersionPolicy"
 his_betas = 0.0
 his_batch_size_for_one_epochs = 5
 his_infinity_flag = True
