@@ -75,14 +75,15 @@ class Scheduler_server(object):
 
         self.all_testbed_thread = None
         self.sched_thread = None
-        # self.best_serve_thread = None
         self.cal_significance_thread = None
         self.placement_thread = None
-        # self.real_recoming_thread = None
         self.gpu_thread = None
+
+        self.finished_job_to_dispatcher_list = []
+        self.finished_job_to_dispatcher_thread = None
+        self.failed_job_to_dispatcher_list = []
+        self.failed_job_to_dispatcher_thread = None
         
-        # self.gpuidentifier_2_gpu_status = {}
-        # self.gpuidentifier_2_gpu_metadata = {}
         self.workerip_2_ports = {}
         self.gpuidentifier_2_jobinstances = {}
         
@@ -236,11 +237,17 @@ class Scheduler_server(object):
 
         self.all_testbed_thread = None
         self.sched_thread = None
-        # self.best_serve_thread = None
         self.cal_significance_thread = None
         self.placement_thread = None
-        # self.real_recoming_thread = None
         self.gpu_thread = None
+
+        self.finished_job_to_dispatcher_list = []
+        self.finished_job_to_dispatcher_thread = None
+        self.failed_job_to_dispatcher_list = []
+        self.failed_job_to_dispatcher_thread = None
+
+        self.workerip_2_ports = {}
+        self.gpuidentifier_2_jobinstances = {}
         
         self.sub_train_datasetidentifier_2_dataset_status = {} # 这里必须是一个可以伸缩的map
         self.sub_train_datasetidentifier_2_dataset_metadata = {}
@@ -821,15 +828,63 @@ class Scheduler_server(object):
         dispatcher_ip = origin_info["dispatcher_ip"]
         dispatcher_port = origin_info["dispatcher_port"]
         results = self.jobid_2_results[job_id]
-        dispatcher_client = get_zerorpc_client(dispatcher_ip, dispatcher_port)
-        dispatcher_client.finished_job_callback(job_id, results)
+        
+        self.finished_job_to_dispatcher_list.append({
+            "job_id": job_id,
+            "dispatcher_ip": dispatcher_ip,
+            "dispatcher_port": dispatcher_port,
+            "results": results
+        })
 
     def failed_job_to_dispatcher(self, job_id, origin_info):
         dispatcher_ip = origin_info["dispatcher_ip"]
         dispatcher_port = origin_info["dispatcher_port"]
         results = self.jobid_2_results[job_id]
-        dispatcher_client = get_zerorpc_client(dispatcher_ip, dispatcher_port)
-        dispatcher_client.failed_job_callback(job_id, results)
+        
+        self.failed_job_to_dispatcher_list.append({
+            "job_id": job_id,
+            "dispatcher_ip": dispatcher_ip,
+            "dispatcher_port": dispatcher_port,
+            "results": results
+        })
+
+    def thread_finished_job_to_dispatcher_start(self):
+        def thread_func_finished_job_to_dispatcher(sleep_time):
+            while (not self.all_finished) and self.finished_update_init_history_jobs:
+                while len(self.finished_job_to_dispatcher_list) > 0:
+                    details = self.finished_job_to_dispatcher_list.pop(0)
+                    job_id = details["job_id"]
+                    dispatcher_ip = details["dispatcher_ip"]
+                    dispatcher_port = details["dispatcher_port"]
+                    results = details["results"]
+                    
+                    dispatcher_client = get_zerorpc_client(dispatcher_ip, dispatcher_port)
+                    dispatcher_client.finished_job_callback(job_id, results)
+                time.sleep(sleep_time)
+            self.sched_logger.info("Thread [thread_func_finished_job_to_dispatcher] finished!")
+        p = threading.Thread(target=thread_func_finished_job_to_dispatcher, args=(1,), daemon=True)
+        self.finished_job_to_dispatcher_thread = p
+        p.start()
+        self.sched_logger.info("Thread [thread_func_finished_job_to_dispatcher] started!")
+
+    def thread_failed_job_to_dispatcher_start(self):
+        def thread_func_failed_job_to_dispatcher(sleep_time):
+            while (not self.all_finished) and self.finished_update_init_history_jobs:
+                while len(self.failed_job_to_dispatcher_list) > 0:
+                    details = self.failed_job_to_dispatcher_list.pop(0)
+                    job_id = details["job_id"]
+                    dispatcher_ip = details["dispatcher_ip"]
+                    dispatcher_port = details["dispatcher_port"]
+                    results = details["results"]
+
+                    dispatcher_client = get_zerorpc_client(dispatcher_ip, dispatcher_port)
+                    dispatcher_client.failed_job_callback(job_id, results)
+                time.sleep(sleep_time)
+            self.sched_logger.info("Thread [thread_func_failed_job_to_dispatcher] finished!")
+        p = threading.Thread(target=thread_func_failed_job_to_dispatcher, args=(1,), daemon=True)
+        self.failed_job_to_dispatcher_thread = p
+        p.start()
+        self.sched_logger.info("Thread [thread_func_failed_job_to_dispatcher] started!")
 
     def worker_waiting_job_callback(self, job_id, origin_info):
         self.sched_logger.info(f"Waiting callback job_id: {job_id} => origin_info: {origin_info}")
@@ -1303,12 +1358,8 @@ class Scheduler_server(object):
         if len(all_done_all_sched_jobs_copy) <= 0:
             return 
         args = []
-        if self.simulation:
-            max_gpu_fuzai = self.max_gpu_fuzai
-        else:
-            max_gpu_fuzai = self.max_gpu_fuzai # TODO(xlc): 这里很容易出错, 还是需要从实际的指标来获取!
         for job_id in all_done_all_sched_jobs_copy:
-            gpuidentifier_enable_status = [k for k, v in self.gpuidentifier_2_jobinstances.items() if len(v) < max_gpu_fuzai]
+            gpuidentifier_enable_status = [k for k, v in self.gpuidentifier_2_jobinstances.items() if len(v) < self.max_gpu_fuzai]
             if len(gpuidentifier_enable_status) > 0:
                 current_siton_run_index = self.jobid_2_current_operate_siton_run_index[job_id]
                 gpu_identifer = random.choice(gpuidentifier_enable_status)
@@ -1459,16 +1510,18 @@ class Scheduler_server(object):
 
     def sched_end(self):
         self.all_finished = True
-        # self.final_job_come = False
         self.all_testbed_thread = None
         self.sched_thread = None
-        # self.best_serve_thread = None
         self.cal_significance_thread = None
         self.placement_thread = None
-        # self.real_recoming_thread = None
         self.gpu_thread = None
 
-    def end_and_report_dispatchers_by_sched(self, dispatchers):
+        self.finished_job_to_dispatcher_list = []
+        self.finished_job_to_dispatcher_thread = None
+        self.failed_job_to_dispatcher_list = []
+        self.failed_job_to_dispatcher_thread = None
+
+    def end_and_report_dispatchers_by_sched(self):
         current_success_num, current_failed_num, current_no_submit_num, current_no_sche_num, \
             current_done_sig_num, current_done_sche_num, current_running_num, current_recoming_num = \
             self.get_all_state_num()
@@ -1510,23 +1563,9 @@ class Scheduler_server(object):
             "all_failed_datablock_num": all_failed_datablock_num
         }
 
-        for dis in dispatchers:
-            ip, port = dis
-            dispatcher_client = zerorpc.Client()
-            dispatcher_client.connect("tcp://{}:{}".format(ip, port))
-            dispatcher_client.end_and_report_by_sched(result_map)
+        return result_map
 
     def sched_update_gpu_status_start(self, init_workerip_2_ports, init_gpuidentifiers, current_test_all_dir, simulation_index):
-        '''
-        def thread_func_timely_update_gpu(init_gpuidentifiers):
-            while not self.all_finished:
-                self.update_gpu(init_gpuidentifiers)
-                time.sleep(sleep_time)
-            self.sched_logger.info("Thread [thread_func_timely_update_gpu] finished!")
-        p = threading.Thread(target=thread_func_timely_update_gpu, args=(init_gpuidentifiers, ), daemon=True)
-        self.gpu_thread = p
-        p.start()
-        '''
         self.sched_logger.info("Thread [thread_func_timely_update_gpu] started!")
         for worker_ip, worker_port in init_workerip_2_ports.items():
             self.workerip_2_ports[worker_ip] = worker_port

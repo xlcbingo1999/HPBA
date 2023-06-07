@@ -1,73 +1,160 @@
-python DL_do_calculate.py \
-    --worker_ip 172.18.162.6 \
-    --worker_port 16006 \
-    --job_id 0 \
-    --model_name CNN \
-    --train_dataset_name EMNIST \
-    --test_dataset_name EMNIST_MNIST-1000_1000 \
-    --sub_train_key_ids train_sub_0:train_sub_1 \
-    --sub_test_key_ids test_sub_0 \
-    --device_index 0 \
-    --LR 1e-3 \
-    --EPSILON 0.05 \
-    --DELTA 1e-7 \
-    --MAX_GRAD_NORM 1.2 \
-    --BATCH_SIZE 1024 \
-    --MAX_PHYSICAL_BATCH_SIZE 512 \
-    --EPOCHS 1
-
-python DL_dispatcher.py --start_load_job --start_load_history_job --start_load_dataset --finished_clear_job --finished_clear_dataset
-
-6
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_0 --sub_test_key_ids test_sub_0 --device_index 0
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_1 --sub_test_key_ids test_sub_0 --device_index 1
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_2 --sub_test_key_ids test_sub_0 --device_index 2
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_3 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 32
-
-6
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_4 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_5 --sub_test_key_ids test_sub_0 --device_index 1
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_6 --sub_test_key_ids test_sub_0 --device_index 2
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_7 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32
-
-6
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_8 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_9 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_10 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST_MNIST-1000_1000 --sub_train_key_ids train_sub_11 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
-
-6 
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_0 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_1 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_2 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_3 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 32  
-
-6  
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_4 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_5 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_6 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_7 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 32 
-
-6  
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_8 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_9 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_10 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name EMNIST-2000 --sub_train_key_ids train_sub_11 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 32 
-
-6 
-python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_0 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_1 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_2 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_3 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 32  
-
-6 仍未完全启动的代码  
-python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_4 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_5 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_6 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 32 
-python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_7 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 32 
-
-6 仍未启动的代码
-python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_8 --sub_test_key_ids test_sub_0 --device_index 0 --batch_size 16 
-python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_9 --sub_test_key_ids test_sub_0 --device_index 1 --batch_size 16 
-python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_10 --sub_test_key_ids test_sub_0 --device_index 2 --batch_size 16 
-python test.py --train_dataset_name EMNIST --test_dataset_name MNIST-2000 --sub_train_key_ids train_sub_11 --sub_test_key_ids test_sub_0 --device_index 3 --batch_size 16 
+python  2124440 netlab   34u     IPv4           24458275       0t0      TCP *:16314 (LISTEN)
+python  2124440 netlab   35u     IPv4           24427754       0t0      TCP 172.18.162.4:16314->172.18.162.4:40046 (ESTABLISHED)
+python  2124440 netlab   37u     IPv4           24427755       0t0      TCP 172.18.162.4:16314->172.18.162.4:40060 (ESTABLISHED)
+python  2124440 netlab   39u     IPv4           24427756       0t0      TCP 172.18.162.4:33424->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab   40u     IPv4           24427757       0t0      TCP 172.18.162.4:16314->172.18.162.4:40070 (ESTABLISHED)
+python  2124440 netlab   41u     IPv4           24427758       0t0      TCP 172.18.162.4:16314->172.18.162.4:41836 (ESTABLISHED)
+python  2124440 netlab   42u     IPv4           24427760       0t0      TCP 172.18.162.4:16314->172.18.162.4:41856 (ESTABLISHED)
+python  2124440 netlab   43u     IPv4           24427761       0t0      TCP 172.18.162.4:16314->172.18.162.4:41858 (ESTABLISHED)
+python  2124440 netlab   44u     IPv4           24427762       0t0      TCP 172.18.162.4:16314->172.18.162.4:59720 (ESTABLISHED)
+python  2124440 netlab   45u     IPv4           24427763       0t0      TCP 172.18.162.4:16314->172.18.162.4:59734 (ESTABLISHED)
+python  2124440 netlab   49u     IPv4           24427764       0t0      TCP 172.18.162.4:49554->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab   53u     IPv4           24427765       0t0      TCP 172.18.162.4:49556->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab   57u     IPv4           24427766       0t0      TCP 172.18.162.4:49566->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab   59u     IPv4           24427767       0t0      TCP 172.18.162.4:49574->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab   63u     IPv4           24443094       0t0      TCP 172.18.162.4:49576->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab   67u     IPv4           24443095       0t0      TCP 172.18.162.4:49592->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab   71u     IPv4           24443096       0t0      TCP 172.18.162.4:49602->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab   72u     IPv4           24443097       0t0      TCP 172.18.162.4:16314->172.18.162.4:53852 (ESTABLISHED)
+python  2124440 netlab   76u     IPv4           24443098       0t0      TCP 172.18.162.4:49604->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab   80u     IPv4           24443103       0t0      TCP 172.18.162.4:49614->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab   84u     IPv4           24443104       0t0      TCP 172.18.162.4:49618->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab   85u     IPv4           24443105       0t0      TCP 172.18.162.4:16314->172.18.162.4:53858 (ESTABLISHED)
+python  2124440 netlab   86u     IPv4           24407627       0t0      TCP 172.18.162.4:16314->172.18.162.4:53860 (ESTABLISHED)
+python  2124440 netlab   87u     IPv4           24407628       0t0      TCP 172.18.162.4:16314->172.18.162.4:51270 (ESTABLISHED)
+python  2124440 netlab   88u     IPv4           24407629       0t0      TCP 172.18.162.4:16314->172.18.162.4:59272 (ESTABLISHED)
+python  2124440 netlab   89u     IPv4           24407630       0t0      TCP 172.18.162.4:16314->172.18.162.4:59280 (ESTABLISHED)
+python  2124440 netlab   90u     IPv4           24407631       0t0      TCP 172.18.162.4:16314->172.18.162.4:59286 (ESTABLISHED)
+python  2124440 netlab   91u     IPv4           24407636       0t0      TCP 172.18.162.4:16314->172.18.162.4:52052 (ESTABLISHED)
+python  2124440 netlab   92u     IPv4           24407641       0t0      TCP 172.18.162.4:16314->172.18.162.4:52064 (ESTABLISHED)
+python  2124440 netlab   93u     IPv4           24407642       0t0      TCP 172.18.162.4:16314->172.18.162.4:52066 (ESTABLISHED)
+python  2124440 netlab   94u     IPv4           24407643       0t0      TCP 172.18.162.4:16314->172.18.162.4:38600 (ESTABLISHED)
+python  2124440 netlab   95u     IPv4           24407647       0t0      TCP 172.18.162.4:16314->172.18.162.4:51722 (ESTABLISHED)
+python  2124440 netlab   97u     IPv4           24407648       0t0      TCP 172.18.162.4:49458->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  102u     IPv4           24407649       0t0      TCP 172.18.162.4:54416->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  103u     IPv4           24407651       0t0      TCP 172.18.162.4:16314->172.18.162.4:51738 (ESTABLISHED)
+python  2124440 netlab  105u     IPv4           24407652       0t0      TCP 172.18.162.4:49462->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  109u     IPv4           24407653       0t0      TCP 172.18.162.4:54430->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  110u     IPv4           24407654       0t0      TCP 172.18.162.4:16314->172.18.162.4:51742 (ESTABLISHED)
+python  2124440 netlab  112u     IPv4           24407655       0t0      TCP 172.18.162.4:49474->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  113u     IPv4           24407656       0t0      TCP 172.18.162.4:16314->172.18.162.4:51748 (ESTABLISHED)
+python  2124440 netlab  115u     IPv4           24407657       0t0      TCP 172.18.162.4:49480->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  119u     IPv4           24407659       0t0      TCP 172.18.162.4:54462->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  123u     IPv4           24407660       0t0      TCP 172.18.162.4:54476->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  124u     IPv4           24402536       0t0      TCP 172.18.162.4:16314->172.18.162.4:51750 (ESTABLISHED)
+python  2124440 netlab  126u     IPv4           24402537       0t0      TCP 172.18.162.4:49492->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  127u     IPv4           24402538       0t0      TCP 172.18.162.4:16314->172.18.162.4:51752 (ESTABLISHED)
+python  2124440 netlab  128u     IPv4           24402539       0t0      TCP 172.18.162.4:16314->172.18.162.4:51768 (ESTABLISHED)
+python  2124440 netlab  130u     IPv4           24402540       0t0      TCP 172.18.162.4:49494->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  131u     IPv4           24402541       0t0      TCP 172.18.162.4:16314->172.18.162.4:51778 (ESTABLISHED)
+python  2124440 netlab  133u     IPv4           24402542       0t0      TCP 172.18.162.4:49510->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  137u     IPv4           24482980       0t0      TCP 172.18.162.4:54520->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  141u     IPv4           24482981       0t0      TCP 172.18.162.4:54532->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  145u     IPv4           24482982       0t0      TCP 172.18.162.4:54548->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  146u     IPv4           24455376       0t0      TCP 172.18.162.4:16314->172.18.162.4:51788 (ESTABLISHED)
+python  2124440 netlab  147u     IPv4           24455377       0t0      TCP 172.18.162.4:16314->172.18.162.4:59832 (ESTABLISHED)
+python  2124440 netlab  148u     IPv4           24455378       0t0      TCP 172.18.162.4:16314->172.18.162.4:59848 (ESTABLISHED)
+python  2124440 netlab  150u     IPv4           24455379       0t0      TCP 172.18.162.4:38510->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  151u     IPv4           24455381       0t0      TCP 172.18.162.4:16314->172.18.162.4:59854 (ESTABLISHED)
+python  2124440 netlab  153u     IPv4           24455382       0t0      TCP 172.18.162.4:38518->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  154u     IPv4           24455383       0t0      TCP 172.18.162.4:16314->172.18.162.4:59858 (ESTABLISHED)
+python  2124440 netlab  156u     IPv4           24455384       0t0      TCP 172.18.162.4:38526->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  160u     IPv4           24455385       0t0      TCP 172.18.162.4:43650->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  164u     IPv4           24455386       0t0      TCP 172.18.162.4:43664->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  168u     IPv4           24455387       0t0      TCP 172.18.162.4:43666->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  169u     IPv4           24455388       0t0      TCP 172.18.162.4:16314->172.18.162.4:59872 (ESTABLISHED)
+python  2124440 netlab  170u     IPv4           24455398       0t0      TCP 172.18.162.4:16314->172.18.162.4:33982 (ESTABLISHED)
+python  2124440 netlab  171u     IPv4           24455401       0t0      TCP 172.18.162.4:16314->172.18.162.4:33984 (ESTABLISHED)
+python  2124440 netlab  172u     IPv4           24455403       0t0      TCP 172.18.162.4:16314->172.18.162.4:33986 (ESTABLISHED)
+python  2124440 netlab  173u     IPv4           24455405       0t0      TCP 172.18.162.4:16314->172.18.162.4:46592 (ESTABLISHED)
+python  2124440 netlab  174u     IPv4           24455407       0t0      TCP 172.18.162.4:16314->172.18.162.4:46598 (ESTABLISHED)
+python  2124440 netlab  175u     IPv4           24455410       0t0      TCP 172.18.162.4:16314->172.18.162.4:46614 (ESTABLISHED)
+python  2124440 netlab  176u     IPv4           24455412       0t0      TCP 172.18.162.4:16314->172.18.162.4:46630 (ESTABLISHED)
+python  2124440 netlab  177u     IPv4           24455416       0t0      TCP 172.18.162.4:16314->172.18.162.4:60720 (ESTABLISHED)
+python  2124440 netlab  179u     IPv4           24455417       0t0      TCP 172.18.162.4:43798->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  183u     IPv4           24455419       0t0      TCP 172.18.162.4:40696->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  184u     IPv4           24455420       0t0      TCP 172.18.162.4:16314->172.18.162.4:60732 (ESTABLISHED)
+python  2124440 netlab  185u     IPv4           24402552       0t0      TCP 172.18.162.4:16314->172.18.162.4:52564 (ESTABLISHED)
+python  2124440 netlab  187u     IPv4           24402553       0t0      TCP 172.18.162.4:34020->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  188u     IPv4           24466093       0t0      TCP 172.18.162.4:16314->172.18.162.4:52570 (ESTABLISHED)
+python  2124440 netlab  190u     IPv4           24466094       0t0      TCP 172.18.162.4:34036->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  191u     IPv4           24466095       0t0      TCP 172.18.162.4:16314->172.18.162.4:52578 (ESTABLISHED)
+python  2124440 netlab  193u     IPv4           24466096       0t0      TCP 172.18.162.4:34046->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  197u     IPv4           24466097       0t0      TCP 172.18.162.4:58616->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  201u     IPv4           24466098       0t0      TCP 172.18.162.4:58628->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  205u     IPv4           24466099       0t0      TCP 172.18.162.4:58640->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  206u     IPv4           24458295       0t0      TCP 172.18.162.4:16314->172.18.162.4:52586 (ESTABLISHED)
+python  2124440 netlab  208u     IPv4           24458296       0t0      TCP 172.18.162.4:34052->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  209u     IPv4           24445108       0t0      TCP 172.18.162.4:16314->172.18.162.4:52600 (ESTABLISHED)
+python  2124440 netlab  211u     IPv4           24445109       0t0      TCP 172.18.162.4:34060->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  212u     IPv4           24445110       0t0      TCP 172.18.162.4:16314->172.18.162.4:52614 (ESTABLISHED)
+python  2124440 netlab  214u     IPv4           24445111       0t0      TCP 172.18.162.4:34068->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  218u     IPv4           24395484       0t0      TCP 172.18.162.4:58680->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  222u     IPv4           24395485       0t0      TCP 172.18.162.4:58696->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  226u     IPv4           24395486       0t0      TCP 172.18.162.4:58704->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  227u     IPv4           24395487       0t0      TCP 172.18.162.4:16314->172.18.162.4:52628 (ESTABLISHED)
+python  2124440 netlab  228u     IPv4           24395488       0t0      TCP 172.18.162.4:16314->172.18.162.4:52644 (ESTABLISHED)
+python  2124440 netlab  230u     IPv4           24395489       0t0      TCP 172.18.162.4:34082->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  231u     IPv4           24395490       0t0      TCP 172.18.162.4:16314->172.18.162.4:52650 (ESTABLISHED)
+python  2124440 netlab  232u     IPv4           24395491       0t0      TCP 172.18.162.4:16314->172.18.162.4:52666 (ESTABLISHED)
+python  2124440 netlab  234u     IPv4           24395492       0t0      TCP 172.18.162.4:34096->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  238u     IPv4           24395493       0t0      TCP 172.18.162.4:58732->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  242u     IPv4           24395494       0t0      TCP 172.18.162.4:58748->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  243u     IPv4           24457881       0t0      TCP 172.18.162.4:16314->172.18.162.4:52680 (ESTABLISHED)
+python  2124440 netlab  244u     IPv4           24488220       0t0      TCP 172.18.162.4:16314->172.18.162.4:52696 (ESTABLISHED)
+python  2124440 netlab  245u     IPv4           24488221       0t0      TCP 172.18.162.4:16314->172.18.162.4:52708 (ESTABLISHED)
+python  2124440 netlab  246u     IPv4           24444650       0t0      TCP 172.18.162.4:16314->172.18.162.4:52714 (ESTABLISHED)
+python  2124440 netlab  248u     IPv4           24444651       0t0      TCP 172.18.162.4:34102->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  249u     IPv4           24444652       0t0      TCP 172.18.162.4:16314->172.18.162.4:52720 (ESTABLISHED)
+python  2124440 netlab  253u     IPv4           24444653       0t0      TCP 172.18.162.4:42626->172.18.162.4:16214 (ESTABLISHED)
+python  2124440 netlab  254u     IPv4           24412620       0t0      TCP 172.18.162.4:16314->172.18.162.4:38192 (ESTABLISHED)
+python  2124440 netlab  255u     IPv4           24412621       0t0      TCP 172.18.162.4:16314->172.18.162.4:38202 (ESTABLISHED)
+python  2124440 netlab  256u     IPv4           24412622       0t0      TCP 172.18.162.4:16314->172.18.162.4:38206 (ESTABLISHED)
+python  2124440 netlab  260u     IPv4           24412623       0t0      TCP 172.18.162.4:36100->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  262u     IPv4           24412624       0t0      TCP 172.18.162.4:36104->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  264u     IPv4           24412625       0t0      TCP 172.18.162.4:36112->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  266u     IPv4           24412626       0t0      TCP 172.18.162.4:36122->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  268u     IPv4           24412627       0t0      TCP 172.18.162.4:36128->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  270u     IPv4           24412628       0t0      TCP 172.18.162.4:36138->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  272u     IPv4           24412629       0t0      TCP 172.18.162.4:36154->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  274u     IPv4           24412630       0t0      TCP 172.18.162.4:36166->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  276u     IPv4           24412631       0t0      TCP 172.18.162.4:36168->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  278u     IPv4           24412632       0t0      TCP 172.18.162.4:36174->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  280u     IPv4           24412633       0t0      TCP 172.18.162.4:36190->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  282u     IPv4           24412634       0t0      TCP 172.18.162.4:36198->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  284u     IPv4           24412635       0t0      TCP 172.18.162.4:36210->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  286u     IPv4           24412636       0t0      TCP 172.18.162.4:36214->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  288u     IPv4           24412637       0t0      TCP 172.18.162.4:36218->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  290u     IPv4           24412638       0t0      TCP 172.18.162.4:36232->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  292u     IPv4           24412639       0t0      TCP 172.18.162.4:36248->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  294u     IPv4           24412640       0t0      TCP 172.18.162.4:36260->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  296u     IPv4           24412641       0t0      TCP 172.18.162.4:36274->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  298u     IPv4           24412642       0t0      TCP 172.18.162.4:36284->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  300u     IPv4           24412643       0t0      TCP 172.18.162.4:36294->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  302u     IPv4           24412644       0t0      TCP 172.18.162.4:36304->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  304u     IPv4           24412645       0t0      TCP 172.18.162.4:36320->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  306u     IPv4           24412646       0t0      TCP 172.18.162.4:36330->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  308u     IPv4           24412647       0t0      TCP 172.18.162.4:36336->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  310u     IPv4           24412648       0t0      TCP 172.18.162.4:36338->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  312u     IPv4           24412649       0t0      TCP 172.18.162.4:36348->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  314u     IPv4           24412650       0t0      TCP 172.18.162.4:36364->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  316u     IPv4           24412651       0t0      TCP 172.18.162.4:36376->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  318u     IPv4           24412652       0t0      TCP 172.18.162.4:36382->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  320u     IPv4           24412653       0t0      TCP 172.18.162.4:36388->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  322u     IPv4           24412654       0t0      TCP 172.18.162.4:36394->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  324u     IPv4           24412655       0t0      TCP 172.18.162.4:36404->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  326u     IPv4           24412656       0t0      TCP 172.18.162.4:36418->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  328u     IPv4           24412657       0t0      TCP 172.18.162.4:36432->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  330u     IPv4           24412658       0t0      TCP 172.18.162.4:36434->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  332u     IPv4           24412659       0t0      TCP 172.18.162.4:36450->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  334u     IPv4           24412660       0t0      TCP 172.18.162.4:36454->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  336u     IPv4           24412661       0t0      TCP 172.18.162.4:36466->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  338u     IPv4           24412662       0t0      TCP 172.18.162.4:36470->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  340u     IPv4           24412663       0t0      TCP 172.18.162.4:36484->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  342u     IPv4           24412664       0t0      TCP 172.18.162.4:36490->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  344u     IPv4           24412665       0t0      TCP 172.18.162.4:36496->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  346u     IPv4           24412666       0t0      TCP 172.18.162.4:36504->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  348u     IPv4           24412667       0t0      TCP 172.18.162.4:36508->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  350u     IPv4           24412668       0t0      TCP 172.18.162.4:36510->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  352u     IPv4           24412669       0t0      TCP 172.18.162.4:36520->172.18.162.4:16414 (ESTABLISHED)
+python  2124440 netlab  354u     IPv4           24412670       0t0      TCP 172.18.162.4:40280->172.18.162.4:16414 (ESTABLISHED)

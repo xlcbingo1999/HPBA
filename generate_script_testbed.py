@@ -21,7 +21,7 @@ history_jobtrace_reconstruct_path = "schedule-review-testbed-06-07-12-53-43"
 need_save_jobtrace_flag = False
 
 # 全局设置
-max_gpu_fuzai = 5
+max_gpu_fuzai = 1e16 if simulation_flag else 5 
 all_or_nothing_flag = True
 enable_waiting_flag = False
 seeds = [1234, 2345, 3456, 6789, 7890] if simulation_flag else [1234]

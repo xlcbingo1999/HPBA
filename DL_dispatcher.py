@@ -128,53 +128,7 @@ class Dispatcher(object):
         self.all_start_time = time.time()
         self.current_time = 0
         self.all_finished = False
-
-    def end_and_report_by_sched(self, all_result_map):
-        current_success_num = all_result_map["current_success_num"]
-        current_failed_num = all_result_map["current_failed_num"]
-        current_no_submit_num = all_result_map["current_no_submit_num"]
-        current_no_sche_num = all_result_map["current_no_sche_num"]
-        current_done_sig_num = all_result_map["current_done_sig_num"]
-        current_done_sche_num = all_result_map["current_done_sche_num"]
-        current_running_num = all_result_map["current_running_num"]
-        current_recoming_num = all_result_map["current_recoming_num"]
-        all_train_loss = all_result_map["all_train_loss"]
-        all_train_accuracy = all_result_map["all_train_accuracy"]
-        all_test_loss = all_result_map["all_test_loss"]
-        all_test_accuracy = all_result_map["all_test_accuracy"]
-        all_final_significance = all_result_map["all_final_significance"]
-        all_target_datablock_num = all_result_map["all_target_datablock_num"]
-        all_success_datablock_num = all_result_map["all_success_datablock_num"]
-        all_failed_datablock_num = all_result_map["all_failed_datablock_num"]
-
-        self.dispatcher_logger.debug("current_success_num: {}; current_failed_num: {}; current_no_submit_num: {}; current_no_sche_num: {};".format(
-            current_success_num, current_failed_num, current_no_submit_num, current_no_sche_num
-        ))
-        self.dispatcher_logger.debug("current_done_sig_num: {}; current_done_sche_num: {}; current_running_num: {}; current_recoming_num: {};".format(
-            current_done_sig_num, current_done_sche_num, current_running_num, current_recoming_num
-        ))
-        job_sequence_all_num = len(self.jobs_detail)
-        self.dispatcher_logger.debug("all_test_jobs_num: {}".format(job_sequence_all_num))
-        self.dispatcher_logger.debug("all_train_loss: {}".format(all_train_loss / job_sequence_all_num))
-        self.dispatcher_logger.debug("all_train_accuracy: {}".format(all_train_accuracy / job_sequence_all_num))
-        self.dispatcher_logger.debug("all_test_loss: {}".format(all_test_loss / job_sequence_all_num))
-        self.dispatcher_logger.debug("all_test_accuracy: {}".format(all_test_accuracy / job_sequence_all_num))
-        self.dispatcher_logger.debug("all_final_significance: {}".format(all_final_significance / job_sequence_all_num))
         
-        self.dispatcher_logger.debug("all_target_datablock_num: {}".format(all_target_datablock_num))
-        self.dispatcher_logger.debug("all_success_datablock_num: {}".format(all_success_datablock_num))
-        self.dispatcher_logger.debug("all_failed_datablock_num: {}".format(all_failed_datablock_num))
-
-        if current_success_num > 0:
-            self.dispatcher_logger.debug("success_train_loss: {}".format(all_train_loss / current_success_num))
-            self.dispatcher_logger.debug("success_train_accuracy: {}".format(all_train_accuracy / current_success_num))
-            self.dispatcher_logger.debug("success_test_loss: {}".format(all_test_loss / current_success_num))
-            self.dispatcher_logger.debug("success_test_accuracy: {}".format(all_test_accuracy / current_success_num))
-            self.dispatcher_logger.debug("success_final_significance: {}".format(all_final_significance / current_success_num))
-        
-        self.all_finished = True
-        
-
     def dispatch_jobs(self, pipeline_sequence_all_num, sched_ip, sched_port, update_timeout):
         def thread_func_timely_dispatch_job(sched_ip, sched_port, update_timeout):
             while not self.all_finished:
@@ -195,9 +149,7 @@ class Dispatcher(object):
                     client = get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
                     dispatch_jobs_detail = convert_types(dispatch_jobs_detail)
                     client.update_jobs(dispatch_jobs_detail) # 提交上去后, 任务即进入NO_SCHED状态, 之后就是调度器自身会启动一个不断循环的获取计算Siginificane策略和调度策略
-                if self.dispatch_datasets_count == len(self.jobs_detail):
-                    client = get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
-                    client.set_final_job_flag(True)
+                if self.dispatch_jobs_count == len(self.jobs_detail):
                     self.dispatcher_logger.info("Finished Job Dispatch!")
                     break
                 time.sleep(1)
@@ -333,7 +285,10 @@ class Dispatcher(object):
         temp_history_job_details = convert_types(temp_history_job_details)
         temp_submit_job_details = convert_types(temp_submit_job_details)
         client = get_zerorpc_client(sched_ip, sched_port)
+        client.thread_finished_job_to_dispatcher_start()
+        client.thread_failed_job_to_dispatcher_start()
         client.sched_simulation_start(subtrain_datasetidentifier_info, temp_history_job_details, temp_submit_job_details)
+        
 
     def sched_clear_all(self, ip, port):
         client = get_zerorpc_client(ip, port)
@@ -350,11 +305,57 @@ class Dispatcher(object):
         client.cal_significance_dispatch_start(cal_significance_sleep_time)
         client.sched_dispatch_start(scheduler_update_sleep_time)
         client.placement_dispatch_start(placement_sleep_time)
+        client.thread_finished_job_to_dispatcher_start()
+        client.thread_failed_job_to_dispatcher_start()
     
     def sched_end(self, ip, port):
         client = get_zerorpc_client(ip, port)
         client.sched_end()
-        client.end_and_report_dispatchers_by_sched([(self.dispatcher_ip, self.dispatcher_port)])
+        all_result_map = client.end_and_report_dispatchers_by_sched()
+
+        current_success_num = all_result_map["current_success_num"]
+        current_failed_num = all_result_map["current_failed_num"]
+        current_no_submit_num = all_result_map["current_no_submit_num"]
+        current_no_sche_num = all_result_map["current_no_sche_num"]
+        current_done_sig_num = all_result_map["current_done_sig_num"]
+        current_done_sche_num = all_result_map["current_done_sche_num"]
+        current_running_num = all_result_map["current_running_num"]
+        current_recoming_num = all_result_map["current_recoming_num"]
+        all_train_loss = all_result_map["all_train_loss"]
+        all_train_accuracy = all_result_map["all_train_accuracy"]
+        all_test_loss = all_result_map["all_test_loss"]
+        all_test_accuracy = all_result_map["all_test_accuracy"]
+        all_final_significance = all_result_map["all_final_significance"]
+        all_target_datablock_num = all_result_map["all_target_datablock_num"]
+        all_success_datablock_num = all_result_map["all_success_datablock_num"]
+        all_failed_datablock_num = all_result_map["all_failed_datablock_num"]
+
+        self.dispatcher_logger.debug("current_success_num: {}; current_failed_num: {}; current_no_submit_num: {}; current_no_sche_num: {};".format(
+            current_success_num, current_failed_num, current_no_submit_num, current_no_sche_num
+        ))
+        self.dispatcher_logger.debug("current_done_sig_num: {}; current_done_sche_num: {}; current_running_num: {}; current_recoming_num: {};".format(
+            current_done_sig_num, current_done_sche_num, current_running_num, current_recoming_num
+        ))
+        job_sequence_all_num = len(self.jobs_detail)
+        self.dispatcher_logger.debug("all_test_jobs_num: {}".format(job_sequence_all_num))
+        self.dispatcher_logger.debug("all_train_loss: {}".format(all_train_loss / job_sequence_all_num))
+        self.dispatcher_logger.debug("all_train_accuracy: {}".format(all_train_accuracy / job_sequence_all_num))
+        self.dispatcher_logger.debug("all_test_loss: {}".format(all_test_loss / job_sequence_all_num))
+        self.dispatcher_logger.debug("all_test_accuracy: {}".format(all_test_accuracy / job_sequence_all_num))
+        self.dispatcher_logger.debug("all_final_significance: {}".format(all_final_significance / job_sequence_all_num))
+        
+        self.dispatcher_logger.debug("all_target_datablock_num: {}".format(all_target_datablock_num))
+        self.dispatcher_logger.debug("all_success_datablock_num: {}".format(all_success_datablock_num))
+        self.dispatcher_logger.debug("all_failed_datablock_num: {}".format(all_failed_datablock_num))
+
+        if current_success_num > 0:
+            self.dispatcher_logger.debug("success_train_loss: {}".format(all_train_loss / current_success_num))
+            self.dispatcher_logger.debug("success_train_accuracy: {}".format(all_train_accuracy / current_success_num))
+            self.dispatcher_logger.debug("success_test_loss: {}".format(all_test_loss / current_success_num))
+            self.dispatcher_logger.debug("success_test_accuracy: {}".format(all_test_accuracy / current_success_num))
+            self.dispatcher_logger.debug("success_final_significance: {}".format(all_final_significance / current_success_num))
+        
+        self.all_finished = True
 
     def sched_report_status(self, ip, port, location):
         client = get_zerorpc_client(ip, port)

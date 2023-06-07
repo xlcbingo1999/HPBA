@@ -104,9 +104,18 @@ class Worker_server(object):
         # gpu_device_count = torch.cuda.device_count()
         # self.worker_gpus_ready = {index:True for index in range(gpu_device_count)} # 直接允许即可
 
+        self.failed_job_callback_thread = None
+        self.failed_job_callback_list = []
+        self.finished_job_callback_thread = None
+        self.finished_job_callback_list = []
+
     def clear_all_jobs(self):
         self.jobid_2_origininfo = {}
         self.jobid_2_thread = {}
+        self.failed_job_callback_thread = None
+        self.failed_job_callback_list = []
+        self.finished_job_callback_thread = None
+        self.finished_job_callback_list = []
         self.worker_logger.info("success clear all jobs in worker!")
 
     def stop_all(self):
@@ -114,9 +123,12 @@ class Worker_server(object):
 
     def finished_job_callback(self, job_id, result, real_duration_time):
         origin_info = self.jobid_2_origininfo[job_id]
-        self.report_result(job_id, origin_info, result, real_duration_time)
-        client = get_zerorpc_client(self.sched_ip, self.sched_port)
-        client.worker_finished_job_callback(job_id, origin_info, result)
+        self.worker_logger.info("Worker finished job [{}] => result: {}; time: {}".format(job_id, result, real_duration_time))
+        self.finished_job_callback_list.append({
+            "job_id": job_id,
+            "origin_info": origin_info,
+            "result": result
+        })
         if job_id in self.jobid_2_origininfo:
             del self.jobid_2_origininfo[job_id]
         if job_id in self.jobid_2_thread:
@@ -124,28 +136,53 @@ class Worker_server(object):
 
     def runtime_failed_job_callback(self, job_id, exception_log):
         origin_info = self.jobid_2_origininfo[job_id]
-        client = get_zerorpc_client(self.sched_ip, self.sched_port)
-        client.worker_runtime_failed_job_callback(job_id, origin_info, exception_log)
+        self.failed_job_callback_list.append({
+            "job_id": job_id,
+            "origin_info": origin_info,
+            "exception_log": exception_log
+        })
         if job_id in self.jobid_2_origininfo:
             del self.jobid_2_origininfo[job_id]
         if job_id in self.jobid_2_thread:
-            # self.jobid_2_thread[job_id].join()
             del self.jobid_2_thread[job_id]
+
+    def runtime_failed_job_callback_start(self):
+        def thread_func_timely_runtime_failed_job_callback(sleep_time):
+            while not self.all_finished:
+                while len(self.failed_job_callback_list) > 0:
+                    details = self.failed_job_callback_list.pop(0)
+                    job_id = details["job_id"]
+                    origin_info = details["origin_info"]
+                    exception_log = details["exception_log"]
+                    client = get_zerorpc_client(self.sched_ip, self.sched_port)
+                    client.worker_runtime_failed_job_callback(job_id, origin_info, exception_log)
+                time.sleep(sleep_time)
+            print("Thread thread_func_timely_runtime_failed_job_callback finished!")
+        p = threading.Thread(target=thread_func_timely_runtime_failed_job_callback, args=(1,), daemon=True)
+        self.failed_job_callback_thread = p
+        p.start()
+        print("Thread thread_func_timely_runtime_failed_job_callback start!")
+
+    def finished_job_callback_start(self):
+        def thread_func_timely_finished_job_callback(sleep_time):
+            while not self.all_finished:
+                while len(self.finished_job_callback_list) > 0:
+                    details = self.finished_job_callback_list.pop(0)
+                    job_id = details["job_id"]
+                    origin_info = details["origin_info"]
+                    result = details["result"]
+                    client = get_zerorpc_client(self.sched_ip, self.sched_port)
+                    client.worker_finished_job_callback(job_id, origin_info, result)
+                time.sleep(sleep_time)
+            print("Thread thread_func_timely_finished_job_callback start!")
+        p = threading.Thread(target=thread_func_timely_finished_job_callback, args=(1,), daemon=True)
+        self.finished_job_callback_thread = p
+        p.start()
+        print("Thread thread_func_timely_finished_job_callback start!")
 
     def initialize_logging_path(self, current_test_all_dir, simulation_index):
         self.logger_path = "{}/{}/DL_worker_{}_{}_{}.log".format(RESULT_PATH, current_test_all_dir, self.local_ip, self.local_port, simulation_index) 
         self.worker_logger = get_logger(self.logger_path, self.logger_path, enable_multiprocess=True)
-
-    """
-    def update_worker_gpus_status_callback(self, new_status_map):
-        # 需要告知调度器, worker的gpu进行了更改, 同时更改worker的状态, 目前还是只考虑一起改变的情况吧
-        for gpu_id in new_status_map:
-            self.worker_gpus_ready[gpu_id] = new_status_map[gpu_id]
-        client = get_zerorpc_client(self.sched_ip, self.sched_port)
-        need_update_gpus_identifier = [("{}-{}".format(self.local_ip, gpu_id), gpu_id) for gpu_id in new_status_map]
-        for worker_gpu_identifier, gpu_id in need_update_gpus_identifier:
-            client.worker_gpu_status_callback(worker_gpu_identifier, new_status_map[gpu_id])
-    """
 
     def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info, 
                   sched_epsilon_one_siton_run, begin_epoch_num, siton_run_epoch_num, 
@@ -200,9 +237,6 @@ class Worker_server(object):
         self.jobid_2_thread[job_id] = p
         p.start()
 
-    def report_result(self, job_id, origin_info, result, real_duration_time):
-        self.worker_logger.info("Worker finished job [{}] => result: {}; time: {}".format(job_id, result, real_duration_time))
-
     def timely_update_gpu_status(self):
         gpu_devices_count = torch.cuda.device_count()
         dids = range(gpu_devices_count)
@@ -227,6 +261,9 @@ if __name__ == "__main__":
     worker_server_item = Worker_server(local_ip, local_port, sched_ip, sched_port, gpu_update_time)
     # worker_server_item.timely_update_gpu_status()
     worker_p = worker_listener_func(worker_server_item)
+
+    worker_server_item.finished_job_callback_start()
+    worker_server_item.runtime_failed_job_callback_start()
 
     while not worker_server_item.all_finished:
         time.sleep(10)

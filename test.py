@@ -556,11 +556,17 @@ if __name__ == '__main__':
         print(res)#打印异步结果
 '''
 
+
 import os
 import zerorpc
 import threading
 import time
 import torch
+
+def do_sth():
+    print("start test_1.py")
+    os.system("python -u test_1.py")
+    print("wakeup test_1.py")
 
 class Scheduler_server(object):
     def __init__(self, sched_ip, sched_port):
@@ -568,15 +574,17 @@ class Scheduler_server(object):
         self.sched_port = sched_port
 
     def handle_error(self, log_content):
+        time.sleep(2)
         print(f"log_content: {log_content}")
 
     def handle_finished(self, job_id):
+        time.sleep(2)
         print(f"job_id: {job_id}")
+        return 1
 
     def start_test(self):
-        os.system("python -u test_1.py")
-        time.sleep(3)
-        os.system("python -u test_2.py")
+        p = threading.Thread(target=do_sth, daemon=True)
+        p.start()
 
 def scheduler_listener_func(scheduler_server_item):
     def sched_func_timely(scheduler_server_item):
@@ -592,20 +600,19 @@ def scheduler_listener_func(scheduler_server_item):
 
 if __name__ == "__main__":
     sched_ip = "172.18.162.4"
-    sched_port = 11112
+    sched_port = 16042
 
     scheduler_server_item = Scheduler_server(sched_ip, sched_port)
     sched_p = scheduler_listener_func(scheduler_server_item)
     # scheduler_server_item.start_test()
     flag = True
-
-    device_0 = torch.device('cuda:1')
-    tensor_size = (10000, 10000)
-    tensor = torch.ones(tensor_size, device=device_0)
-    num_copies = 18  # 复制的次数（根据需要修改）
-    tensors = [tensor.clone() for _ in range(num_copies)]
-
+    scheduler_server_item.start_test()
+    # device_0 = torch.device('cuda:1')
+    # tensor_size = (10000, 10000)
+    # tensor = torch.ones(tensor_size, device=device_0)
+    # num_copies = 18  # 复制的次数（根据需要修改）
+    # tensors = [tensor.clone() for _ in range(num_copies)]
     
     while flag:
         time.sleep(6)
-        # flag = True
+
