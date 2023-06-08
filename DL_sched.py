@@ -66,6 +66,8 @@ class Scheduler_server(object):
         self.simulation_index = 0
         self.simulation_queue = PriorityQueue()
         self.simulation_global_time = 0.0
+        self.testbed_start_time = 0.0
+        self.testbed_current_time = 0.0
 
         self.all_or_nothing_flag = False
         self.enable_waiting_flag = False
@@ -169,7 +171,8 @@ class Scheduler_server(object):
         self.summary_writer_path = ""
         self.sched_logger = None
 
-    def initialize_sched_configs(self, simulation, simulation_index, seed, current_test_all_dir, 
+    def initialize_sched_configs(self, simulation, simulation_index, 
+                                seed, current_test_all_dir, 
                                 all_or_nothing_flag, enable_waiting_flag, 
                                 pipeline_sequence_all_num, job_request_all_num, config_max_operate_siton_run_num,
                                 dataset_name, dataset_config_name, max_gpu_fuzai):
@@ -228,6 +231,8 @@ class Scheduler_server(object):
         self.simulation_index = 0
         self.simulation_queue = PriorityQueue()
         self.simulation_global_time = 0.0
+        self.testbed_start_time = 0.0
+        self.testbed_current_time = 0.0
 
         self.all_or_nothing_flag = False
         self.enable_waiting_flag = False
@@ -384,7 +389,7 @@ class Scheduler_server(object):
                 if self.simulation:
                     self.sub_train_datasetidentifier_2_arrival_time[init_dataset_name][identifier] = self.simulation_global_time
                 else:
-                    self.sub_train_datasetidentifier_2_arrival_time[init_dataset_name][identifier] = time.time()
+                    self.sub_train_datasetidentifier_2_arrival_time[init_dataset_name][identifier] = self.testbed_current_time
                 if self.assignment_policy.need_history:
                     # 这里必须对所有的offline和online历史记录都去计算一下新的significance!
                     offline_history_job_informations = self.assignment_policy.pull_offline_history_from_assignment_policy(
@@ -443,8 +448,7 @@ class Scheduler_server(object):
                         
                         self.jobid_2_target_significance[waiting_job_id].update(result_d_map)
                         
-
-        self.sched_logger.info("init_subtrain_datasets_map {}".format(init_subtrain_datasets_map))
+        self.sched_logger.info(f"success add new datablocks with num[{len(init_subtrain_datasets_map)}]: {init_subtrain_datasets_map}")
     
     # def init_jobs_all_sequence_num(self, init_pipelines_all_sequence_num):
     #     self.pipeline_sequence_all_num = init_pipelines_all_sequence_num
@@ -481,7 +485,10 @@ class Scheduler_server(object):
             self.jobid_2_priority_weight[id] = origin_info["priority_weight"]
 
             self.jobid_2_arrival_time[id] = []
-            self.jobid_2_arrival_time[id].append(origin_info["time"])
+            if self.simulation:
+                self.jobid_2_arrival_time[id].append(self.simulation_global_time)
+            else:
+                self.jobid_2_arrival_time[id].append(self.testbed_current_time)
             self.jobid_2_started_time[id] = []
             self.jobid_2_finished_time[id] = []
 
@@ -945,7 +952,7 @@ class Scheduler_server(object):
         if self.simulation:
             self.jobid_2_finished_time[job_id].append(self.simulation_global_time)
         else:
-            self.jobid_2_finished_time[job_id].append(time.time())
+            self.jobid_2_finished_time[job_id].append(self.testbed_current_time)
 
         # TODO(xlc): 获取job的current_epoch!
         self.jobid_2_results[job_id].append(result)
@@ -1218,7 +1225,7 @@ class Scheduler_server(object):
                 if self.simulation:
                     self.jobid_2_arrival_time[job_id].append(self.simulation_global_time)
                 else:
-                    self.jobid_2_arrival_time[job_id].append(time.time())
+                    self.jobid_2_arrival_time[job_id].append(self.testbed_current_time)
                 self.jobid_2_need_instantly_recoming[job_id] = False
         if len(need_operator_jobs) <= 0:
             return
@@ -1309,7 +1316,7 @@ class Scheduler_server(object):
                         if self.simulation:
                             self.sub_train_datasetidentifier_2_exhausted_time[dataset_name][identifier] = self.simulation_global_time
                         else:
-                            self.sub_train_datasetidentifier_2_exhausted_time[dataset_name][identifier] = time.time()
+                            self.sub_train_datasetidentifier_2_exhausted_time[dataset_name][identifier] = self.testbed_current_time
                     if dataset_name not in success_datasetidentifier_2_consume_epsilon:
                         success_datasetidentifier_2_consume_epsilon[dataset_name] = {}
                     if identifier not in success_datasetidentifier_2_consume_epsilon[dataset_name]:
@@ -1398,7 +1405,7 @@ class Scheduler_server(object):
                 if self.simulation:
                     self.jobid_2_started_time[job_id].append(self.simulation_global_time)
                 else:
-                    self.jobid_2_started_time[job_id].append(time.time())
+                    self.jobid_2_started_time[job_id].append(self.testbed_current_time)
                 
                 self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.DONE_ALL_SCHED, JOB_STATUS_KEY.RUNNING)
                 if not self.simulation:
@@ -1495,6 +1502,18 @@ class Scheduler_server(object):
         self.placement_thread = p
         p.start()
         self.sched_logger.info("Thread [thread_func_timely_placement] started!")
+
+    def sched_update_current_time(self, testbed_start_time):
+        def thread_func_timely_update_time():
+            while (not self.all_finished) and (not self.all_stop):
+                self.testbed_current_time = time.time() - self.testbed_start_time
+                # self.sched_logger.debug(f"sched testbed_current_time: {self.testbed_current_time}")
+                time.sleep(1)
+            self.sched_logger.info("Thread [thread_func_timely_update_time] finished!")
+        self.testbed_start_time = testbed_start_time
+        p = threading.Thread(target=thread_func_timely_update_time, daemon=True)
+        p.start()
+        self.sched_logger.info("Thread [thread_func_timely_update_time] start!")
 
     '''
     def recoming_jobs_start(self, real_coming_sleep_time):
@@ -1624,16 +1643,21 @@ class Scheduler_server(object):
         self.sched_logger.info("significance_policy: {}".format(self.significance_policy.name))
         
 def scheduler_listener_func(scheduler_server_item):
-    def sched_func_timely(scheduler_server_item):
-        s = zerorpc.Server(scheduler_server_item)
-        ip_port = "tcp://0.0.0.0:{}".format(scheduler_server_item.sched_port)
-        s.bind(ip_port)
-        print("DL_server running in {}".format(ip_port))
-        s.run()
-        print("self.sched_logger.info sth...")
-    p = threading.Thread(target=sched_func_timely, args=(scheduler_server_item, ), daemon=True)
-    p.start()
-    return p
+    # def sched_func_timely(scheduler_server_item):
+    #     s = zerorpc.Server(scheduler_server_item)
+    #     ip_port = "tcp://0.0.0.0:{}".format(scheduler_server_item.sched_port)
+    #     s.bind(ip_port)
+    #     print("DL_server running in {}".format(ip_port))
+    #     s.run()
+    #     print("self.sched_logger.info sth...")
+    # p = threading.Thread(target=sched_func_timely, args=(scheduler_server_item, ), daemon=True)
+    # p.start()
+    s = zerorpc.Server(scheduler_server_item)
+    ip_port = "tcp://0.0.0.0:{}".format(scheduler_server_item.sched_port)
+    s.bind(ip_port)
+    print("DL_server running in {}".format(ip_port))
+    g = zerorpc.gevent.spawn(s.run)
+    return g
 
 
 def get_df_config():
@@ -1658,7 +1682,7 @@ if __name__ == "__main__":
     sched_p = scheduler_listener_func(scheduler_server_item)
 
     while not scheduler_server_item.all_stop:
-        time.sleep(10)
+        zerorpc.gevent.sleep(10)
     print("DL sched finished!!")
     
     sys.exit(0)

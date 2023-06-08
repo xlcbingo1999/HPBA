@@ -1,3 +1,4 @@
+'''
 import torch
 import time
 import zerorpc
@@ -25,3 +26,13 @@ except Exception as e:
     dispatcher_client.handle_error(f"test_1: {e}")
 finally:
     sys.exit(0)
+'''
+import zerorpc
+ip = "172.18.162.6"
+port = 16042
+
+tcp_ip_port = "tcp://{}:{}".format(ip, port)
+client = zerorpc.Client()
+client.connect(tcp_ip_port)
+
+client.handle_finished(1)

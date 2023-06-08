@@ -1,7 +1,7 @@
 import zerorpc
 import time
 import threading
-# import multiprocessing
+import multiprocessing
 import argparse
 from utils.profier import timely_update_gpu_status
 import torch
@@ -157,7 +157,7 @@ class Worker_server(object):
                     exception_log = details["exception_log"]
                     client = get_zerorpc_client(self.sched_ip, self.sched_port)
                     client.worker_runtime_failed_job_callback(job_id, origin_info, exception_log)
-                time.sleep(sleep_time)
+                zerorpc.gevent.sleep(sleep_time)
             print("Thread thread_func_timely_runtime_failed_job_callback finished!")
         p = threading.Thread(target=thread_func_timely_runtime_failed_job_callback, args=(1,), daemon=True)
         self.failed_job_callback_thread = p
@@ -174,7 +174,7 @@ class Worker_server(object):
                     result = details["result"]
                     client = get_zerorpc_client(self.sched_ip, self.sched_port)
                     client.worker_finished_job_callback(job_id, origin_info, result)
-                time.sleep(sleep_time)
+                zerorpc.gevent.sleep(sleep_time)
             print("Thread thread_func_timely_finished_job_callback finished!")
         p = threading.Thread(target=thread_func_timely_finished_job_callback, args=(1,), daemon=True)
         self.finished_job_callback_thread = p
@@ -246,15 +246,20 @@ class Worker_server(object):
 
 
 def worker_listener_func(worker_server_item):
-    def work_func_timely(worker_server_item):
-        s = zerorpc.Server(worker_server_item)
-        ip_port = "tcp://0.0.0.0:{}".format(worker_server_item.local_port)
-        s.bind(ip_port)
-        print("DL_server running in {}".format(ip_port))
-        s.run()
-    p = threading.Thread(target=work_func_timely, args=(worker_server_item, ), daemon=True)
-    p.start()
-    return p
+    # def work_func_timely(worker_server_item):
+    #     s = zerorpc.Server(worker_server_item)
+    #     ip_port = "tcp://0.0.0.0:{}".format(worker_server_item.local_port)
+    #     s.bind(ip_port)
+    #     print("DL_server running in {}".format(ip_port))
+    #     s.run()
+    # p = threading.Thread(target=work_func_timely, args=(worker_server_item, ), daemon=True)
+    # p.start()
+    s = zerorpc.Server(worker_server_item)
+    ip_port = "tcp://0.0.0.0:{}".format(worker_server_item.local_port)
+    s.bind(ip_port)
+    print("DL_server running in {}".format(ip_port))
+    g = zerorpc.gevent.spawn(s.run)  
+    return g
 
 if __name__ == "__main__":
     args = get_df_config()
@@ -267,7 +272,7 @@ if __name__ == "__main__":
     worker_server_item.runtime_failed_job_callback_start()
 
     while not worker_server_item.all_finished:
-        time.sleep(10)
+        zerorpc.gevent.sleep(10)
     print("DL sched finished!!")
     
     sys.exit(0)

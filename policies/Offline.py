@@ -61,7 +61,8 @@ class OfflinePolicy(Policy):
         job_privacy_budget_consume_list = np.array(job_privacy_budget_consume_list)[np.newaxis, :]
         datablock_privacy_budget_capacity_list = np.array(datablock_privacy_budget_capacity_list)[np.newaxis, :]
 
-        matrix_X = cp.Variable((job_num, datablock_num), boolean=True) # nonneg=True
+        self.logger.debug(f"HIS check solving shape: ({job_num}, {datablock_num})")
+        matrix_X = cp.Variable((job_num, datablock_num), nonneg=True) # nonneg=True
         objective = cp.Maximize(
             cp.sum(cp.multiply(sign_matrix, matrix_X))
         )
@@ -80,13 +81,15 @@ class OfflinePolicy(Policy):
             constraints.append(cp.sum(matrix_X, axis=1) <= job_target_datablock_selected_num_list)
 
         if not enable_waiting_flag:
-            add_time_constraint_num = 0
+            add_time_constraints = []
             for job_index, job_arrival_time in enumerate(job_arrival_time_list):
+                self.logger.debug(f"Offline check job_arrival: job_index: {job_index} => {job_arrival_time}")
                 for datablock_index, datablock_arrival_time in enumerate(datablock_arrival_time_list):
                     if job_arrival_time < datablock_arrival_time:
+                        
                         constraints.append(matrix_X[job_index, datablock_index] == 0)
-                        add_time_constraint_num += 1
-            self.logger.debug(f"add_time_constraint_num: {add_time_constraint_num}")
+                        add_time_constraints.append((job_index, datablock_index))
+            self.logger.debug(f"add_time_constraint_num[{len(add_time_constraints)}]: {add_time_constraints}")
 
         cvxprob = cp.Problem(objective, constraints)
         result = cvxprob.solve(solver, verbose=False)

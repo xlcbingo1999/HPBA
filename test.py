@@ -563,10 +563,7 @@ import threading
 import time
 import torch
 
-def do_sth():
-    print("start test_1.py")
-    os.system("python -u test_1.py")
-    print("wakeup test_1.py")
+
 
 class Scheduler_server(object):
     def __init__(self, sched_ip, sched_port):
@@ -580,39 +577,30 @@ class Scheduler_server(object):
     def handle_finished(self, job_id):
         time.sleep(2)
         print(f"job_id: {job_id}")
-        return 1
 
-    def start_test(self):
-        p = threading.Thread(target=do_sth, daemon=True)
-        p.start()
-
-def scheduler_listener_func(scheduler_server_item):
-    def sched_func_timely(scheduler_server_item):
-        s = zerorpc.Server(scheduler_server_item)
-        ip_port = "tcp://0.0.0.0:{}".format(scheduler_server_item.sched_port)
-        s.bind(ip_port)
-        print("DL_server running in {}".format(ip_port))
-        s.run()
-        print("self.sched_logger.info sth...")
-    p = threading.Thread(target=sched_func_timely, args=(scheduler_server_item, ), daemon=True)
-    p.start()
-    return p
 
 if __name__ == "__main__":
-    sched_ip = "172.18.162.4"
+    sched_ip = "172.18.162.6"
     sched_port = 16042
 
     scheduler_server_item = Scheduler_server(sched_ip, sched_port)
-    sched_p = scheduler_listener_func(scheduler_server_item)
+    s = zerorpc.Server(scheduler_server_item)
+    ip_port = "tcp://0.0.0.0:{}".format(scheduler_server_item.sched_port)
+    s.bind(ip_port)
+    print("DL_server running in {}".format(ip_port))
+    zerorpc.gevent.spawn(s.run) 
+    print("self.sched_logger.info sth...")
     # scheduler_server_item.start_test()
     flag = True
-    scheduler_server_item.start_test()
+
+    while flag:
+        print("122")
+        zerorpc.gevent.sleep(1)
     # device_0 = torch.device('cuda:1')
     # tensor_size = (10000, 10000)
     # tensor = torch.ones(tensor_size, device=device_0)
     # num_copies = 18  # 复制的次数（根据需要修改）
     # tensors = [tensor.clone() for _ in range(num_copies)]
     
-    while flag:
-        time.sleep(6)
+    
 

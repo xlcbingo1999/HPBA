@@ -3,7 +3,7 @@ import time
 from utils.global_variable import RESULT_PATH, RECONSTRUCT_TRACE_PREFIX_PATH
 from utils.global_functions import get_types, convert_types, get_zerorpc_client
 import threading
-# import multiprocessing
+import multiprocessing
 from functools import reduce
 import sys
 import argparse
@@ -117,6 +117,7 @@ class Dispatcher(object):
 
         self.finished_labels = {job_id:False for job_id, _ in self.jobs_detail}
         self.dispatch_jobs_count = 0
+        
 
         self.datasets_map = datasets_map
         count = 0
@@ -129,8 +130,8 @@ class Dispatcher(object):
         self.current_time = 0
         self.all_finished = False
         
-    def dispatch_jobs(self, pipeline_sequence_all_num, sched_ip, sched_port, update_timeout):
-        def thread_func_timely_dispatch_job(sched_ip, sched_port, update_timeout):
+    def dispatch_jobs(self, pipeline_sequence_all_num, sched_ip, sched_port, update_timeout, offline_dispatch_flag):
+        def thread_func_timely_dispatch_job(sched_ip, sched_port, update_timeout, offline_dispatch_flag):
             while not self.all_finished:
                 count = self.dispatch_jobs_count
                 dispatch_jobs_detail = {}
@@ -139,7 +140,7 @@ class Dispatcher(object):
                     
                     need_submit_time = info["time"]
                     has_submited_flag = info["submited"]
-                    if not has_submited_flag and need_submit_time <= self.current_time:
+                    if (not has_submited_flag) and ((offline_dispatch_flag) or (not offline_dispatch_flag and need_submit_time <= self.current_time)):
                         self.dispatcher_logger.info("[add job start job_id: {}] need_submit_time: {}; self.current_time: {}".format(job_id, need_submit_time, self.current_time))
                         self.jobs_detail[index][1]["submited"] = True
                         count += 1
@@ -152,11 +153,11 @@ class Dispatcher(object):
                 if self.dispatch_jobs_count == len(self.jobs_detail):
                     self.dispatcher_logger.info("Finished Job Dispatch!")
                     break
-                time.sleep(1)
+                zerorpc.gevent.sleep(1)
             self.dispatcher_logger.info("Thread [thread_func_timely_dispatch_job] finished!")
         # 在最开始一定要将真实的历史结果传过去
         client = get_zerorpc_client(sched_ip, sched_port)
-        p = threading.Thread(target=thread_func_timely_dispatch_job, args=(sched_ip, sched_port, update_timeout), daemon=True)
+        p = threading.Thread(target=thread_func_timely_dispatch_job, args=(sched_ip, sched_port, update_timeout, offline_dispatch_flag), daemon=True)
         p.start()
         return p
 
@@ -198,19 +199,17 @@ class Dispatcher(object):
         self.dispatcher_logger.info(f"{job_id} all_final_significance: {all_final_significance}")
 
     def finished_job_callback(self, job_id, results):
-        current_time = time.time()
-        self.dispatcher_logger.info("[finished job end job_id: {}] current_time: {}".format(job_id, current_time))
+        self.dispatcher_logger.info("[finished job end job_id: {}] current_time: {}".format(job_id, self.current_time))
         self.finished_labels[job_id] = True
         self.show_job_results(job_id, results)
 
     def failed_job_callback(self, job_id, results):
-        current_time = time.time()
-        self.dispatcher_logger.info("[failed job end job_id: {}] current_time: {}".format(job_id, current_time))
+        self.dispatcher_logger.info("[failed job end job_id: {}] current_time: {}".format(job_id, self.current_time))
         self.finished_labels[job_id] = True
         self.show_job_results(job_id, results)
 
-    def sched_update_dataset(self, sched_ip, sched_port, update_timeout):
-        def thread_func_timely_dispatch_dataset(sched_ip, sched_port, update_timeout):
+    def sched_update_dataset(self, sched_ip, sched_port, update_timeout, offline_dispatch_flag):
+        def thread_func_timely_dispatch_dataset(sched_ip, sched_port, update_timeout, offline_dispatch_flag):
             while not self.all_finished:
                 count = self.dispatch_datasets_count
                 subtrain_datasetidentifier_info = {}
@@ -220,7 +219,7 @@ class Dispatcher(object):
                         epsilon_capacity = self.datasets_map[dataset_name][sub_train_dataset_identifier]["epsilon_capacity"]
                         delta_capacity = self.datasets_map[dataset_name][sub_train_dataset_identifier]["delta_capacity"]
                         has_submited_flag = self.datasets_map[dataset_name][sub_train_dataset_identifier]["submited"]
-                        if not has_submited_flag and need_submit_time <= self.current_time:
+                        if (not has_submited_flag) and ((offline_dispatch_flag) or ((not offline_dispatch_flag) and need_submit_time <= self.current_time)):
                             self.dispatcher_logger.info("[add dataset start dataset_name: {}; sub_train_dataset_identifier: {}]  need_submit_time: {}; self.current_time: {}".format(dataset_name, sub_train_dataset_identifier, need_submit_time, self.current_time))
                             self.datasets_map[dataset_name][sub_train_dataset_identifier]["submited"] = True
                             count += 1
@@ -238,9 +237,9 @@ class Dispatcher(object):
                 if self.dispatch_datasets_count == self.all_datasets_count:
                     self.dispatcher_logger.info("Finished Dataset Dispatch!")
                     break
-                time.sleep(1)
+                zerorpc.gevent.sleep(1)
             self.dispatcher_logger.info("Thread [thread_func_timely_dispatch_dataset] finished!")
-        p = threading.Thread(target=thread_func_timely_dispatch_dataset, args=(sched_ip, sched_port, update_timeout), daemon=True)
+        p = threading.Thread(target=thread_func_timely_dispatch_dataset, args=(sched_ip, sched_port, update_timeout, offline_dispatch_flag), daemon=True)
         p.start()
         return p
 
@@ -249,7 +248,7 @@ class Dispatcher(object):
         def thread_func_timely_update_time():
             while not self.all_finished:
                 self.current_time = time.time() - self.all_start_time
-                time.sleep(1)
+                zerorpc.gevent.sleep(1)
             self.dispatcher_logger.info("Thread [thread_func_timely_update_time] finished!")
         p = threading.Thread(target=thread_func_timely_update_time, daemon=True)
         p.start()
@@ -375,7 +374,7 @@ class Dispatcher(object):
         client.restart_sched()
         client.initialize_sched_configs(
             simulation, 
-            simulation_index, 
+            simulation_index,
             seed, 
             self.current_test_all_dir, 
             all_or_nothing_flag, 
@@ -430,6 +429,7 @@ class Dispatcher(object):
             significance_args = None
         client.sched_update_assignment_policy(assignment_policy, assignment_args)
         client.sched_update_significance_policy(significance_policy, significance_args)
+        client.sched_update_current_time(self.all_start_time)
         self.dispatcher_logger.info("sched_init_sched_register finished!")
         log_args_var(args, self.dispatcher_logger_path)
 
@@ -438,16 +438,16 @@ class Dispatcher(object):
         client.update_history_jobs(history_jobs_map)
 
 def scheduler_listener_func(dispatcher_server_item):
-    def dispatcher_func_timely(dispatcher_server_item):
-        dispatcher_server = zerorpc.Server(dispatcher_server_item)
-        ip_port = "tcp://0.0.0.0:{}".format(dispatcher_server_item.dispatcher_port)
-        dispatcher_server.bind(ip_port)
-        print("DL_server running in {}".format(ip_port))
-        dispatcher_server.run()
-        print("Thread [dispatcher_func_timely] finished!")
-    p = threading.Thread(target=dispatcher_func_timely, args=(dispatcher_server_item, ), daemon=True)
-    p.start()
-    return p
+    # def dispatcher_func_timely(dispatcher_server_item):
+    # p = threading.Thread(target=dispatcher_func_timely, args=(dispatcher_server_item, ), daemon=True)
+    # p.start()
+    dispatcher_server = zerorpc.Server(dispatcher_server_item)
+    ip_port = "tcp://0.0.0.0:{}".format(dispatcher_server_item.dispatcher_port)
+    dispatcher_server.bind(ip_port)
+    print("DL_server running in {}".format(ip_port))
+    g = zerorpc.gevent.spawn(dispatcher_server.run)
+    print("Thread [dispatcher_func_timely] started in !")
+    return g
 
 def exit_gracefully(server):
     print("stopping server")
@@ -567,11 +567,16 @@ def testbed_experiment_start(
         init_workerip_2_ports, init_gpuidentifiers, 
         current_test_all_dir, simulation_index=0
     )
+    if args.assignment_policy == "OfflinePolicy" or args.assignment_policy == "Offline":
+        offline_dispatch_flag = True
+    else:
+        offline_dispatch_flag = False
+    
     if not args.without_start_load_job:
-        dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout)
+        dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout, offline_dispatch_flag)
         processes.append(dataset_p)
     
-    time.sleep(waiting_time)
+    zerorpc.gevent.sleep(waiting_time)
     time_p = dispatcher.sched_update_current_time()
     processes.append(time_p)
 
@@ -579,11 +584,11 @@ def testbed_experiment_start(
         history_job_p = dispatcher.dispatch_history_jobs(sched_ip, sched_port, update_timeout)
         processes.append(history_job_p)
     if not args.without_start_load_job:
-        job_p = dispatcher.dispatch_jobs(pipeline_sequence_all_num, sched_ip, sched_port, update_timeout)
+        job_p = dispatcher.dispatch_jobs(pipeline_sequence_all_num, sched_ip, sched_port, update_timeout, offline_dispatch_flag)
         processes.append(job_p)
 
     print("Waiting for load datasets and jobs {} s".format(waiting_time))
-    time.sleep(waiting_time)
+    zerorpc.gevent.sleep(waiting_time)
     dispatcher.sched_dispatch_start(
         sched_ip, sched_port, 
         update_timeout,
@@ -595,14 +600,14 @@ def testbed_experiment_start(
     # 主线程的最后一个操作!
     all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
     while not all_finished_label:
-        time.sleep(global_sleep_time)
+        zerorpc.gevent.sleep(global_sleep_time)
         all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
     dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
     print("logically all stoped!")
     dispatcher.all_finished = True
     dispatcher.sched_end(sched_ip, sched_port)
     print("Stop workers and scheduler")
-    time.sleep(waiting_time)
+    zerorpc.gevent.sleep(waiting_time)
     if not args.without_finished_clear_all:
         dispatcher.sched_clear_all(sched_ip, sched_port)
     
@@ -614,7 +619,7 @@ def testbed_experiment_start(
     log_args_var(args, all_result_path)
     final_log_result(current_test_all_dir, all_result_file_name)
     print("Waiting for stop threads {} s".format(waiting_time))
-    time.sleep(waiting_time)
+    zerorpc.gevent.sleep(waiting_time)
 
 def simulation_experiment_start(
     args, sched_ip, sched_port,
@@ -731,7 +736,7 @@ def simulation_experiment_start(
 
         # 主线程的最后一个操作!
         while not dispatcher.all_finished:
-            time.sleep(global_sleep_time)
+            zerorpc.gevent.sleep(global_sleep_time)
         dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
         print("logically all stoped!")
         dispatcher.all_finished = True
@@ -739,7 +744,7 @@ def simulation_experiment_start(
         if not args.without_finished_clear_all:
             dispatcher.sched_clear_all(sched_ip, sched_port)
         print("Stop workers and scheduler")
-        time.sleep(waiting_time)
+        zerorpc.gevent.sleep(waiting_time)
         print("end simulation_index: {}".format(simulation_index))
     if not args.without_stop_all:
         dispatcher.stop_all(sched_ip, sched_port)
@@ -749,7 +754,7 @@ def simulation_experiment_start(
     log_args_var(args, all_result_path)
     final_log_result(current_test_all_dir, all_result_file_name)
     print("Waiting for stop threads {} s".format(waiting_time))
-    time.sleep(waiting_time)
+    zerorpc.gevent.sleep(waiting_time)
 
 if __name__ == "__main__":
     args = get_df_config()
