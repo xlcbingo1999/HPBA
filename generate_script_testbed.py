@@ -4,12 +4,12 @@
 # [4x] => 3s/个 30s/个 => 200个任务可以控制在10min, 20个online block
 import os
 
-nohup_flag = True
+nohup_flag = False
 nohup_target_dir_prefix = "/home/netlab/DL_lab/opacus_testbed/log_temp_store/"
 target_time_minute = 60
 
-current_ip_index = 5
-current_cmd_index = 3
+current_ip_index = 6
+current_cmd_index = 1
 
 # testbed
 worker_indexes = [2, 3]
@@ -35,8 +35,8 @@ seed_str = " ".join(seeds)
 waiting_time = 2 if simulation_flag else 10
 
 # 任务
-pipeline_sequence_all_num = 800
-all_history_num = 800
+pipeline_sequence_all_num = 100
+all_history_num = 100
 job_arrival_time_speed_up = 4.0 # 控制到达速率
 job_datablock_epsilon_max_ratio = 0.2 # 这个控制比率(离群值控制)
 change_job_epsilon_max_times = 1.0 # 这个直接从平均增大倍数(平均值控制)

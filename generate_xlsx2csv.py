@@ -3,14 +3,15 @@ import numpy as np
 import csv
 import os
 
-file_name = '20230510_privacy_new' # 'temp_get_result', 20230510_privacy_new
+file_name = 'testbed_fig_1' # 'temp_get_result', 20230510_privacy_new
 
 sheet_name_2_result_file_name = {
     # "fig2_max_min_ratio": "fig_2",
     # "fig1_online_job_num": "fig_1",
     # "fig6_HIS_history_change": "fig_6",
-    "fig5_batch_size": "fig_5",
-    # "Sheet1": "temp_get_result"
+    # "fig5_batch_size": "fig_5",
+    # "Sheet1": "temp_get_result",
+    "Sheet1": "testbed_fig_1", # testbed_fig_1
 }
 # 定义输入的 Excel 文件路径
 plots_path = "/home/netlab/DL_lab/opacus_testbed/plots"

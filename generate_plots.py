@@ -11,7 +11,7 @@ from utils.plot_operator import add_df_with_min_max, get_mark_color_hatch_marker
 plt.rcParams['axes.unicode_minus'] = False  # 显示负号
 
 def draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                y_label_name_arr, env_x_label, params, get_policy_map_func):
+                y_label_name_arr, env_x_label, params, fill_between_flag, get_policy_map_func):
     current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
     path = os.path.join(current_dir, f"{target_pic_name}.csv")
     df = pd.read_csv(path)
@@ -62,13 +62,14 @@ def draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups,
                 label=get_policy_map_func(policy), 
                 linewidth=line_width
             )
-            plt.fill_between(
-                env_x_groups_str, 
-                results_min[policy_index], 
-                results_max[policy_index], 
-                color=colors[policy_index], 
-                alpha=fill_between_alpha
-            )
+            if fill_between_flag:
+                plt.fill_between(
+                    env_x_groups_str, 
+                    results_min[policy_index], 
+                    results_max[policy_index], 
+                    color=colors[policy_index], 
+                    alpha=fill_between_alpha
+                )
 
         group_labels = list(str(hen) for hen in env_x_groups)  # x轴刻度的标识
         plt.xticks(
@@ -417,14 +418,78 @@ def draw_fig_5():
         "marker_size": 10,
         "same_distance": True
     }
+    fill_between_flag = True
     draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                y_label_name_arr, env_x_label, params, get_fig_5_policy_map)
+                y_label_name_arr, env_x_label, params, fill_between_flag, get_fig_5_policy_map)
+
+def draw_testbed_fig_1():
+    target_pic_name = "testbed_fig_1_right"
+    keys_str = ["policy", "Online job num"]
+    env_x_groups = [400, 800]
+    env_policy_groups = [
+        "OfflinePolicy",
+        "HISwithOrderProVersionPolicy(infinity)", 
+        "IterativeHISwithOrderPolicy(adaptive)", 
+        "PBGPolicy",
+        "PBGMixPolicy", 
+        "SagewithRemainPolicy",
+        "BestFitwithRemainPolicy"
+    ]
+    y_label_name_arr = [
+        "Significance of all jobs", 
+        "Test Accuracy",
+        "Test Loss"
+        "Ratio of Allocated Datablocks"
+    ]
+    def get_testbed_fig_1_policy_map(origin_policy):
+        result_policy = ""
+        if origin_policy == "OfflinePolicy":
+            result_policy = "Ground Truth"
+        elif "HISwithOrderProVersionPolicy" in origin_policy:
+            result_policy = "HIS"
+            # match = re.match(r"HISwithOrderProVersionPolicy\((?P<history_num>\d+)\)", origin_policy)
+            # if match:
+            #     result_policy = result_policy + "({})".format(match.group("history_num"))
+        elif "IterativeHISwithOrderPolicy" in origin_policy:
+            result_policy = "IterativeHIS"
+            # match = re.match(r"IterativeHISwithOrderPolicy\((?P<iteration_num>\d+)\)", origin_policy)
+            # if match:
+            #     result_policy = result_policy + "({})".format(match.group("iteration_num"))
+        elif origin_policy == "PBGPolicy":
+            result_policy = "PBG"
+        elif origin_policy == "PBGMixPolicy": 
+            result_policy = "PBGMix"
+        elif origin_policy == "SagewithRemainPolicy":
+            result_policy = "Sage"
+        elif origin_policy == "BestFitwithRemainPolicy":
+            result_policy = "BestFit"
+        return result_policy
+    env_x_label = r"Number of Test Job"
+    params = {
+        "font_size": 20,
+        "line_width": 1.5,
+        "bar_width": 0.23,
+        "fill_between_alpha": 0.5,
+        "max_one_line_length": 20,
+        "bbox_to_anchor": (0.5,1.35),
+        "label_spacing": 0.05,
+        "column_spacing": 0.2,
+        "ncol": 3,
+        "center_ratio": 2.5,
+        "bar_width_ratio": 2,
+        "marker_size": 10,
+        "same_distance": True
+    }
+    fill_between_flag = False
+    draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
+                    y_label_name_arr, env_x_label, params, fill_between_flag, get_testbed_fig_1_policy_map)
 
 if __name__ == "__main__":
     # draw_fig_1()
     # draw_fig_2()
     # draw_fig_6()
-    draw_fig_5()
+    # draw_fig_5()
+    draw_testbed_fig_1()
     
     # "Number of Allocated Jobs", 
     # "Ratio of Allocated Jobs", 
