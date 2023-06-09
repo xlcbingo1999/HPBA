@@ -8,7 +8,7 @@ nohup_flag = False
 nohup_target_dir_prefix = "/home/netlab/DL_lab/opacus_testbed/log_temp_store/"
 target_time_minute = 60
 
-current_ip_index = 6
+current_ip_index = 5
 current_cmd_index = 1
 
 # testbed
@@ -35,8 +35,8 @@ seed_str = " ".join(seeds)
 waiting_time = 2 if simulation_flag else 10
 
 # 任务
-pipeline_sequence_all_num = 100
-all_history_num = 100
+pipeline_sequence_all_num = 250
+all_history_num = 250
 job_arrival_time_speed_up = 4.0 # 控制到达速率
 job_datablock_epsilon_max_ratio = 0.2 # 这个控制比率(离群值控制)
 change_job_epsilon_max_times = 1.0 # 这个直接从平均增大倍数(平均值控制)
@@ -52,7 +52,7 @@ base_capacity = 5.0
 dataset_name = "EMNIST"
 dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
-assignment_policy = "IterativeHISwithOrderProVersionPolicy"
+assignment_policy = "PBGPolicy"
 his_betas = 0.0
 his_batch_size_for_one_epochs = 5
 his_infinity_flag = True
@@ -77,6 +77,7 @@ worker_cmds.append(f"--sched_port 163{current_cmd_index}{current_ip_index}")
 normal_worker_cmd = " ".join(worker_cmds)
 if nohup_flag:
     nohup_worker_dir = os.path.join(nohup_target_dir_prefix, f"worker_{target_time_minute}_{assignment_policy}_{pipeline_sequence_all_num}.log")
+    print(f"at now +{target_time_minute} minute")
     print(f"nohup {normal_worker_cmd} > {nohup_worker_dir} 2>&1 &")
 else:
     print(normal_worker_cmd)
@@ -92,6 +93,7 @@ sched_cmds.append(f"--sched_port 163{current_cmd_index}{current_ip_index}")
 normal_sched_cmd = " ".join(sched_cmds)
 if nohup_flag:
     nohup_sched_dir = os.path.join(nohup_target_dir_prefix, f"sched_{target_time_minute}_{assignment_policy}_{pipeline_sequence_all_num}.log")
+    print(f"at now +{target_time_minute+2} minute")
     print(f"nohup {normal_sched_cmd} > {nohup_sched_dir} 2>&1 &")
 else:
     print(normal_sched_cmd)
@@ -171,6 +173,7 @@ dispatcher_cmds.append(f"--temp_sig_metric {temp_sig_metric}")
 normal_dispatcher_cmd = " ".join(dispatcher_cmds)
 if nohup_flag:
     nohup_dispatcher_dir = os.path.join(nohup_target_dir_prefix, f"dispatcher_{target_time_minute}_{assignment_policy}_{pipeline_sequence_all_num}.log")
+    print(f"at now +{target_time_minute+4} minute")
     print(f"nohup {normal_dispatcher_cmd} > {nohup_dispatcher_dir} 2>&1 &")
 else:
     print(normal_dispatcher_cmd)
