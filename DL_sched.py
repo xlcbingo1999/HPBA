@@ -941,10 +941,10 @@ class Scheduler_server(object):
         if gpu_identifier is not None and job_id in self.gpuidentifier_2_jobinstances[gpu_identifier]:
             self.gpuidentifier_2_jobinstances[gpu_identifier].remove(job_id)
         
-        if len(self.jobid_2_started_time[job_id]) > 0:
-            self.jobid_2_started_time[job_id] = self.jobid_2_started_time[job_id][:len(self.jobid_2_started_time)-1]
-
-        self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.RUNNING, JOB_STATUS_KEY.DONE_ALL_SCHED) # 恢复等待下一次调度即可
+        if exception_log == "The privacy budget is too low.":
+            self.worker_failed_job_callback(job_id, origin_info, FAILED_RESULT_KEY.RUNNING_FAILED)
+        else:
+            self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.RUNNING, JOB_STATUS_KEY.DONE_ALL_SCHED) # 恢复等待下一次调度即可
 
     def worker_finished_job_callback(self, job_id, origin_info, result):
         self.sched_logger.info(f"Temp Finished callback job_id: {job_id} => origin_info: {origin_info}; result: {result}")

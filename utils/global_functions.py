@@ -75,6 +75,7 @@ class FAILED_RESULT_KEY(Enum):
     JOB_TYPE_ERROR = 3
     SCHED_FAILED = 4
     TRY_MAX_TIME = 5
+    RUNNING_FAILED = 6
 
 class JOB_STATUS_KEY(Enum):
     # DONE_GPU_SCHED = 102
