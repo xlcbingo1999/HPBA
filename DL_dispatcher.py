@@ -192,11 +192,11 @@ class Dispatcher(object):
             for sub_res in results:
                 if "final_significance" in sub_res:
                     all_final_significance = sub_res["final_significance"]
-        self.dispatcher_logger.info(f"{job_id} all_train_loss: {all_train_loss}")
-        self.dispatcher_logger.info(f"{job_id} all_train_accuracy: {all_train_accuracy}")
-        self.dispatcher_logger.info(f"{job_id} all_test_loss: {all_test_loss}")
-        self.dispatcher_logger.info(f"{job_id} all_test_accuracy: {all_test_accuracy}")
-        self.dispatcher_logger.info(f"{job_id} all_final_significance: {all_final_significance}")
+        self.dispatcher_logger.info(f"{job_id} train_loss: {all_train_loss}")
+        self.dispatcher_logger.info(f"{job_id} train_accuracy: {all_train_accuracy}")
+        self.dispatcher_logger.info(f"{job_id} test_loss: {all_test_loss}")
+        self.dispatcher_logger.info(f"{job_id} test_accuracy: {all_test_accuracy}")
+        self.dispatcher_logger.info(f"{job_id} final_significance: {all_final_significance}")
 
     def finished_job_callback(self, job_id, results):
         self.dispatcher_logger.info("[finished job end job_id: {}] current_time: {}".format(job_id, self.current_time))
@@ -751,8 +751,8 @@ def simulation_experiment_start(
     all_result_file_name = "all_result.log"
     trace_save_dir_prefix = os.path.join(RESULT_PATH, current_test_all_dir)
     all_result_path = os.path.join(trace_save_dir_prefix, all_result_file_name)
-    log_args_var(args, all_result_path)
     final_log_result(current_test_all_dir, all_result_file_name)
+    log_args_var(args, all_result_path)
     print("Waiting for stop threads {} s".format(waiting_time))
     zerorpc.gevent.sleep(waiting_time)
 

@@ -115,17 +115,17 @@ def final_log_result(current_test_all_dir, all_result_file_name):
         all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr
 
 def read_DL_dispatcher_result_func(trace_save_path):
-    success_fail_num_pattern = r'current_success_num:\s*(?P<success>\d+);\s+current_failed_num:\s*(?P<failed>\d+);\s+current_no_submit_num:\s*(?P<no_submit>\d+);\s+current_no_sche_num:\s*(?P<no_sche>\d+);'
-    all_test_jobs_num_pattern = r'all_test_jobs_num:\s*(?P<all_test_jobs_num>\d+)'
-    all_train_loss_pattern = r'all_train_loss:\s*(?P<all_train_loss>\d+\.\d+)'
-    all_train_accuracy_pattern = r'all_train_accuracy:\s*(?P<all_train_accuracy>\d+\.\d+)'
-    all_test_loss_pattern = r'all_test_loss:\s*(?P<all_test_loss>\d+\.\d+)'
-    all_test_accuracy_pattern = r'all_test_accuracy:\s*(?P<all_test_accuracy>\d+\.\d+)'
-    all_final_significance_pattern = r'all_final_significance:\s*(?P<all_final_significance>\d+\.\d+)'
+    success_fail_num_pattern = r'current_success_num:\s*(?P<success>[-+]?\d+(?:\.\d+)?);\s+current_failed_num:\s*(?P<failed>[-+]?\d+(?:\.\d+)?);\s+current_no_submit_num:\s*(?P<no_submit>[-+]?\d+(?:\.\d+)?);\s+current_no_sche_num:\s*(?P<no_sche>[-+]?\d+(?:\.\d+)?);'
+    all_test_jobs_num_pattern = r'all_test_jobs_num:\s*(?P<all_test_jobs_num>[-+]?\d+(?:\.\d+)?)'
+    all_train_loss_pattern = r'all_train_loss:\s*(?P<all_train_loss>[-+]?\d+(?:\.\d+)?)'
+    all_train_accuracy_pattern = r'all_train_accuracy:\s*(?P<all_train_accuracy>[-+]?\d+(?:\.\d+)?)'
+    all_test_loss_pattern = r'all_test_loss:\s*(?P<all_test_loss>[-+]?\d+(?:\.\d+)?)'
+    all_test_accuracy_pattern = r'all_test_accuracy:\s*(?P<all_test_accuracy>[-+]?\d+(?:\.\d+)?)'
+    all_final_significance_pattern = r'all_final_significance:\s*(?P<all_final_significance>[-+]?\d+(?:\.\d+)?)'
 
-    all_target_datablock_num_pattern = r'all_target_datablock_num:\s*(?P<all_target_datablock_num>\d+)'
-    all_success_datablock_num_pattern = r'all_success_datablock_num:\s*(?P<all_success_datablock_num>\d+)'
-    all_failed_datablock_num_pattern = r'all_failed_datablock_num:\s*(?P<all_failed_datablock_num>\d+)'
+    all_target_datablock_num_pattern = r'all_target_datablock_num:\s*(?P<all_target_datablock_num>[-+]?\d+(?:\.\d+)?)'
+    all_success_datablock_num_pattern = r'all_success_datablock_num:\s*(?P<all_success_datablock_num>[-+]?\d+(?:\.\d+)?)'
+    all_failed_datablock_num_pattern = r'all_failed_datablock_num:\s*(?P<all_failed_datablock_num>[-+]?\d+(?:\.\d+)?)'
 
     all_need_iter_paths = []
     for file_dir in os.listdir(trace_save_path):
@@ -179,7 +179,7 @@ def read_DL_dispatcher_result_func(trace_save_path):
                         failed_num_arr.append(failed)
                         match_flags["current_success_num"] = True
                     else:
-                        print('No match')
+                        print('current_success_num No match')
                 if "all_test_jobs_num" in line:
                     match = re.search(all_test_jobs_num_pattern, line)
                     if match:
@@ -187,7 +187,7 @@ def read_DL_dispatcher_result_func(trace_save_path):
                         all_test_jobs_num_arr.append(all_test_jobs_num)
                         match_flags["all_test_jobs_num"] = True
                     else:
-                        print('No match')
+                        print('all_test_jobs_num No match')
                 if "all_train_loss" in line:
                     match = re.search(all_train_loss_pattern, line)
                     if match:
@@ -195,7 +195,7 @@ def read_DL_dispatcher_result_func(trace_save_path):
                         all_train_loss_arr.append(all_train_loss)
                         match_flags["all_train_loss"] = True
                     else:
-                        print('No match')
+                        print('all_train_loss No match')
                 if "all_train_accuracy" in line:
                     match = re.search(all_train_accuracy_pattern, line)
                     if match:
@@ -203,7 +203,7 @@ def read_DL_dispatcher_result_func(trace_save_path):
                         all_train_accuracy_arr.append(all_train_accuracy)
                         match_flags["all_train_accuracy"] = True
                     else:
-                        print('No match')
+                        print('all_train_accuracy No match')
                 if "all_test_loss" in line:
                     match = re.search(all_test_loss_pattern, line)
                     if match:
@@ -211,7 +211,7 @@ def read_DL_dispatcher_result_func(trace_save_path):
                         all_test_loss_arr.append(all_test_loss)
                         match_flags["all_test_loss"] = True
                     else:
-                        print('No match')
+                        print('all_test_loss No match')
                 if "all_test_accuracy" in line:
                     match = re.search(all_test_accuracy_pattern, line)
                     if match:
@@ -219,7 +219,7 @@ def read_DL_dispatcher_result_func(trace_save_path):
                         all_test_accuracy_arr.append(all_test_accuracy)
                         match_flags["all_test_accuracy"] = True
                     else:
-                        print('No match')
+                        print('all_test_accuracy No match')
                 if "all_final_significance" in line:
                     match = re.search(all_final_significance_pattern, line)
                     if match:
@@ -227,31 +227,31 @@ def read_DL_dispatcher_result_func(trace_save_path):
                         all_final_significance_arr.append(all_final_significance)
                         match_flags["all_final_significance"] = True
                     else:
-                        print('No match')
+                        print('all_final_significance No match')
                 if "all_target_datablock_num" in line:
                     match = re.search(all_target_datablock_num_pattern, line)
                     if match:
-                        all_target_datablock_num = int(match.group('all_target_datablock_num'))
+                        all_target_datablock_num = float(match.group('all_target_datablock_num'))
                         all_target_datablock_num_arr.append(all_target_datablock_num)
                         match_flags["all_target_datablock_num"] = True
                     else:
-                        print('No match')
+                        print('all_target_datablock_num No match')
                 if "all_success_datablock_num" in line:
                     match = re.search(all_success_datablock_num_pattern, line)
                     if match:
-                        all_success_datablock_num = int(match.group('all_success_datablock_num'))
+                        all_success_datablock_num = float(match.group('all_success_datablock_num'))
                         all_success_datablock_num_arr.append(all_success_datablock_num)
                         match_flags["all_success_datablock_num"] = True
                     else:
-                        print('No match')
+                        print('all_success_datablock_num No match')
                 if "all_failed_datablock_num" in line:
                     match = re.search(all_failed_datablock_num_pattern, line)
                     if match:
-                        all_failed_datablock_num = int(match.group('all_failed_datablock_num'))
+                        all_failed_datablock_num = float(match.group('all_failed_datablock_num'))
                         all_failed_datablock_num_arr.append(all_failed_datablock_num)
                         match_flags["all_failed_datablock_num"] = True
                     else:
-                        print('No match')
+                        print('all_failed_datablock_num No match')
     
         if all(list(match_flags.values())):
             final_used_num += 1
@@ -263,15 +263,15 @@ def read_DL_dispatcher_result_func(trace_save_path):
 
 def read_DL_dispatcher_result_func_simulation_old_version(trace_save_path):
     
-    success_fail_num_pattern = r'current_success_num:\s*(?P<success>\d+);\s+current_failed_num:\s*(?P<failed>\d+);\s+current_no_submit_num:\s*(?P<no_submit>\d+);\s+current_no_sche_num:\s*(?P<no_sche>\d+);'
-    all_final_significance_pattern = r'all_final_significance:\s*(?P<all_final_significance>\d+\.\d+)'
-    success_final_significance_pattern = r'success_final_significance:\s*(?P<success_final_significance>\d+\.\d+)'
+    success_fail_num_pattern = r'current_success_num:\s*(?P<success>[-+]?\d+(?:\.\d+)?);\s+current_failed_num:\s*(?P<failed>[-+]?\d+(?:\.\d+)?);\s+current_no_submit_num:\s*(?P<no_submit>[-+]?\d+(?:\.\d+)?);\s+current_no_sche_num:\s*(?P<no_sche>[-+]?\d+(?:\.\d+)?);'
+    all_final_significance_pattern = r'all_final_significance:\s*(?P<all_final_significance>[-+]?\d+(?:\.\d+)?)'
+    success_final_significance_pattern = r'success_final_significance:\s*(?P<success_final_significance>[-+]?\d+(?:\.\d+)?)'
     old_final_selected_pattern = r'from policy (\[(?P<policy_name>(.*?))\]) selected_datablock_identifiers: (?P<selected_list>\[.*?\])'
     final_selected_pattern = r'from policy (\[(?P<policy_name>(.*?))\]) selected_datablock_identifiers: (?P<selected_map>\{.*?\})'
     failed_selected_pattern = r'failed job scheduling \[(?P<job_id>.+)\]'
     add_new_job_pattern = r'success add new jobs: (?P<job_detail>.+)'
     
-    all_test_job_num_pattern = r'dispatcher init job_all_seq_num: (?P<test_job_num>\d+)'
+    all_test_job_num_pattern = r'dispatcher init job_all_seq_num: (?P<test_job_num>[-+]?\d+(?:\.\d+)?)'
 
     all_need_iter_paths = []
     for file_dir in os.listdir(trace_save_path):

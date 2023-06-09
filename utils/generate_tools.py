@@ -352,7 +352,7 @@ def generate_alibaba_jobs(all_num,
             job_path = RESULT_PATH + "/{}/test_jobs.json".format(save_path)
         if not os.path.exists(job_path):
             os.makedirs(os.path.dirname(job_path), exist_ok=True)
-        with open(job_path, "w+") as f:
+        with open(job_path, "w+") as f: # 覆盖写
             json.dump(jobs, f, cls=NpEncoder)
     return jobs
 
@@ -417,7 +417,7 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
         dataset_path = RESULT_PATH + "/{}/datasets.json".format(save_path)
         if not os.path.exists(dataset_path):
             os.makedirs(os.path.dirname(dataset_path), exist_ok=True)
-        with open(dataset_path, "w+") as f:
+        with open(dataset_path, "w+") as f: # 覆盖写
             json.dump(datasets_list, f)
         print("save dataset trace in {}".format(dataset_path))
     return datasets_list, time_2_datablock_num

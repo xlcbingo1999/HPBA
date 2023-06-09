@@ -126,7 +126,7 @@ class OTDDPolicy(SigPolicy):
     def write_to_origin_OTDD_trace(self):
         self.logger.debug("==== write_to_origin_OTDD_trace [origin_OTDD_trace] ====")
         self.logger.info(self.origin_OTDD_trace)
-        with open(self.OTDD_trace_path, "w+") as f:
+        with open(self.OTDD_trace_path, "w+") as f: # 记得一定是覆盖写
             json.dump(self.origin_OTDD_trace, f)
 
     def set_origin_OTDD_trace_value(self, train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id, target_value):
