@@ -141,11 +141,15 @@ class OfflinePolicy(Policy):
             current_all_job_significances.append(job_item.sub_train_datasetidentifier_2_significance)
             current_all_job_target_datablock_selected_nums.append(job_item.target_datablock_select_num)
             current_all_job_arrival_times.append(job_item.arrival_time)
+        
+        self.logger.debug(f"first check waiting_queue len: {len(self.waiting_queue)}")
+        self.logger.debug(f"first check datablock len: {len(sub_train_datasetidentifier_2_epsilon_capcity)}")
         sign_matrix, temp_index_2_datablock_identifier = self.get_sign_matrix(
             current_all_job_priority_weights,
             current_all_job_significances,
             sub_train_datasetidentifier_2_epsilon_capcity
         )
+        self.logger.debug(f"second check sign_matrix shape: {sign_matrix.shape}")
         
         datablock_privacy_budget_capacity_list = np.zeros(shape=sign_matrix.shape[1])
         datablock_arrival_time_list = np.zeros(shape=sign_matrix.shape[1])
@@ -174,6 +178,7 @@ class OfflinePolicy(Policy):
                 for datablock_col_index in range(datablock_num):
                     pairs.append((job_row_index, datablock_col_index, assign_result_matrix[job_row_index][datablock_col_index]))
             sorted_pairs = sorted(pairs, key=lambda x: x[2], reverse=True)
+            self.logger.debug(f"check sorted_pairs len: {len(sorted_pairs)}")
             job_current_selected_datablock_count = [0] * job_num
             for pair in sorted_pairs:
                 job_index, datablock_index = pair[0], pair[1]

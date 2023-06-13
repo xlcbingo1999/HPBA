@@ -187,7 +187,8 @@ class Worker_server(object):
 
     def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info, 
                   sched_epsilon_one_siton_run, begin_epoch_num, siton_run_epoch_num, 
-                  model_save_path, summary_writer_path, summary_writer_key, logging_file_path, final_significance, simulation_flag):
+                  model_save_path, summary_writer_path, summary_writer_key, logging_file_path, 
+                  final_significance, simulation_flag):
         # self.worker_logger.info("[bugxlc] job_id: {} call caculate => info: {}".format(job_id, origin_info))
         self.jobid_2_origininfo[job_id] = origin_info
         if simulation_flag:
@@ -261,7 +262,7 @@ def worker_listener_func(worker_server_item):
     g = zerorpc.gevent.spawn(s.run)  
     return g
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     args = get_df_config()
     local_ip, local_port, sched_ip, sched_port, gpu_update_time = args.local_ip, args.local_port, args.sched_ip, args.sched_port, args.gpu_update_time
     worker_server_item = Worker_server(local_ip, local_port, sched_ip, sched_port, gpu_update_time)

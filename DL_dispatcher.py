@@ -537,10 +537,10 @@ def testbed_experiment_start(
     processes = []
     dispatcher = Dispatcher(dispatcher_ip, dispatcher_port)
     dispatcher.restart_dispatcher(
-        jobs_list, 
-        history_jobs_list, 
-        datasets_list, 
-        current_test_all_dir,
+        jobs_list=jobs_list, 
+        history_jobs_list=history_jobs_list, 
+        datasets_map=datasets_list, 
+        current_test_all_dir=current_test_all_dir,
         simulation=False,
         simulation_index=0,
         restart_trace=restart_trace
@@ -550,12 +550,13 @@ def testbed_experiment_start(
     processes.append(remote_server_p)
 
     dispatcher.sched_init_sched_register(
-        sched_ip, sched_port, 
-        args, args.seeds[0], 
-        args.assignment_policy, args.significance_policy, 
-        pipeline_sequence_all_num, 
-        job_request_all_num,
-        args.config_max_operate_siton_run_num,
+        ip=sched_ip, port=sched_port, 
+        args=args, seed=args.seeds[0], 
+        assignment_policy=args.assignment_policy, 
+        significance_policy=args.significance_policy, 
+        pipeline_sequence_all_num=pipeline_sequence_all_num, 
+        job_request_all_num=job_request_all_num,
+        config_max_operate_siton_run_num=args.config_max_operate_siton_run_num,
         dataset_name=dataset_name, 
         dataset_config_name=dataset_config_name,
         max_gpu_fuzai=args.max_gpu_fuzai,
@@ -563,9 +564,11 @@ def testbed_experiment_start(
         enable_waiting_flag=enable_waiting_flag,
         simulation=False, simulation_index=0)
     dispatcher.sched_update_gpu_status_start(
-        sched_ip, sched_port, 
-        init_workerip_2_ports, init_gpuidentifiers, 
-        current_test_all_dir, simulation_index=0
+        ip=sched_ip, port=sched_port, 
+        init_workerip_2_ports=init_workerip_2_ports, 
+        init_gpuidentifiers=init_gpuidentifiers, 
+        current_test_all_dir=current_test_all_dir, 
+        simulation_index=0
     )
     if args.assignment_policy == "OfflinePolicy" or args.assignment_policy == "Offline":
         offline_dispatch_flag = True
@@ -590,11 +593,11 @@ def testbed_experiment_start(
     print("Waiting for load datasets and jobs {} s".format(waiting_time))
     zerorpc.gevent.sleep(waiting_time)
     dispatcher.sched_dispatch_start(
-        sched_ip, sched_port, 
-        update_timeout,
-        cal_significance_sleep_time, 
-        scheduler_update_sleep_time, 
-        placement_sleep_time
+        ip=sched_ip, port=sched_port, 
+        update_timeout=update_timeout,
+        cal_significance_sleep_time=cal_significance_sleep_time, 
+        scheduler_update_sleep_time=scheduler_update_sleep_time, 
+        placement_sleep_time=placement_sleep_time
     )
     
     # 主线程的最后一个操作!
@@ -756,7 +759,7 @@ def simulation_experiment_start(
     print("Waiting for stop threads {} s".format(waiting_time))
     zerorpc.gevent.sleep(waiting_time)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     args = get_df_config()
 
     sched_ip = args.sched_ip

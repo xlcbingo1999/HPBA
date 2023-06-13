@@ -436,26 +436,11 @@ def draw_testbed_fig_1():
         "SagewithRemainPolicy",
         "BestFitwithRemainPolicy"
     ]
-    y_label_name_arr = [
-        "Significance of all jobs", 
-        "Test Accuracy",
-        "Test Loss"
-        "Ratio of Allocated Datablocks"
-    ]
+    
     def get_testbed_fig_1_policy_map(origin_policy):
         result_policy = ""
         if origin_policy == "OfflinePolicy":
             result_policy = "Ground Truth"
-        elif "HISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "HIS"
-            # match = re.match(r"HISwithOrderProVersionPolicy\((?P<history_num>\d+)\)", origin_policy)
-            # if match:
-            #     result_policy = result_policy + "({})".format(match.group("history_num"))
-        elif "IterativeHISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "IterativeHIS"
-            # match = re.match(r"IterativeHISwithOrderPolicy\((?P<iteration_num>\d+)\)", origin_policy)
-            # if match:
-            #     result_policy = result_policy + "({})".format(match.group("iteration_num"))
         elif origin_policy == "PBGPolicy":
             result_policy = "PBG"
         elif origin_policy == "PBGMixPolicy": 
@@ -464,6 +449,16 @@ def draw_testbed_fig_1():
             result_policy = "Sage"
         elif origin_policy == "BestFitwithRemainPolicy":
             result_policy = "BestFit"
+        elif origin_policy == "HISwithOrderProVersionPolicy(infinity)":
+            result_policy = "HIS"
+            # match = 
+            # if match:
+            #     result_policy = result_policy + "({})".format(match.group("history_num"))
+        elif origin_policy == "IterativeHISwithOrderProVersionPolicy(adaptive)":
+            result_policy = "IterativeHIS"
+            # match = re.match(r"IterativeHISwithOrderPolicy\((?P<iteration_num>\d+)\)", origin_policy)
+            # if match:
+            #     result_policy = result_policy + "({})".format(match.group("iteration_num"))
         return result_policy
     env_x_label = r"Number of Test Job"
     params = {
@@ -481,9 +476,16 @@ def draw_testbed_fig_1():
         "marker_size": 10,
         "same_distance": True
     }
+    y_label_name_arr = [
+        "Significance of all jobs", 
+        "Test Accuracy",
+        "Test Loss",
+        "Ratio of Allocated Datablocks"
+    ]
     fill_between_flag = False
     draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
                     y_label_name_arr, env_x_label, params, fill_between_flag, get_testbed_fig_1_policy_map)
+    
 
 if __name__ == "__main__":
     # draw_fig_1()

@@ -14,34 +14,6 @@ from utils.global_variable import SIGNIFICANCE_TRACE_PREFIX_PATH
 import multiprocessing
 from tqdm import tqdm
 
-class JobTypeItem(object): # TODO: 改成 JobTypeItem
-    def __init__(self, type_identifier, train_dataset_name, test_dataset_name, sub_test_key_id):
-        self.type_identifier = type_identifier
-        self.type_train_dataset_name = train_dataset_name
-        self.type_test_dataset_name = test_dataset_name
-        self.type_sub_test_key_id = sub_test_key_id
-
-        self.history_acces = []
-        self.history_delta_acces = []
-        self.history_used_subtrain_block_per_epoches = []
-        self.history_subtrain_block_used_count = {}
-        
-        self.history_significance_for_subtrain_datablock = {}
-
-    def get_history_result(self, sub_train_key_id, history_rho):
-        max_index = len(self.history_delta_acces) - 1
-        history_result_fenzi = 0.0
-        history_result_fenmu = 0.0
-        # print("job {} first in {}".format(self.type_id, len(self.history_delta_acces)))
-        for index, delta_acc in enumerate(self.history_delta_acces):
-            add_delta_acc_value = 0.0
-            if sub_train_key_id in self.history_used_subtrain_block_per_epoches[index]:
-                add_delta_acc_value = delta_acc
-            weight_rho = pow(history_rho, max_index - index)
-            history_result_fenzi += weight_rho * add_delta_acc_value
-            history_result_fenmu += weight_rho
-        return history_result_fenzi / history_result_fenmu
-
 def cal_origin_OTDD(signficance_state, device_index, distance_batch_size, calculate_batch_size, sub_train_dataset_config_path, test_dataset_config_path):
     print(f"begin: {signficance_state} in device_index {device_index}")
     train_dataset_name = signficance_state["train_dataset_name"]
@@ -121,8 +93,6 @@ class OTDDPolicy(SigPolicy):
         else:
             self.origin_OTDD_trace = {}
         
-        self.type_identifier_2_typeitem = {}
-
     def write_to_origin_OTDD_trace(self):
         self.logger.debug("==== write_to_origin_OTDD_trace [origin_OTDD_trace] ====")
         self.logger.info(self.origin_OTDD_trace)
@@ -165,7 +135,7 @@ class OTDDPolicy(SigPolicy):
         return result_d
 
     
-    def get_job_significance_result_for_all_datablocks(self, type_id, all_significance_state):
+    def get_job_significance_result_for_all_datablocks(self, all_significance_state):
         begin = time.time()
         origin_OTDDs = []
         norm_OTDDs = []
@@ -197,12 +167,12 @@ class OTDDPolicy(SigPolicy):
         ]
         
         end = time.time()
-        self.logger.debug("type_id [{}] to datablocks significance: {} [norm_OTDDs: {}], time: {}".format(
-            type_id, result, norm_OTDDs, end-begin
+        self.logger.debug("significance: {} [norm_OTDDs: {}], time: {}".format(
+            result, norm_OTDDs, end-begin
         ))
         return result
     
-    def get_job_datablock_significance_async(self, type_id, all_significance_state, cal_device_list):
+    def get_job_datablock_significance_async(self, all_significance_state, cal_device_list):
         assert len(cal_device_list) > 0
         begin = time.time()
 
@@ -247,7 +217,7 @@ class OTDDPolicy(SigPolicy):
         ]
         
         end = time.time()
-        self.logger.debug("type_id [{}] to datablocks significance: {} [norm_OTDDs: {}], time: {}".format(
-            type_id, result, norm_OTDDs, end-begin
+        self.logger.debug("significance: {} [norm_OTDDs: {}], time: {}".format(
+            result, norm_OTDDs, end-begin
         ))
         return result

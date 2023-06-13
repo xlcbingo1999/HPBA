@@ -167,7 +167,7 @@ class TempPolicy(SigPolicy):
         with open(self.significance_trace_path, "w+") as f:
             json.dump(self.origin_significance_trace, f)
 
-    def get_job_significance_result_for_all_datablocks(self, type_id, all_significance_state):
+    def get_job_significance_result_for_all_datablocks(self, all_significance_state):
         begin = time.time()
         origin_Temps = []
         norm_Temps = []
@@ -203,12 +203,12 @@ class TempPolicy(SigPolicy):
         ]
         
         end = time.time()
-        self.logger.debug("type_id [{}] to datablocks significance: {} [norm_Temps: {}], time: {}".format(
-            type_id, result, norm_Temps, end-begin
+        self.logger.debug("significance: {} [norm_Temps: {}], time: {}".format(
+            result, norm_Temps, end-begin
         ))
         return result
 
-    def get_job_datablock_significance_async(self, type_id, all_significance_state, cal_device_list):
+    def get_job_datablock_significance_async(self, all_significance_state, cal_device_list):
         assert len(cal_device_list) > 0
         begin = time.time()
 
@@ -256,7 +256,7 @@ class TempPolicy(SigPolicy):
         ]
         
         end = time.time()
-        self.logger.debug("type_id [{}] to datablocks significance: {} [norm_temp_losses: {}], time: {}".format(
-            type_id, result, norm_temp_losses, end-begin
+        self.logger.debug("significance: {} [norm_temp_losses: {}], time: {}".format(
+            result, norm_temp_losses, end-begin
         ))
         return result

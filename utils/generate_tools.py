@@ -361,14 +361,13 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
                     dataset_reconstruct_path="", save_path=""):
     offline_time_default = -100.0
     online_time_iterval = 120.0 / time_speed_up # 1分钟1个块?
+    datasets_list = {}
+    time_2_datablock_num = {}
     if len(dataset_reconstruct_path) > 0:
         print("load from path: {}".format(dataset_reconstruct_path))
         dataset_path = RESULT_PATH + "/{}/datasets.json".format(dataset_reconstruct_path)
         with open(dataset_path, "r+") as f:
             temp_datasets_list = json.load(f)
-        datasets_list = {}
-        time_2_datablock_num = {}
-        arrival_time_arr = []
         current_num = 0
         for name in temp_datasets_list:
             if name not in datasets_list:
@@ -377,22 +376,13 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
                 datasets_list[name][sub_datablock_name] = temp_datasets_list[name][sub_datablock_name]
                 if datasets_list[name][sub_datablock_name]["epsilon_capacity"] != fix_epsilon:
                     datasets_list[name][sub_datablock_name] = change_epsilon_G(datasets_list[name][sub_datablock_name], fix_epsilon)
-                datasets_list[name][sub_datablock_name] = change_arrival_time(datasets_list[name][sub_datablock_name], datasets_list[name][sub_datablock_name]["time"] / time_speed_up)
-                arrival_time = datasets_list[name][sub_datablock_name]["time"]
-                arrival_time_arr.append(arrival_time)
-                if arrival_time not in time_2_datablock_num:
-                    time_2_datablock_num[arrival_time] = 0
-                time_2_datablock_num[arrival_time] += 1
                 current_num += 1
-                if current_num > num:
+                if current_num >= num:
                     break
-            if current_num > num:
+            if current_num >= num:
                 break
-        # 根据时间排序, 然后顺序延迟赋值时间
     else:
         print("check dataset_names: {}".format(dataset_names))
-        datasets_list = {}
-        time_2_datablock_num = {}
         for name in dataset_names:
             if name not in waiting_select_train_dataset_names:
                 continue
@@ -403,9 +393,6 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
                     arrival_time = offline_time_default
                 else:
                     arrival_time = online_time_iterval * (index - offline_num)
-                if arrival_time not in time_2_datablock_num:
-                    time_2_datablock_num[arrival_time] = 0
-                time_2_datablock_num[arrival_time] += 1
                 datasets_list[name][sub_datablock_name] = {
                     "submited": False,
                     "epsilon_capacity": fix_epsilon,
@@ -413,6 +400,21 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
                     "time": arrival_time
                 }
             print(datasets_list[name])
+    
+    # 根据时间排序, 然后顺序延迟赋值时间, 这样就实现了动态更新!
+    time_index = 0
+    for name in datasets_list:
+        for sub_datablock_name in datasets_list[name]:
+            if time_index < offline_num:
+                arrival_time = offline_time_default
+            else:
+                arrival_time = online_time_iterval * (time_index - offline_num)
+            time_index += 1
+            datasets_list[name][sub_datablock_name] = change_arrival_time(datasets_list[name][sub_datablock_name], arrival_time)
+            if arrival_time not in time_2_datablock_num:
+                time_2_datablock_num[arrival_time] = 0
+            time_2_datablock_num[arrival_time] += 1
+    
     if len(save_path) > 0:
         dataset_path = RESULT_PATH + "/{}/datasets.json".format(save_path)
         if not os.path.exists(dataset_path):

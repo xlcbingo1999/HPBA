@@ -43,7 +43,8 @@ def DL_server_do_jobs(job_id, origin_info, sched_epsilon_one_siton_run, siton_ru
     
     client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info, 
                     sched_epsilon_one_siton_run, begin_epoch_num, siton_run_epoch_num, 
-                    model_save_path, summary_writer_path, summary_writer_key, logging_file_path, final_significance, simulation_flag)
+                    model_save_path, summary_writer_path, summary_writer_key, logging_file_path, 
+                    final_significance, simulation_flag)
 
 class SchedEvent(object):
     def __init__(self, priority, event_key, metadata):
@@ -174,7 +175,8 @@ class Scheduler_server(object):
     def initialize_sched_configs(self, simulation, simulation_index, 
                                 seed, current_test_all_dir, 
                                 all_or_nothing_flag, enable_waiting_flag, 
-                                pipeline_sequence_all_num, job_request_all_num, config_max_operate_siton_run_num,
+                                pipeline_sequence_all_num, job_request_all_num, 
+                                config_max_operate_siton_run_num,
                                 dataset_name, dataset_config_name, max_gpu_fuzai):
         # simulation
         self.simulation = simulation
@@ -395,18 +397,20 @@ class Scheduler_server(object):
                     offline_history_job_informations = self.assignment_policy.pull_offline_history_from_assignment_policy(
                         ["offline_history_job_test_dataset_name", "offline_history_job_sub_test_key_id",
                          "offline_history_job_train_dataset_name", "offline_history_job_type_id",
-                         "offline_history_job_significance"]
+                         "offline_history_job_significance", "offline_history_job_model_name"]
                     )
                     for offline_index in range(len(offline_history_job_informations["offline_history_job_significance"])):
                         test_dataset_name = offline_history_job_informations["offline_history_job_test_dataset_name"][offline_index]
                         sub_test_key_id = offline_history_job_informations["offline_history_job_sub_test_key_id"][offline_index]
                         train_dataset_name = offline_history_job_informations["offline_history_job_train_dataset_name"][offline_index]
                         type_id = offline_history_job_informations["offline_history_job_type_id"][offline_index]
+                        model_name = offline_history_job_informations["offline_history_job_model_name"][offline_index]
                         significance_state = [{
                             "test_dataset_name": test_dataset_name,
                             "sub_test_key_id": sub_test_key_id,
                             "train_dataset_name": train_dataset_name,
-                            "sub_train_key_id": identifier
+                            "sub_train_key_id": identifier,
+                            "model_name": model_name
                         }]
                         result_d_map = self.get_job_datablock_significance_sync(type_id, significance_state)
                         offline_history_job_informations["offline_history_job_significance"][offline_index].update(result_d_map)
@@ -415,18 +419,20 @@ class Scheduler_server(object):
                     online_history_job_informations = self.assignment_policy.pull_online_history_from_assignment_policy(
                         ["online_history_job_test_dataset_name", "online_history_job_sub_test_key_id",
                          "online_history_job_train_dataset_name", "online_history_job_type_id",
-                         "online_history_job_significance"]
+                         "online_history_job_significance", "online_history_job_model_name"]
                     )
                     for online_index in range(len(online_history_job_informations["online_history_job_significance"])):
                         test_dataset_name = online_history_job_informations["online_history_job_test_dataset_name"][online_index]
                         sub_test_key_id = online_history_job_informations["online_history_job_sub_test_key_id"][online_index]
                         train_dataset_name = online_history_job_informations["online_history_job_train_dataset_name"][online_index]
                         type_id = online_history_job_informations["online_history_job_type_id"][online_index]
+                        model_name = online_history_job_informations["online_history_job_model_name"][online_index]
                         significance_state = [{
                             "test_dataset_name": test_dataset_name,
                             "sub_test_key_id": sub_test_key_id,
                             "train_dataset_name": train_dataset_name,
-                            "sub_train_key_id": identifier
+                            "sub_train_key_id": identifier,
+                            "model_name": model_name
                         }]
                         result_d_map = self.get_job_datablock_significance_sync(type_id, significance_state)
                         online_history_job_informations["online_history_job_significance"][online_index].update(result_d_map)
@@ -437,12 +443,14 @@ class Scheduler_server(object):
                         test_dataset_name = self.jobid_2_test_dataset_name[waiting_job_id]
                         sub_test_key_id = self.jobid_2_sub_test_key_id[waiting_job_id]
                         train_dataset_name = self.jobid_2_train_dataset_name[waiting_job_id]
+                        model_name = self.jobid_2_origininfo[waiting_job_id]["model_name"]
                         type_id = self.jobid_2_typeid[waiting_job_id]
                         significance_state = [{
                             "test_dataset_name": test_dataset_name,
                             "sub_test_key_id": sub_test_key_id,
                             "train_dataset_name": train_dataset_name,
-                            "sub_train_key_id": identifier
+                            "sub_train_key_id": identifier,
+                            "model_name": model_name
                         }]
                         result_d_map = self.get_job_datablock_significance_sync(type_id, significance_state)
                         
@@ -534,6 +542,7 @@ class Scheduler_server(object):
         offline_history_job_significance = []
         offline_history_job_type_id = []
         offline_history_job_arrival_time = []
+        offline_history_job_model_name = []
         for id in sorted(history_jobs_map):
             # target_job_epoch_num = history_jobs_map[id]["TARGET_EPOCHS"]
             offline_history_job_priority_weights.append(history_jobs_map[id]["priority_weight"])
@@ -559,6 +568,8 @@ class Scheduler_server(object):
             arrival_time = history_jobs_map[id]["time"]
             offline_history_job_arrival_time.append(arrival_time)
 
+            model_name = history_jobs_map[id]["model_name"]
+            offline_history_job_model_name.append(model_name)
             
             if train_dataset_name in self.sub_train_datasetidentifier_2_dataset_status: # 当历史记录到来前还没有历史记录的时候就需要处理
                 all_significance_state = []
@@ -567,7 +578,8 @@ class Scheduler_server(object):
                         "test_dataset_name": test_dataset_name,
                         "sub_test_key_id": sub_test_key_id,
                         "train_dataset_name": train_dataset_name,
-                        "sub_train_key_id": sub_train_key_id
+                        "sub_train_key_id": sub_train_key_id,
+                        "model_name": model_name
                     }
                     all_significance_state.append(significance_state)
                 result_d_map = self.get_job_datablock_significance_sync(type_id, all_significance_state)
@@ -584,7 +596,8 @@ class Scheduler_server(object):
                 offline_history_job_sub_test_key_id,
                 offline_history_job_type_id,
                 offline_history_job_significance,
-                offline_history_job_arrival_time
+                offline_history_job_arrival_time,
+                offline_history_job_model_name
             )
         self.finished_update_init_history_jobs = True
 
@@ -665,18 +678,6 @@ class Scheduler_server(object):
         p = threading.Thread(target=thread_func_sched_simulation, args=(subtrain_datasetidentifier_info, all_history_jobs_detail, all_jobs_detail))
         p.start()
 
-    def sche_timely_update_history_job(self, priority_weight, 
-                                    EPSILON, train_dataset_name, datablock_selected_num, 
-                                    test_dataset_name, sub_test_key_id, 
-                                    type_id, significance, arrival_time):
-        if self.assignment_policy.need_history:
-            self.assignment_policy.push_online_history_to_assignment_policy(
-                priority_weight, EPSILON, datablock_selected_num, 
-                train_dataset_name, test_dataset_name, sub_test_key_id,
-                type_id, significance, arrival_time
-            )
-        self.sched_logger.debug("success add a new history job")
-
     def sche_reflash_job_status(self, job_id, origin_status, new_status):
         self.jobid_2_status[job_id] = new_status
         self.status_2_jobid[origin_status].remove(job_id)
@@ -685,11 +686,15 @@ class Scheduler_server(object):
 
     def job_add_to_history(self, job_id):
         job_siton_run_index = self.jobid_2_current_operate_siton_run_index[job_id]
-        self.sche_timely_update_history_job(self.jobid_2_priority_weight[job_id], self.jobid_2_target_siton_run_epsilon[job_id],
-                                            self.jobid_2_train_dataset_name[job_id], self.jobid_2_datablock_selected_num[job_id],
-                                            self.jobid_2_test_dataset_name[job_id], self.jobid_2_sub_test_key_id[job_id], 
-                                            self.jobid_2_typeid[job_id], self.jobid_2_target_significance[job_id],
-                                            self.jobid_2_arrival_time[job_id][job_siton_run_index])
+        if self.assignment_policy.need_history:
+            self.assignment_policy.push_online_history_to_assignment_policy(
+                self.jobid_2_priority_weight[job_id], self.jobid_2_target_siton_run_epsilon[job_id],
+                self.jobid_2_datablock_selected_num[job_id], self.jobid_2_train_dataset_name[job_id],
+                self.jobid_2_test_dataset_name[job_id], self.jobid_2_sub_test_key_id[job_id], 
+                self.jobid_2_typeid[job_id], self.jobid_2_target_significance[job_id],
+                self.jobid_2_arrival_time[job_id][job_siton_run_index], self.jobid_2_origininfo[job_id]["model_name"]
+            )
+        self.sched_logger.debug("success add a new history job")
 
     def get_all_state_num(self):
         current_success_num = len(self.status_2_jobid[JOB_STATUS_KEY.FINISHED])
@@ -1116,7 +1121,7 @@ class Scheduler_server(object):
         sub_train_index_2_significance = {
             index: None for index, _ in enumerate(all_significance_state)
         }
-        significance_list = self.significance_policy.get_job_significance_result_for_all_datablocks(type_id, all_significance_state)
+        significance_list = self.significance_policy.get_job_significance_result_for_all_datablocks(all_significance_state)
         for index, signi in enumerate(significance_list):
             sub_train_index_2_significance[index] = signi
         # 将所有为None的提取出来, 异步请求一下
@@ -1128,7 +1133,7 @@ class Scheduler_server(object):
             for index in async_indexes:
                 async_significance_state.append(all_significance_state[index])
 
-            async_significance_list = self.significance_policy.get_job_datablock_significance_async(type_id, async_significance_state, device_list)
+            async_significance_list = self.significance_policy.get_job_datablock_significance_async(async_significance_state, device_list)
             for index, signi in enumerate(async_significance_list):
                 sub_train_index_2_significance[async_indexes[index]] = signi
         # 最终返回: {sub_train_key_id: value}
@@ -1185,6 +1190,7 @@ class Scheduler_server(object):
                 continue
             test_dataset_name = self.jobid_2_test_dataset_name[job_id]
             sub_test_key_id = self.jobid_2_sub_test_key_id[job_id]
+            model_name = self.jobid_2_origininfo[job_id]["model_name"]
 
             job_target_train_dataset_name = self.jobid_2_train_dataset_name[job_id]
             # self.sched_logger.debug(f"job[{job_id}] target_train_dataset_name: {job_target_train_dataset_name}")
@@ -1197,7 +1203,8 @@ class Scheduler_server(object):
                         "test_dataset_name": test_dataset_name,
                         "sub_test_key_id": sub_test_key_id,
                         "train_dataset_name": job_target_train_dataset_name,
-                        "sub_train_key_id": sub_train_key_id
+                        "sub_train_key_id": sub_train_key_id,
+                        "model_name": model_name
                     }
                     all_significance_state.append(significance_state)
             else:
@@ -1672,7 +1679,7 @@ def get_df_config():
     args = parser.parse_args()
     return args
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     args = get_df_config()
 
     sched_ip = args.sched_ip

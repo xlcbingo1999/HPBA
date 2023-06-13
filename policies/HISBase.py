@@ -27,6 +27,7 @@ class HISBasePolicy(Policy):
         self.offline_history_job_type_id = []
         self.offline_history_job_significance = []
         self.offline_history_job_arrival_time = []
+        self.offline_history_job_model_name = []
 
         self.online_history_job_priority_weights = []
         self.online_history_job_budget_consumes = []
@@ -37,6 +38,7 @@ class HISBasePolicy(Policy):
         self.online_history_job_type_id = []
         self.online_history_job_significance = []
         self.online_history_job_arrival_time = []
+        self.online_history_job_model_name = []
 
     @property
     def is_infinity_flag(self):
@@ -48,7 +50,8 @@ class HISBasePolicy(Policy):
     
     def push_offline_history_to_assignment_policy(self, offline_history_job_priority_weights, offline_history_job_budget_consumes,
             offline_history_job_target_selected_num, offline_history_job_train_dataset_name, offline_history_job_test_dataset_name,
-            offline_history_job_sub_test_key_id, offline_history_job_type_id, offline_history_job_significance, offline_history_job_arrival_time):
+            offline_history_job_sub_test_key_id, offline_history_job_type_id, offline_history_job_significance, 
+            offline_history_job_arrival_time, offline_history_job_model_name):
         self.offline_history_job_priority_weights = offline_history_job_priority_weights
         self.offline_history_job_budget_consumes = offline_history_job_budget_consumes
         self.offline_history_job_target_selected_num = offline_history_job_target_selected_num
@@ -58,10 +61,12 @@ class HISBasePolicy(Policy):
         self.offline_history_job_type_id = offline_history_job_type_id
         self.offline_history_job_significance = offline_history_job_significance
         self.offline_history_job_arrival_time = offline_history_job_arrival_time
+        self.offline_history_job_model_name = offline_history_job_model_name
 
     def push_online_history_to_assignment_policy(self, online_job_priority_weight, online_job_budget_consume, 
             online_job_datablock_selected_num, online_job_train_dataset_name, online_job_test_dataset_name, 
-            online_job_sub_test_key_id, online_job_type_id, online_job_significance, online_job_arrival_time):
+            online_job_sub_test_key_id, online_job_type_id, online_job_significance, 
+            online_job_arrival_time, online_job_model_name):
         self.online_history_job_priority_weights.append(online_job_priority_weight)
         self.online_history_job_budget_consumes.append(online_job_budget_consume)
         self.online_history_job_target_selected_num.append(online_job_datablock_selected_num)
@@ -71,6 +76,7 @@ class HISBasePolicy(Policy):
         self.online_history_job_type_id.append(online_job_type_id)
         self.online_history_job_significance.append(online_job_significance)
         self.online_history_job_arrival_time.append(online_job_arrival_time)
+        self.online_history_job_model_name.append(online_job_model_name)
 
     def pull_offline_history_from_assignment_policy(self, target_keys):
         result = {}
@@ -93,6 +99,8 @@ class HISBasePolicy(Policy):
                 result[key] = self.offline_history_job_significance
             if key == "offline_history_job_arrival_time":
                 result[key] = self.offline_history_job_arrival_time
+            if key == "offline_history_job_model_name":
+                result[key] = self.offline_history_job_model_name
         return result
 
     def pull_online_history_from_assignment_policy(self, target_keys):
@@ -116,6 +124,8 @@ class HISBasePolicy(Policy):
                 result[key] = self.online_history_job_significance
             if key == "online_history_job_arrival_time":
                 result[key] = self.online_history_job_arrival_time
+            if key == "online_history_job_model_name":
+                result[key] = self.online_history_job_model_name
         return result
 
     def update_offline_history_job_significance_to_assignment_policy(self, offline_history_job_significance):

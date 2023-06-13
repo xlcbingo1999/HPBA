@@ -45,12 +45,12 @@ class Policy:
 
     def push_offline_history_to_assignment_policy(self, offline_history_job_priority_weights, offline_history_job_budget_consumes,
         offline_history_job_target_selected_num, offline_history_job_train_dataset_name, offline_history_job_test_dataset_name,
-        offline_history_job_sub_test_key_id, offline_history_job_type_id, offline_history_job_significance):
+        offline_history_job_sub_test_key_id, offline_history_job_type_id, offline_history_job_significance, offline_history_job_model_name):
         pass
 
     def push_online_history_to_assignment_policy(self, online_job_priority_weight, online_job_budget_consume, 
         online_job_datablock_selected_num, online_job_train_dataset_name, online_job_test_dataset_name, 
-        online_job_sub_test_key_id, online_job_type_id, online_job_significance):
+        online_job_sub_test_key_id, online_job_type_id, online_job_significance, online_job_model_name):
         pass
 
     def pull_offline_history_from_assignment_policy(self, target_keys):
