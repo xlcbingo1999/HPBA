@@ -20,7 +20,11 @@ def add_df_with_min_max(df):
         "Mean Significance (Success)",
         "Success Datablock Num",
         "Failed Datablock Num",
-        "Target Datablock Num"
+        "Target Datablock Num",
+        "Train Loss",	
+        "Train Accuracy",	
+        "Test Loss",	
+        "Test Accuracy"
     ]
     key_need_max = [True, False, True, True, True, False, True]
     # 遍历每一行并进行正则表达式匹配和提取
@@ -43,7 +47,7 @@ def add_df_with_min_max(df):
                     split_name_kuohao = temp_success_num_str.split("]")
                     split_left_kuohao = split_name_kuohao[1].split("(")
                     avg_value = float(split_left_kuohao[0])
-                    split_lianzifu = split_left_kuohao[1].split("-")
+                    split_lianzifu = split_left_kuohao[1].split("~")
                     min_value = float(split_lianzifu[0])
                     max_value = float(split_lianzifu[1].split(")")[0])
                     print(f"temp_success_num_str: {temp_success_num_str} => avg_value: {avg_value}; min_value: {min_value}; max_value: {max_value}")
@@ -52,10 +56,10 @@ def add_df_with_min_max(df):
                         df.loc[index, f'{key} avg'] = avg_value
                         df.loc[index, f'{key} min'] = min_value
                         df.loc[index, f'{key} max'] = max_value
-            elif ('(' in success_num_str) and ('-' in success_num_str) and (')' in success_num_str):
+            elif ('(' in success_num_str) and ('~' in success_num_str) and (')' in success_num_str):
                 split_left_kuohao = success_num_str.split("(")
                 avg_value = float(split_left_kuohao[0])
-                split_lianzifu = split_left_kuohao[1].split("-")
+                split_lianzifu = split_left_kuohao[1].split("~")
                 min_value = float(split_lianzifu[0])
                 max_value = float(split_lianzifu[1].split(")")[0])
                 
@@ -124,7 +128,12 @@ def get_result_avg_min_max_for_y_label_name(df_with_key, out_loop_groups, in_loo
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} avg"] * df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"]
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} min"] * df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"]
                 results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} max"] * df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"]
-
+            elif (y_label_name == "Train Loss" or y_label_name == "Train Accuracy" or 
+                y_label_name == "Test Loss" or y_label_name == "Test Accuracy") :
+                train_accuracy_prefix = y_label_name
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_accuracy_prefix} avg"]
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_accuracy_prefix} min"]
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_accuracy_prefix} max"]
 
     print("results: {}".format(results))
     print("results_min: {}".format(results_min))

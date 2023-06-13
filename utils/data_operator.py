@@ -37,25 +37,25 @@ def final_operate_data_old_version(current_test_all_dir):
     with open(all_result_path, "a+") as f:
         print_console_file("final_used_num: {}".format(final_used_num), fileHandler=f)
         if final_used_num > 0:
-            print_console_file("[success_info] {}({}-{}) === success_num_mean: {} ; success_num_min: {} ; success_num_max: {}".format(
+            print_console_file("[success_info] {}({}~{}) === success_num_mean: {} ; success_num_min: {} ; success_num_max: {}".format(
                 np.mean(success_num_arr), min(success_num_arr), max(success_num_arr), np.mean(success_num_arr), min(success_num_arr), max(success_num_arr)
             ), fileHandler=f)
-            print_console_file("[failed_info] {}({}-{}) === failed_num_mean: {} ; failed_num_min: {} ; failed_num_max: {}".format(
+            print_console_file("[failed_info] {}({}~{}) === failed_num_mean: {} ; failed_num_min: {} ; failed_num_max: {}".format(
                 np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr), np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr)
             ), fileHandler=f)
-            print_console_file("[allsig_info] {}({}-{}) === all_final_significance_mean: {} ; all_final_significance_min: {} ; all_final_significance_max: {}".format(
+            print_console_file("[allsig_info] {}({}~{}) === all_final_significance_mean: {} ; all_final_significance_min: {} ; all_final_significance_max: {}".format(
                 np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr), np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr)
             ), fileHandler=f)
-            print_console_file("[successsig_info] {}({}-{}) === success_final_significance_mean: {} ; success_final_significance_min: {} ; success_final_significance_max: {}".format(
+            print_console_file("[successsig_info] {}({}~{}) === success_final_significance_mean: {} ; success_final_significance_min: {} ; success_final_significance_max: {}".format(
                 np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr), np.mean(success_final_significance_arr), min(success_final_significance_arr), max(success_final_significance_arr)
             ), fileHandler=f)
-            print_console_file("[successblock_info] {}({}-{}) === success_datablock_num_mean: {} ; success_datablock_num_min: {} ; success_datablock_num_max: {}".format(
+            print_console_file("[successblock_info] {}({}~{}) === success_datablock_num_mean: {} ; success_datablock_num_min: {} ; success_datablock_num_max: {}".format(
                 np.mean(success_datablock_num_arr), min(success_datablock_num_arr), max(success_datablock_num_arr), np.mean(success_datablock_num_arr), min(success_datablock_num_arr), max(success_datablock_num_arr)
             ), fileHandler=f)
-            print_console_file("[failedblock_info] {}({}-{}) === failed_datablock_num_mean: {} ; failed_datablock_num_min: {} ; failed_datablock_num_max: {}".format(
+            print_console_file("[failedblock_info] {}({}~{}) === failed_datablock_num_mean: {} ; failed_datablock_num_min: {} ; failed_datablock_num_max: {}".format(
                 np.mean(failed_datablock_num_arr), min(failed_datablock_num_arr), max(failed_datablock_num_arr), np.mean(failed_datablock_num_arr), min(failed_datablock_num_arr), max(failed_datablock_num_arr)
             ), fileHandler=f)
-            print_console_file("[targetblock_info] {}({}-{}) === target_datablock_num_mean: {} ; target_datablock_num_min: {} ; target_datablock_num_max: {}".format(
+            print_console_file("[targetblock_info] {}({}~{}) === target_datablock_num_mean: {} ; target_datablock_num_min: {} ; target_datablock_num_max: {}".format(
                 np.mean(target_datablock_num_arr), min(target_datablock_num_arr), max(target_datablock_num_arr), np.mean(target_datablock_num_arr), min(target_datablock_num_arr), max(target_datablock_num_arr)
             ), fileHandler=f)
     print(f"============================ {current_test_all_dir} [success:{final_used_num}] ====================================")
@@ -74,39 +74,39 @@ def final_log_result(current_test_all_dir, all_result_file_name):
     with open(all_result_path, "w+") as f:
         print_console_file("final_used_num: {}".format(final_used_num), fileHandler=f)
         if final_used_num > 0:
-            print_console_file("[success_info] {}({}-{}) === success_num_mean: {} ; success_num_min: {} ; success_num_max: {}".format(
+            print_console_file("[success_info] {}({}~{}) === success_num_mean: {} ; success_num_min: {} ; success_num_max: {}".format(
                 np.mean(success_num_arr), min(success_num_arr), max(success_num_arr), np.mean(success_num_arr), min(success_num_arr), max(success_num_arr)
             ), fileHandler=f)
-            print_console_file("[failed_info] {}({}-{}) === failed_num_mean: {} ; failed_num_min: {} ; failed_num_max: {}".format(
+            print_console_file("[failed_info] {}({}~{}) === failed_num_mean: {} ; failed_num_min: {} ; failed_num_max: {}".format(
                 np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr), np.mean(failed_num_arr), min(failed_num_arr), max(failed_num_arr)
             ), fileHandler=f)
-            print_console_file("[testjob_info] {}({}-{}) === testjob_num_mean: {} ; testjob_num_min: {} ; testjob_num_max: {}".format(
+            print_console_file("[testjob_info] {}({}~{}) === testjob_num_mean: {} ; testjob_num_min: {} ; testjob_num_max: {}".format(
                 np.mean(all_test_jobs_num_arr), min(all_test_jobs_num_arr), max(all_test_jobs_num_arr), np.mean(all_test_jobs_num_arr), min(all_test_jobs_num_arr), max(all_test_jobs_num_arr)
             ), fileHandler=f)
 
-            print_console_file("[allsig_info] {}({}-{}) === all_final_significance_mean: {} ; all_final_significance_min: {} ; all_final_significance_max: {}".format(
+            print_console_file("[allsig_info] {}({}~{}) === all_final_significance_mean: {} ; all_final_significance_min: {} ; all_final_significance_max: {}".format(
                 np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr), np.mean(all_final_significance_arr), min(all_final_significance_arr), max(all_final_significance_arr)
             ), fileHandler=f)
-            print_console_file("[successblock_info] {}({}-{}) === success_datablock_num_mean: {} ; success_datablock_num_min: {} ; success_datablock_num_max: {}".format(
+            print_console_file("[successblock_info] {}({}~{}) === success_datablock_num_mean: {} ; success_datablock_num_min: {} ; success_datablock_num_max: {}".format(
                 np.mean(all_success_datablock_num_arr), min(all_success_datablock_num_arr), max(all_success_datablock_num_arr), np.mean(all_success_datablock_num_arr), min(all_success_datablock_num_arr), max(all_success_datablock_num_arr)
             ), fileHandler=f)
-            print_console_file("[failedblock_info] {}({}-{}) === failed_datablock_num_mean: {} ; failed_datablock_num_min: {} ; failed_datablock_num_max: {}".format(
+            print_console_file("[failedblock_info] {}({}~{}) === failed_datablock_num_mean: {} ; failed_datablock_num_min: {} ; failed_datablock_num_max: {}".format(
                 np.mean(all_failed_datablock_num_arr), min(all_failed_datablock_num_arr), max(all_failed_datablock_num_arr), np.mean(all_failed_datablock_num_arr), min(all_failed_datablock_num_arr), max(all_failed_datablock_num_arr)
             ), fileHandler=f)
-            print_console_file("[targetblock_info] {}({}-{}) === target_datablock_num_mean: {} ; target_datablock_num_min: {} ; target_datablock_num_max: {}".format(
+            print_console_file("[targetblock_info] {}({}~{}) === target_datablock_num_mean: {} ; target_datablock_num_min: {} ; target_datablock_num_max: {}".format(
                 np.mean(all_target_datablock_num_arr), min(all_target_datablock_num_arr), max(all_target_datablock_num_arr), np.mean(all_target_datablock_num_arr), min(all_target_datablock_num_arr), max(all_target_datablock_num_arr)
             ), fileHandler=f)
 
-            print_console_file("[train_loss_info] {}({}-{}) === train_loss_mean: {} ; train_loss_min: {} ; train_loss_max: {}".format(
+            print_console_file("[train_loss_info] {}({}~{}) === train_loss_mean: {} ; train_loss_min: {} ; train_loss_max: {}".format(
                 np.mean(all_train_loss_arr), min(all_train_loss_arr), max(all_train_loss_arr), np.mean(all_train_loss_arr), min(all_train_loss_arr), max(all_train_loss_arr)
             ), fileHandler=f)
-            print_console_file("[train_accuracy_info] {}({}-{}) === train_accuracy_mean: {} ; train_accuracy_min: {} ; train_accuracy_max: {}".format(
+            print_console_file("[train_accuracy_info] {}({}~{}) === train_accuracy_mean: {} ; train_accuracy_min: {} ; train_accuracy_max: {}".format(
                 np.mean(all_train_accuracy_arr), min(all_train_accuracy_arr), max(all_train_accuracy_arr), np.mean(all_train_accuracy_arr), min(all_train_accuracy_arr), max(all_train_accuracy_arr)
             ), fileHandler=f)
-            print_console_file("[test_loss_info] {}({}-{}) === test_loss_mean: {} ; test_loss_min: {} ; test_loss_max: {}".format(
+            print_console_file("[test_loss_info] {}({}~{}) === test_loss_mean: {} ; test_loss_min: {} ; test_loss_max: {}".format(
                 np.mean(all_test_loss_arr), min(all_test_loss_arr), max(all_test_loss_arr), np.mean(all_test_loss_arr), min(all_test_loss_arr), max(all_test_loss_arr)
             ), fileHandler=f)
-            print_console_file("[test_accuracy_info] {}({}-{}) === test_accuracy_mean: {} ; test_accuracy_min: {} ; test_accuracy_max: {}".format(
+            print_console_file("[test_accuracy_info] {}({}~{}) === test_accuracy_mean: {} ; test_accuracy_min: {} ; test_accuracy_max: {}".format(
                 np.mean(all_test_accuracy_arr), min(all_test_accuracy_arr), max(all_test_accuracy_arr), np.mean(all_test_accuracy_arr), min(all_test_accuracy_arr), max(all_test_accuracy_arr)
             ), fileHandler=f)
     print(f"============================ {current_test_all_dir} [success:{final_used_num}] ====================================")

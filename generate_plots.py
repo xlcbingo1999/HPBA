@@ -47,7 +47,7 @@ def draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups,
         ax.spines['right'].set_visible(False)  # 去掉右边框
 
         for policy_index, policy in enumerate(env_policy_groups):
-            print(f"policy_index: {policy_index}: policy: {policy}")
+            print(f"policy_index: {policy_index}: policy: {policy}, label: {get_policy_map_func(policy)}")
             print(f"results[group_index]: {results[policy_index]}")
             if same_distance:
                 env_x_groups_str = range(len(env_x_groups))
@@ -108,7 +108,7 @@ def draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups,
         pp.savefig(fig)
         pp.close()
 
-def draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
+def draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups,
                 y_label_name_arr, env_x_label, params, get_policy_map_func):
     current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
     path = os.path.join(current_dir, f"{target_pic_name}.csv")
@@ -117,6 +117,7 @@ def draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups,
     df_with_key = df.set_index(keys_str, drop=False)
     unique_values = df_with_key.index.unique()
     print(unique_values)
+    
     df_with_key = add_df_with_min_max(df_with_key)
     print("---- df.info ----")
     df_with_key.info()
@@ -425,11 +426,11 @@ def draw_fig_5():
 def draw_testbed_fig_1():
     target_pic_name = "testbed_fig_1_right"
     keys_str = ["policy", "Online job num"]
-    env_x_groups = [400, 800]
+    env_x_groups = [50, 100, 150, 200, 250, 300, 400, 800]
     env_policy_groups = [
         "OfflinePolicy",
         "HISwithOrderProVersionPolicy(infinity)", 
-        "IterativeHISwithOrderPolicy(adaptive)", 
+        "IterativeHISwithOrderProVersionPolicy(adaptive)", 
         "PBGPolicy",
         "PBGMixPolicy", 
         "SagewithRemainPolicy",
@@ -450,7 +451,7 @@ def draw_testbed_fig_1():
             # match = re.match(r"HISwithOrderProVersionPolicy\((?P<history_num>\d+)\)", origin_policy)
             # if match:
             #     result_policy = result_policy + "({})".format(match.group("history_num"))
-        elif "IterativeHISwithOrderPolicy" in origin_policy:
+        elif "IterativeHISwithOrderProVersionPolicy" in origin_policy:
             result_policy = "IterativeHIS"
             # match = re.match(r"IterativeHISwithOrderPolicy\((?P<iteration_num>\d+)\)", origin_policy)
             # if match:

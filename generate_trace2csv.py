@@ -19,20 +19,20 @@ def write_to_df(df, index,
                 all_success_datablock_num_arr, 
                 all_failed_datablock_num_arr,
                 run_time):
-    df.loc[index, "Success num"] = f"{np.mean(success_num_arr)}({min(success_num_arr)}-{max(success_num_arr)})"
-    df.loc[index, "Failed num"] = f"{np.mean(failed_num_arr)}({min(failed_num_arr)}-{max(failed_num_arr)})"
-    # df.loc[index, "Mean Significance (Success)"] = f"{np.mean(success_final_significance_arr)}({min(success_final_significance_arr)}-{max(success_final_significance_arr)})"
-    df.loc[index, "Test Jobs Num"] = f"{np.mean(all_test_jobs_num_arr)}({min(all_test_jobs_num_arr)}-{max(all_test_jobs_num_arr)})"
+    df.loc[index, "Success num"] = f"{np.mean(success_num_arr)}({min(success_num_arr)}~{max(success_num_arr)})"
+    df.loc[index, "Failed num"] = f"{np.mean(failed_num_arr)}({min(failed_num_arr)}~{max(failed_num_arr)})"
+    # df.loc[index, "Mean Significance (Success)"] = f"{np.mean(success_final_significance_arr)}({min(success_final_significance_arr)}~{max(success_final_significance_arr)})"
+    df.loc[index, "Test Jobs Num"] = f"{np.mean(all_test_jobs_num_arr)}({min(all_test_jobs_num_arr)}~{max(all_test_jobs_num_arr)})"
 
-    df.loc[index, "Train Loss"] = f"{np.mean(all_train_loss_arr)}({min(all_train_loss_arr)}-{max(all_train_loss_arr)})"
-    df.loc[index, "Train Accuracy"] = f"{np.mean(all_train_accuracy_arr)}({min(all_train_accuracy_arr)}-{max(all_train_accuracy_arr)})"
-    df.loc[index, "Test Loss"] = f"{np.mean(all_test_loss_arr)}({min(all_test_loss_arr)}-{max(all_test_loss_arr)})"
-    df.loc[index, "Test Accuracy"] = f"{np.mean(all_test_accuracy_arr)}({min(all_test_accuracy_arr)}-{max(all_test_accuracy_arr)})"
+    df.loc[index, "Train Loss"] = f"{np.mean(all_train_loss_arr)}({min(all_train_loss_arr)}~{max(all_train_loss_arr)})"
+    df.loc[index, "Train Accuracy"] = f"{np.mean(all_train_accuracy_arr)}({min(all_train_accuracy_arr)}~{max(all_train_accuracy_arr)})"
+    df.loc[index, "Test Loss"] = f"{np.mean(all_test_loss_arr)}({min(all_test_loss_arr)}~{max(all_test_loss_arr)})"
+    df.loc[index, "Test Accuracy"] = f"{np.mean(all_test_accuracy_arr)}({min(all_test_accuracy_arr)}~{max(all_test_accuracy_arr)})"
 
-    df.loc[index, "Mean Significance (ALL)"] = f"{np.mean(all_final_significance_arr)}({min(all_final_significance_arr)}-{max(all_final_significance_arr)})"
-    df.loc[index, "Target Datablock Num"] = f"{np.mean(all_target_datablock_num_arr)}({min(all_target_datablock_num_arr)}-{max(all_target_datablock_num_arr)})"
-    df.loc[index, "Success Datablock Num"] = f"{np.mean(all_success_datablock_num_arr)}({min(all_success_datablock_num_arr)}-{max(all_success_datablock_num_arr)})"
-    df.loc[index, "Failed Datablock Num"] = f"{np.mean(all_failed_datablock_num_arr)}({min(all_failed_datablock_num_arr)}-{max(all_failed_datablock_num_arr)})"
+    df.loc[index, "Mean Significance (ALL)"] = f"{np.mean(all_final_significance_arr)}({min(all_final_significance_arr)}~{max(all_final_significance_arr)})"
+    df.loc[index, "Target Datablock Num"] = f"{np.mean(all_target_datablock_num_arr)}({min(all_target_datablock_num_arr)}~{max(all_target_datablock_num_arr)})"
+    df.loc[index, "Success Datablock Num"] = f"{np.mean(all_success_datablock_num_arr)}({min(all_success_datablock_num_arr)}~{max(all_success_datablock_num_arr)})"
+    df.loc[index, "Failed Datablock Num"] = f"{np.mean(all_failed_datablock_num_arr)}({min(all_failed_datablock_num_arr)}~{max(all_failed_datablock_num_arr)})"
 
     df.loc[index, "Run Time"] = int(run_time)
     return df
