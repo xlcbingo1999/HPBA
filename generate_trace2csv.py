@@ -120,7 +120,7 @@ def update_df_real(df):
 
 if __name__ == "__main__":
     root_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
-    file_names = ["testbed_fig_1"] # temp_get_result, fig_5, fig_1, fig_2, fig_6
+    file_names = ["testbed_fig_2"] # temp_get_result, fig_5, fig_1, fig_2, fig_6, testbed_fig_1
     for file_name in file_names:
         target_path = os.path.join(root_dir, f"{file_name}.csv")
         result_path = os.path.join(root_dir, f"{file_name}_right.csv")
