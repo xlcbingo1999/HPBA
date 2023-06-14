@@ -142,9 +142,12 @@ class HISBasePolicy(Policy):
             temp = []
             for datablock_index, datablock_identifier in enumerate(sub_train_datasetidentifier_2_epsilon_capcity):
                 temp_index_2_datablock_identifier[datablock_index] = datablock_identifier
-                # self.logger.debug(f"current_all_job_significances[{job_index}][{datablock_identifier}]")
-                # self.logger.debug(f"=> {current_all_job_significances[job_index][datablock_identifier]}")
-                temp.append(current_all_job_significances[job_index][datablock_identifier] * job_priority_weight)
+                if datablock_identifier not in current_all_job_significances[job_index]:
+                    self.logger.warning(f"[warning] pair({job_index}, {datablock_identifier}) not in current_all_job_significances!!! set 0")
+                    sig = 0.0
+                else:
+                    sig = current_all_job_significances[job_index][datablock_identifier] * job_priority_weight
+                temp.append(sig)
             sign_matrix.append(temp)
         sign_matrix = np.array(sign_matrix)
         return sign_matrix, temp_index_2_datablock_identifier

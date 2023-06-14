@@ -130,8 +130,8 @@ class Dispatcher(object):
         self.current_time = 0
         self.all_finished = False
         
-    def dispatch_jobs(self, pipeline_sequence_all_num, sched_ip, sched_port, update_timeout, offline_dispatch_flag):
-        def thread_func_timely_dispatch_job(sched_ip, sched_port, update_timeout, offline_dispatch_flag):
+    def dispatch_jobs(self, pipeline_sequence_all_num, sched_ip, sched_port, update_timeout):
+        def thread_func_timely_dispatch_job(sched_ip, sched_port, update_timeout):
             while not self.all_finished:
                 count = self.dispatch_jobs_count
                 dispatch_jobs_detail = {}
@@ -140,7 +140,7 @@ class Dispatcher(object):
                     
                     need_submit_time = info["time"]
                     has_submited_flag = info["submited"]
-                    if (not has_submited_flag) and ((offline_dispatch_flag) or (not offline_dispatch_flag and need_submit_time <= self.current_time)):
+                    if (not has_submited_flag) and (need_submit_time <= self.current_time):
                         self.dispatcher_logger.info("[add job start job_id: {}] need_submit_time: {}; self.current_time: {}".format(job_id, need_submit_time, self.current_time))
                         self.jobs_detail[index][1]["submited"] = True
                         count += 1
@@ -157,7 +157,7 @@ class Dispatcher(object):
             self.dispatcher_logger.info("Thread [thread_func_timely_dispatch_job] finished!")
         # 在最开始一定要将真实的历史结果传过去
         client = get_zerorpc_client(sched_ip, sched_port)
-        p = threading.Thread(target=thread_func_timely_dispatch_job, args=(sched_ip, sched_port, update_timeout, offline_dispatch_flag), daemon=True)
+        p = threading.Thread(target=thread_func_timely_dispatch_job, args=(sched_ip, sched_port, update_timeout), daemon=True)
         p.start()
         return p
 
@@ -208,8 +208,8 @@ class Dispatcher(object):
         self.finished_labels[job_id] = True
         self.show_job_results(job_id, results)
 
-    def sched_update_dataset(self, sched_ip, sched_port, update_timeout, offline_dispatch_flag):
-        def thread_func_timely_dispatch_dataset(sched_ip, sched_port, update_timeout, offline_dispatch_flag):
+    def sched_update_dataset(self, sched_ip, sched_port, update_timeout):
+        def thread_func_timely_dispatch_dataset(sched_ip, sched_port, update_timeout):
             while not self.all_finished:
                 count = self.dispatch_datasets_count
                 subtrain_datasetidentifier_info = {}
@@ -219,7 +219,7 @@ class Dispatcher(object):
                         epsilon_capacity = self.datasets_map[dataset_name][sub_train_dataset_identifier]["epsilon_capacity"]
                         delta_capacity = self.datasets_map[dataset_name][sub_train_dataset_identifier]["delta_capacity"]
                         has_submited_flag = self.datasets_map[dataset_name][sub_train_dataset_identifier]["submited"]
-                        if (not has_submited_flag) and ((offline_dispatch_flag) or ((not offline_dispatch_flag) and need_submit_time <= self.current_time)):
+                        if (not has_submited_flag) and (need_submit_time <= self.current_time):
                             self.dispatcher_logger.info("[add dataset start dataset_name: {}; sub_train_dataset_identifier: {}]  need_submit_time: {}; self.current_time: {}".format(dataset_name, sub_train_dataset_identifier, need_submit_time, self.current_time))
                             self.datasets_map[dataset_name][sub_train_dataset_identifier]["submited"] = True
                             count += 1
@@ -239,7 +239,7 @@ class Dispatcher(object):
                     break
                 zerorpc.gevent.sleep(1)
             self.dispatcher_logger.info("Thread [thread_func_timely_dispatch_dataset] finished!")
-        p = threading.Thread(target=thread_func_timely_dispatch_dataset, args=(sched_ip, sched_port, update_timeout, offline_dispatch_flag), daemon=True)
+        p = threading.Thread(target=thread_func_timely_dispatch_dataset, args=(sched_ip, sched_port, update_timeout), daemon=True)
         p.start()
         return p
 
@@ -570,13 +570,9 @@ def testbed_experiment_start(
         current_test_all_dir=current_test_all_dir, 
         simulation_index=0
     )
-    if args.assignment_policy == "OfflinePolicy" or args.assignment_policy == "Offline":
-        offline_dispatch_flag = True
-    else:
-        offline_dispatch_flag = False
     
     if not args.without_start_load_job:
-        dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout, offline_dispatch_flag)
+        dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout)
         processes.append(dataset_p)
     
     zerorpc.gevent.sleep(waiting_time)
@@ -587,7 +583,7 @@ def testbed_experiment_start(
         history_job_p = dispatcher.dispatch_history_jobs(sched_ip, sched_port, update_timeout)
         processes.append(history_job_p)
     if not args.without_start_load_job:
-        job_p = dispatcher.dispatch_jobs(pipeline_sequence_all_num, sched_ip, sched_port, update_timeout, offline_dispatch_flag)
+        job_p = dispatcher.dispatch_jobs(pipeline_sequence_all_num, sched_ip, sched_port, update_timeout)
         processes.append(job_p)
 
     print("Waiting for load datasets and jobs {} s".format(waiting_time))
