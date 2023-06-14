@@ -1,4 +1,5 @@
 import sys
+import numpy as np
 
 class Policy:
     def __init__(self, pipeline_sequence_all_num, job_request_all_num):
@@ -38,6 +39,24 @@ class Policy:
         job_id = list(set_job_id)[0]
         train_dataset_name = list(set_dataset_name)[0]
         return job_id, train_dataset_name
+
+    def get_sign_matrix(self, current_all_job_priority_weights, current_all_job_significances,
+                        sub_train_datasetidentifier_2_epsilon_capcity):
+        temp_index_2_datablock_identifier = {}
+        sign_matrix = []
+        for job_index, job_priority_weight in enumerate(current_all_job_priority_weights):
+            temp = []
+            for datablock_index, datablock_identifier in enumerate(sub_train_datasetidentifier_2_epsilon_capcity):
+                temp_index_2_datablock_identifier[datablock_index] = datablock_identifier
+                if datablock_identifier not in current_all_job_significances[job_index]:
+                    self.logger.warning(f"[warning] pair({job_index}, {datablock_identifier}) not in current_all_job_significances!!! set 0")
+                    sig = 0.0
+                else:
+                    sig = current_all_job_significances[job_index][datablock_identifier] * job_priority_weight
+                temp.append(sig)
+            sign_matrix.append(temp)
+        sign_matrix = np.array(sign_matrix)
+        return sign_matrix, temp_index_2_datablock_identifier
 
     
     def push_success_allocation(self, success_datasetidentifier_2_consume_epsilon):

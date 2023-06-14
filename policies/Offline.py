@@ -34,19 +34,6 @@ class OfflinePolicy(Policy):
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
 
-    def get_sign_matrix(self, current_all_job_priority_weights, current_all_job_significances,
-                        sub_train_datasetidentifier_2_epsilon_capcity):
-        temp_index_2_datablock_identifier = {}
-        sign_matrix = []
-        for job_index, job_priority_weight in enumerate(current_all_job_priority_weights):
-            temp = []
-            for datablock_index, datablock_identifier in enumerate(sub_train_datasetidentifier_2_epsilon_capcity):
-                temp_index_2_datablock_identifier[datablock_index] = datablock_identifier
-                temp.append(current_all_job_significances[job_index][datablock_identifier] * job_priority_weight)
-            sign_matrix.append(temp)
-        sign_matrix = np.array(sign_matrix)
-        return sign_matrix, temp_index_2_datablock_identifier
-
     def get_LP_result(self, sign_matrix, 
                       datablock_privacy_budget_capacity_list, 
                       datablock_arrival_time_list,

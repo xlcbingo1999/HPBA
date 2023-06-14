@@ -134,24 +134,6 @@ class HISBasePolicy(Policy):
     def update_online_history_job_significance_to_assignment_policy(self, online_history_job_significance):
         self.online_history_job_significance = online_history_job_significance
 
-    def get_sign_matrix(self, current_all_job_priority_weights, current_all_job_significances,
-                        sub_train_datasetidentifier_2_epsilon_capcity):
-        temp_index_2_datablock_identifier = {}
-        sign_matrix = []
-        for job_index, job_priority_weight in enumerate(current_all_job_priority_weights):
-            temp = []
-            for datablock_index, datablock_identifier in enumerate(sub_train_datasetidentifier_2_epsilon_capcity):
-                temp_index_2_datablock_identifier[datablock_index] = datablock_identifier
-                if datablock_identifier not in current_all_job_significances[job_index]:
-                    self.logger.warning(f"[warning] pair({job_index}, {datablock_identifier}) not in current_all_job_significances!!! set 0")
-                    sig = 0.0
-                else:
-                    sig = current_all_job_significances[job_index][datablock_identifier] * job_priority_weight
-                temp.append(sig)
-            sign_matrix.append(temp)
-        sign_matrix = np.array(sign_matrix)
-        return sign_matrix, temp_index_2_datablock_identifier
-
     def get_his_single_job_require_epsilon(self, current_all_job_budget_consumes, current_all_job_target_datablock_selected_nums, batch_size_for_one_epoch):
         current_all_job_budget_consumes_np = np.array(current_all_job_budget_consumes)
         current_all_job_target_datablock_selected_nums_np = np.array(current_all_job_target_datablock_selected_nums)
