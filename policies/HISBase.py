@@ -142,6 +142,8 @@ class HISBasePolicy(Policy):
             temp = []
             for datablock_index, datablock_identifier in enumerate(sub_train_datasetidentifier_2_epsilon_capcity):
                 temp_index_2_datablock_identifier[datablock_index] = datablock_identifier
+                # self.logger.debug(f"current_all_job_significances[{job_index}][{datablock_identifier}]")
+                # self.logger.debug(f"=> {current_all_job_significances[job_index][datablock_identifier]}")
                 temp.append(current_all_job_significances[job_index][datablock_identifier] * job_priority_weight)
             sign_matrix.append(temp)
         sign_matrix = np.array(sign_matrix)

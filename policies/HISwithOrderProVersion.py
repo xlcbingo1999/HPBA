@@ -95,19 +95,6 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
             self.logger.info('WARNING: Allocation returned by policy not optimal!')
         return matrix_X.value
 
-    def get_sign_matrix(self, current_all_job_priority_weights, current_all_job_significances,
-                        sub_train_datasetidentifier_2_epsilon_capcity):
-        temp_index_2_datablock_identifier = {}
-        sign_matrix = []
-        for job_index, job_priority_weight in enumerate(current_all_job_priority_weights):
-            temp = []
-            for datablock_index, datablock_identifier in enumerate(sub_train_datasetidentifier_2_epsilon_capcity):
-                temp_index_2_datablock_identifier[datablock_index] = datablock_identifier
-                temp.append(current_all_job_significances[job_index][datablock_identifier] * job_priority_weight)
-            sign_matrix.append(temp)
-        sign_matrix = np.array(sign_matrix)
-        return sign_matrix, temp_index_2_datablock_identifier
-
     '''
     def get_allocation_for_large(self, history_job_priority_weights, sub_train_datasetidentifier_2_significance,
                                 sub_train_datasetidentifier_2_epsilon_remain, sub_train_datasetidentifier_2_epsilon_capcity,
@@ -264,11 +251,11 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
                 online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.pipeline_sequence_all_num - 1, replace=False)
             else:
                 online_sample_indexes = range(len(online_history_job_priority_weights))
-            sample_history_job_priority_weights = [online_history_job_priority_weights[i] for i in online_sample_indexes] + [offline_history_job_priority_weights[i] for i in offline_sample_indexes]
-            sample_history_job_budget_consumes = [online_history_job_budget_consumes[i] for i in online_sample_indexes] + [offline_history_job_budget_consumes[i] for i in offline_sample_indexes]
-            sample_history_job_signficances = [online_history_job_signficance[i] for i in online_sample_indexes] + [offline_history_job_signficance[i] for i in offline_sample_indexes]
-            sample_history_job_target_datablock_selected_nums = [online_history_job_target_datablock_selected_num[i] for i in online_sample_indexes] + [offline_history_job_target_datablock_selected_num[i] for i in offline_sample_indexes]
-            sample_history_job_arrival_times = [online_history_job_arrival_time[i] for i in online_sample_indexes] + [offline_history_job_arrival_time[i] for i in offline_sample_indexes]
+            sample_history_job_priority_weights = [offline_history_job_priority_weights[i] for i in offline_sample_indexes] + [online_history_job_priority_weights[i] for i in online_sample_indexes] 
+            sample_history_job_budget_consumes = [offline_history_job_budget_consumes[i] for i in offline_sample_indexes] + [online_history_job_budget_consumes[i] for i in online_sample_indexes]
+            sample_history_job_signficances = [offline_history_job_signficance[i] for i in offline_sample_indexes] + [online_history_job_signficance[i] for i in online_sample_indexes]
+            sample_history_job_target_datablock_selected_nums = [offline_history_job_target_datablock_selected_num[i] for i in offline_sample_indexes] + [online_history_job_target_datablock_selected_num[i] for i in online_sample_indexes]
+            sample_history_job_arrival_times = [offline_history_job_arrival_time[i] for i in offline_sample_indexes] + [online_history_job_arrival_time[i] for i in online_sample_indexes]
 
         if job_arrival_index < self.beta * all_job_sequence_num: # TODO(xlc): 无限任务的时候, beta只能设置为0
             self.logger.info("stop due to sample caused by job_arrival_index: {}; self.beta: {}; all_job_sequence_num: {}".format(
@@ -279,7 +266,8 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
             calcu_compare_epsilon = 0.0
         else:
             temp_selected_datablock_identifiers, temp_selected_real_sched_epsilon_map, \
-                calcu_compare_epsilon = self.get_allocation_for_small(job_id, sample_history_job_priority_weights, 
+                calcu_compare_epsilon = self.get_allocation_for_small(job_id, 
+                                sample_history_job_priority_weights, 
                                 sample_history_job_budget_consumes, 
                                 sample_history_job_signficances, 
                                 sample_history_job_target_datablock_selected_nums,

@@ -236,8 +236,10 @@ def generate_alibaba_jobs(all_num,
                 change_job_epsilon_max_times,
                 dispatcher_ip, dispatcher_port, enable_waiting_flag,
                 jobtrace_reconstruct_path="", save_path=""):
-    min_abs_time = float("inf")
     jobs = []
+    offline_time_default = 0.0
+    online_time_iterval = 12.0 / time_speed_up # 1分钟1个块?
+
     if len(jobtrace_reconstruct_path) > 0:
         if is_history:
             his_job_path = RESULT_PATH + "/{}/his_jobs.json".format(jobtrace_reconstruct_path)
@@ -256,17 +258,10 @@ def generate_alibaba_jobs(all_num,
             jobs[job_detail_index] = change_dispatcher_ip_port(job_detail, dispatcher_ip, dispatcher_port)
             if change_job_epsilon_max_times != 1.0:
                 jobs[job_detail_index] = change_epsilon(job_detail, job_detail["EPSILON"] * change_job_epsilon_max_times)
-            old_time = job_detail["time"]
-            new_arrival_time = old_time / time_speed_up
-            jobs[job_detail_index] = change_arrival_time(job_detail, new_arrival_time)
-            min_abs_time = min(min_abs_time, jobs[job_detail_index]["time"])
-            current_decision_num += 1
+            
     else:
         alibaba_dp_trace_path = ALIBABA_DP_TRACE_PATH + "/privacy_tasks_30_days_extend.csv"
         valid_sample_df = pd.read_csv(alibaba_dp_trace_path)
-        
-        sorted_normed_time = sorted(list(valid_sample_df["norm_submit_time"]))
-        sample_first_normed_times = sorted_normed_time[:all_num]
 
         valid_sample_df = valid_sample_df[valid_sample_df["epsilon_per_epoch"] * valid_sample_df["siton_run_epoch_num"] < valid_max_epsilon_require]
         print("check max_job_epsilon_require: {}".format(valid_max_epsilon_require))
@@ -312,11 +307,9 @@ def generate_alibaba_jobs(all_num,
             DELTA = result_df_line["delta"]
 
             if enable_waiting_flag:
-                arrival_time = 0.0
+                arrival_time = offline_time_default
             else:
-                arrival_time = sample_first_normed_times[current_decision_num] / time_speed_up
-            min_abs_time = min(min_abs_time, arrival_time)
-            
+                arrival_time = online_time_iterval * current_decision_num
             job = generate_normal_one_job(
                 arrival_time, model_name, train_dataset_name, test_dataset_name, datablock_select_num, 
                 BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPSILON_PER_EPOCH, DELTA, 
@@ -337,7 +330,10 @@ def generate_alibaba_jobs(all_num,
         all_time_interval = []
         last_time = 0.0
         for job_detail_index, job_detail in enumerate(jobs):
-            norm_time = job_detail["time"] - min_abs_time
+            if enable_waiting_flag:
+                norm_time = offline_time_default
+            else:
+                norm_time = online_time_iterval * job_detail_index
             jobs[job_detail_index] = change_arrival_time(job_detail, norm_time)
             all_norm_time.append(norm_time)
             all_time_interval.append(norm_time - last_time)
