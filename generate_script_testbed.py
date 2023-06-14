@@ -1,18 +1,18 @@
-# 合理的Trace: 默认任务到达间隔是 12s / 个 
-# 合理的Trace: 默认块的到达间隔是 120s / 个 (10倍)
+# 合理的Trace: 默认任务到达间隔是 12 s
+# 合理的Trace: 默认块的到达间隔是 120 s (10倍)
 # 如果把时间进行压缩, 则应该修改到达速率
-# [4x] => 3s/个 30s/个 => 200个任务可以控制在10min, 20个online block
+# [4x] => 3 s; 30 s
 import os
 
 nohup_flag = False
 nohup_target_dir_prefix = "/home/netlab/DL_lab/opacus_testbed/log_temp_store/"
 target_time_minute = 60
 
-current_ip_index = 5
-current_cmd_index = 1
+current_ip_index = 3
+current_cmd_index = 0
 
 # testbed
-worker_indexes = [2, 3]
+worker_indexes = [0, 1]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 # simulation
@@ -20,9 +20,9 @@ simulation_flag = False
 simulation_time = 5
 
 # 数据集
-test_jobtrace_reconstruct_path = "schedule-review-testbed-06-08-00-42-40"
-dataset_reconstruct_path = "schedule-review-testbed-06-08-00-42-40"
-history_jobtrace_reconstruct_path = "schedule-review-testbed-06-08-00-42-40"
+test_jobtrace_reconstruct_path = "schedule-review-testbed-06-13-20-11-45"
+dataset_reconstruct_path = "schedule-review-testbed-06-13-20-11-45"
+history_jobtrace_reconstruct_path = "schedule-review-testbed-06-13-20-11-45"
 need_save_jobtrace_flag = False
 
 # 全局设置
@@ -35,8 +35,8 @@ seed_str = " ".join(seeds)
 waiting_time = 2 if simulation_flag else 10
 
 # 任务
-pipeline_sequence_all_num = 250
-all_history_num = 250
+pipeline_sequence_all_num = 200
+all_history_num = 200
 job_arrival_time_speed_up = 4.0 # 控制到达速率
 job_datablock_epsilon_max_ratio = 0.2 # 这个控制比率(离群值控制)
 change_job_epsilon_max_times = 1.0 # 这个直接从平均增大倍数(平均值控制)
@@ -45,14 +45,14 @@ job_require_select_block_max_num = 4
 config_max_operate_siton_run_num = 1
 
 # block
-all_datablock_num = 20
+all_datablock_num = 40
 offline_datablock_num = 20
 datablock_arrival_time_speed_up = 4.0 # 控制到达速率
 base_capacity = 5.0
 dataset_name = "EMNIST"
 dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
-assignment_policy = "PBGPolicy"
+assignment_policy = "HISwithOrderProVersionPolicy"
 his_betas = 0.0
 his_batch_size_for_one_epochs = 5
 his_infinity_flag = True
@@ -62,7 +62,7 @@ pbg_Ls = 0.01
 pbg_Us = 0.5
 pbg_gittas = 0.1
 
-significance_policy = "OTDDPolicy"
+significance_policy = "TempPolicy"
 temp_sig_metric = "Accuracy"
 
 
