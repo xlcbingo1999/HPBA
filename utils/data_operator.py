@@ -163,18 +163,19 @@ def read_DL_dispatcher_result_func(trace_save_all_file_dir):
     for file_path in all_need_iter_paths:
         result_df = pd.read_csv(file_path)
         
+        all_test_job_num = len(result_df)
         success_num_arr.append(len(result_df[result_df["success_flag"] == 1]))
         failed_num_arr.append(len(result_df[result_df["success_flag"] == 0]))
-        all_test_jobs_num_arr.append(len(result_df))
+        all_test_jobs_num_arr.append(all_test_job_num)
         
-        all_train_loss_arr.append(np.sum(list(result_df["train_loss"])))
-        all_train_accuracy_arr.append(np.sum(list(result_df["train_acc"])))
+        all_train_loss_arr.append(np.sum(list(result_df["train_loss"]))/all_test_job_num)
+        all_train_accuracy_arr.append(np.sum(list(result_df["train_acc"]))/all_test_job_num)
         test_loss = np.sum(list(result_df["test_loss"]))
-        all_test_loss_arr.append(test_loss)
+        all_test_loss_arr.append(test_loss/all_test_job_num)
         test_acc = np.sum(list(result_df["test_acc"]))
-        all_test_accuracy_arr.append(test_acc)
+        all_test_accuracy_arr.append(test_acc/all_test_job_num)
         sig = np.sum(list(result_df["significance"]))
-        all_final_significance_arr.append(sig)
+        all_final_significance_arr.append(sig/all_test_job_num)
         
         all_target_datablock_num_arr.append(np.sum(list(result_df["target_datablock_num"])))
         all_success_datablock_num_arr.append(np.sum(list(result_df["success_datablock_num"])))
