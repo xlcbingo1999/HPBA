@@ -32,7 +32,7 @@ def do_system_calculate_func(worker_ip, worker_port,
                             sub_train_dataset_config_path, test_dataset_config_path,
                             device_index, 
                             model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
-                            LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
+                            LR, EPSILON_one_sitons, DELTA, MAX_GRAD_NORM, 
                             BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
                             begin_epoch_num, siton_run_epoch_num, final_significance, 
                             simulation_flag, worker_logging_path):
@@ -64,7 +64,8 @@ def do_system_calculate_func(worker_ip, worker_port,
     if len(model_save_path) > 0:
         execute_cmds.append("--model_save_path {}".format(model_save_path))
     execute_cmds.append("--LR {}".format(LR))
-    execute_cmds.append("--EPSILON_one_siton {}".format(EPSILON_one_siton))
+    EPSILON_one_sitons_str = " ".join("%.8f" % epsilon for epsilon in EPSILON_one_sitons)
+    execute_cmds.append("--EPSILON_one_sitons {}".format(EPSILON_one_sitons_str))
     execute_cmds.append("--DELTA {}".format(DELTA))
     execute_cmds.append("--MAX_GRAD_NORM {}".format(MAX_GRAD_NORM))
 
@@ -194,24 +195,12 @@ class Worker_server(object):
         self.worker_logger = get_logger(self.logger_path, self.logger_path, enable_multiprocess=True)
 
     def begin_job(self, job_id, worker_gpu_id, worker_dataset_config, origin_info, 
-                  sched_epsilon_one_siton_run, begin_epoch_num, siton_run_epoch_num, 
+                  begin_epoch_num, siton_run_epoch_num, 
                   model_save_path, summary_writer_path, summary_writer_key, logging_file_path, 
                   final_significance, simulation_flag):
         try:
             self.jobid_2_origininfo[job_id] = origin_info
-            if simulation_flag:
-                all_results = {
-                    'train_acc': 0.0,
-                    'train_loss': 0.0,
-                    'test_acc': 0.0,
-                    'test_loss': 0.0,
-                    'epsilon_consume': sched_epsilon_one_siton_run,
-                    'begin_epoch_num': begin_epoch_num,
-                    'run_epoch_num': siton_run_epoch_num,
-                    'final_significance': final_significance
-                }
-                self.finished_job_callback(job_id, all_results, 0.0)
-                return     
+            
             device_index = worker_gpu_id
             
             train_dataset_name = worker_dataset_config["train_dataset_name"]
@@ -220,16 +209,18 @@ class Worker_server(object):
             sub_test_key_id = worker_dataset_config["sub_test_key_id"]
             sub_train_dataset_config_path = worker_dataset_config["sub_train_dataset_config_path"] 
             test_dataset_config_path = worker_dataset_config["test_dataset_config_path"]
+            sched_epsilon_one_siton_run_map = worker_dataset_config["sched_epsilon_one_siton_run"]
+            sched_epsilon_one_siton_run_list = [sched_epsilon_one_siton_run_map[train_key_id] for train_key_id in sub_train_key_ids]
 
             model_name = origin_info["model_name"]
             
             LR = origin_info["LR"]
-            EPSILON_one_siton = sched_epsilon_one_siton_run
+            EPSILON_one_sitons = sched_epsilon_one_siton_run_list
             DELTA = origin_info["DELTA"]
             MAX_GRAD_NORM = origin_info["MAX_GRAD_NORM"]
             BATCH_SIZE = origin_info["BATCH_SIZE"]
             MAX_PHYSICAL_BATCH_SIZE = origin_info["MAX_PHYSICAL_BATCH_SIZE"]
-            self.worker_logger.info("EPSILON_one_siton in begin_job {}: [{}]".format(job_id, EPSILON_one_siton))
+            self.worker_logger.info("EPSILON_one_siton in begin_job {}: [{}]".format(job_id, EPSILON_one_sitons))
 
             worker_ip = self.local_ip
             worker_port = self.local_port
@@ -241,7 +232,7 @@ class Worker_server(object):
                 sub_train_dataset_config_path, test_dataset_config_path,
                 device_index, 
                 model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
-                LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
+                LR, EPSILON_one_sitons, DELTA, MAX_GRAD_NORM, 
                 BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, begin_epoch_num, siton_run_epoch_num, final_significance, 
                 simulation_flag, self.logger_path), daemon=True)
             self.jobid_2_thread[job_id] = p

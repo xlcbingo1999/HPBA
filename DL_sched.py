@@ -36,11 +36,11 @@ import sys
 from queue import PriorityQueue
 
 
-def DL_server_do_jobs(job_id, origin_info, sched_epsilon_one_siton_run, siton_run_epoch_num, begin_epoch_num, worker_ip, worker_port, worker_gpu_id, 
+def DL_server_do_jobs(job_id, origin_info, siton_run_epoch_num, begin_epoch_num, worker_ip, worker_port, worker_gpu_id, 
                     worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path, final_significance, simulation_flag):
     with get_zerorpc_client(worker_ip, worker_port) as client:
         client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info, 
-                        sched_epsilon_one_siton_run, begin_epoch_num, siton_run_epoch_num, 
+                        begin_epoch_num, siton_run_epoch_num, 
                         model_save_path, summary_writer_path, summary_writer_key, logging_file_path, 
                         final_significance, simulation_flag)
 
@@ -119,7 +119,10 @@ class Scheduler_server(object):
 
         self.jobid_2_target_siton_run_epsilon = {}
         self.jobid_2_sched_siton_run_epsilon = {}
-        self.jobid_2_real_epsilon = {}
+        self.jobid_2_target_datablock_selected_num = {}
+        self.jobid_2_target_significance = {}
+        self.jobid_2_real_significance = {}
+        
         self.jobid_2_priority_weight = {}
 
         self.jobid_2_arrival_time = {}
@@ -127,11 +130,8 @@ class Scheduler_server(object):
         self.jobid_2_finished_time = {}
         self.jobid_2_train_dataset_name = {}
         self.jobid_2_sub_train_key_ids = {}
-        self.jobid_2_datablock_selected_num = {}
         self.jobid_2_test_dataset_name = {}
         self.jobid_2_sub_test_key_id = {}
-        self.jobid_2_target_significance = {}
-        self.jobid_2_real_significance = {}
         self.jobid_2_arrival_index = {}
         self.jobid_2_typeid = {}
         self.min_significance_epsilon_ratio = float('inf')
@@ -283,8 +283,11 @@ class Scheduler_server(object):
         self.jobid_2_trainconfig = {}
 
         self.jobid_2_target_siton_run_epsilon = {}
-        self.jobid_2_sched_siton_run_epsilon = {}
-        self.jobid_2_real_epsilon = {}
+        self.jobid_2_sched_siton_run_epsilon = {} # TODO-OK(xlc): multi
+        self.jobid_2_target_datablock_selected_num = {}
+        self.jobid_2_target_significance = {}
+        self.jobid_2_real_significance = {} # TODO-OK(xlc): multi
+
         self.jobid_2_priority_weight = {}
 
         self.jobid_2_arrival_time = {} # TODO-OK(xlc): multi
@@ -293,12 +296,10 @@ class Scheduler_server(object):
         
         self.jobid_2_train_dataset_name = {}
         self.jobid_2_sub_train_key_ids = {} # TODO-OK(xlc): multi
-        self.jobid_2_datablock_selected_num = {}
+        
         self.jobid_2_test_dataset_name = {}
         self.jobid_2_sub_test_key_id = {}
 
-        self.jobid_2_target_significance = {}
-        self.jobid_2_real_significance = {} # TODO-OK(xlc): multi
         self.jobid_2_arrival_index = {} # TODO-OK(xlc): multi 每次作为一个子任务都要提交一个新的arrival_index
         self.jobid_2_typeid = {}
         # self.jobid_2_recoming_min_time = {}
@@ -515,8 +516,7 @@ class Scheduler_server(object):
                 
                 target_epsilon_consume = origin_info["EPSILON"] * origin_info["SITON_RUN_EPOCH_NUM"] # 单次消耗的隐私预算量
                 self.jobid_2_target_siton_run_epsilon[id] = target_epsilon_consume
-                self.jobid_2_sched_siton_run_epsilon[id] = 0
-                self.jobid_2_real_epsilon[id] = 0
+                self.jobid_2_sched_siton_run_epsilon[id] = [] # TODO(xlc): 这里是一个麻烦的过程, 因为PBGMix的存在导致需要维护成一个list, key是datablock_identifier
                 self.jobid_2_priority_weight[id] = origin_info["priority_weight"]
 
                 self.jobid_2_arrival_time[id] = []
@@ -530,7 +530,7 @@ class Scheduler_server(object):
                 train_dataset_name = origin_info["train_dataset_name"]
                 self.jobid_2_train_dataset_name[id] = train_dataset_name
                 self.jobid_2_sub_train_key_ids[id] = []
-                self.jobid_2_datablock_selected_num[id] = origin_info["datablock_select_num"]
+                self.jobid_2_target_datablock_selected_num[id] = origin_info["datablock_select_num"]
                 test_dataset_name = origin_info["test_dataset_name"]
                 sub_test_key_id = origin_info["sub_test_key_id"]
                 self.jobid_2_test_dataset_name[id] = test_dataset_name
@@ -731,7 +731,7 @@ class Scheduler_server(object):
         if self.assignment_policy.need_history:
             self.assignment_policy.push_online_history_to_assignment_policy(
                 self.jobid_2_priority_weight[job_id], self.jobid_2_target_siton_run_epsilon[job_id],
-                self.jobid_2_datablock_selected_num[job_id], self.jobid_2_train_dataset_name[job_id],
+                self.jobid_2_target_datablock_selected_num[job_id], self.jobid_2_train_dataset_name[job_id],
                 self.jobid_2_test_dataset_name[job_id], self.jobid_2_sub_test_key_id[job_id], 
                 self.jobid_2_typeid[job_id], self.jobid_2_target_significance[job_id],
                 self.jobid_2_arrival_time[job_id][job_siton_run_index], self.jobid_2_origininfo[job_id]["model_name"]
@@ -887,7 +887,8 @@ class Scheduler_server(object):
             "job_id": job_id,
             "dispatcher_ip": dispatcher_ip,
             "dispatcher_port": dispatcher_port,
-            "results": results
+            "results": results,
+            "origin_info": origin_info,
         })
 
     def failed_job_to_dispatcher(self, job_id, origin_info):
@@ -899,11 +900,12 @@ class Scheduler_server(object):
             "job_id": job_id,
             "dispatcher_ip": dispatcher_ip,
             "dispatcher_port": dispatcher_port,
-            "results": results
+            "results": results,
+            "origin_info": origin_info,
         })
 
-    def thread_finished_job_to_dispatcher_start(self):
-        def thread_func_finished_job_to_dispatcher(sleep_time):
+    def thread_send_job_info_to_dispatcher_start(self):
+        def thread_func_send_job_info_to_dispatcher(sleep_time):
             try:
                 while (not self.all_finished) and self.finished_update_init_history_jobs:
                     while len(self.finished_job_to_dispatcher_list) > 0:
@@ -912,41 +914,29 @@ class Scheduler_server(object):
                         dispatcher_ip = details["dispatcher_ip"]
                         dispatcher_port = details["dispatcher_port"]
                         results = details["results"]
+                        origin_info = details["origin_info"]
                         
                         with get_zerorpc_client(dispatcher_ip, dispatcher_port) as client:
-                            client.finished_job_callback(job_id, results)
-                    time.sleep(sleep_time)
-                self.sched_logger.info("Thread [thread_func_finished_job_to_dispatcher] finished!")
-            except Exception as e:
-                self.sched_logger.error(f"Thread [thread_func_finished_job_to_dispatcher] error => {str(e)}")
-                self.sched_logger.exception(e)
-        p = threading.Thread(target=thread_func_finished_job_to_dispatcher, args=(1,), daemon=True)
-        self.finished_job_to_dispatcher_thread = p
-        p.start()
-        self.sched_logger.info("Thread [thread_func_finished_job_to_dispatcher] started!")
-
-    def thread_failed_job_to_dispatcher_start(self):
-        def thread_func_failed_job_to_dispatcher(sleep_time):
-            try:
-                while (not self.all_finished) and self.finished_update_init_history_jobs:
+                            client.send_job_info_callback(job_id, results, origin_info, True)
                     while len(self.failed_job_to_dispatcher_list) > 0:
                         details = self.failed_job_to_dispatcher_list.pop(0)
                         job_id = details["job_id"]
                         dispatcher_ip = details["dispatcher_ip"]
                         dispatcher_port = details["dispatcher_port"]
                         results = details["results"]
+                        origin_info = details["origin_info"]
 
                         with get_zerorpc_client(dispatcher_ip, dispatcher_port) as client:
-                            client.failed_job_callback(job_id, results)
+                            client.send_job_info_callback(job_id, results, origin_info, False)
                     time.sleep(sleep_time)
-                self.sched_logger.info("Thread [thread_func_failed_job_to_dispatcher] finished!")
+                self.sched_logger.info("Thread [thread_func_send_job_info_to_dispatcher] finished!")
             except Exception as e:
-                self.sched_logger.error(f"Thread [thread_func_failed_job_to_dispatcher] error => {str(e)}")
+                self.sched_logger.error(f"Thread [thread_func_send_job_info_to_dispatcher] error => {str(e)}")
                 self.sched_logger.exception(e)
-        p = threading.Thread(target=thread_func_failed_job_to_dispatcher, args=(1,), daemon=True)
-        self.failed_job_to_dispatcher_thread = p
+        p = threading.Thread(target=thread_func_send_job_info_to_dispatcher, args=(1,), daemon=True)
+        self.finished_job_to_dispatcher_thread = p
         p.start()
-        self.sched_logger.info("Thread [thread_func_failed_job_to_dispatcher] started!")
+        self.sched_logger.info("Thread [thread_func_send_job_info_to_dispatcher] started!")
 
     def worker_waiting_job_callback(self, job_id, origin_info):
         self.sched_logger.info(f"Waiting callback job_id: {job_id} => origin_info: {origin_info}")
@@ -991,13 +981,14 @@ class Scheduler_server(object):
         
     def worker_runtime_failed_job_callback(self, job_id, origin_info, exception_log):
         try:
-            self.sched_logger.info(f"worker_runtime_failed_job_callback job_id: {job_id} => exception_log: {exception_log}")
+            self.sched_logger.info(f"worker_runtime_failed_job_callback job_id: {job_id} => exception_log: {exception_log}; origin_info: {origin_info};")
+            
             gpu_identifier = self.jobid_2_gputarget[job_id]
             self.jobid_2_gputarget[job_id] = None
             if gpu_identifier is not None and job_id in self.gpuidentifier_2_jobinstances[gpu_identifier]:
                 self.gpuidentifier_2_jobinstances[gpu_identifier].remove(job_id)
             
-            if exception_log == "The privacy budget is too low.":
+            if "The privacy budget is too low." in exception_log:
                 self.worker_failed_job_callback(job_id, origin_info, FAILED_RESULT_KEY.RUNNING_FAILED)
             else:
                 self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.RUNNING, JOB_STATUS_KEY.DONE_ALL_SCHED) # 恢复等待下一次调度即可
@@ -1016,12 +1007,7 @@ class Scheduler_server(object):
 
             # TODO(xlc): 获取job的current_epoch!
             self.jobid_2_results[job_id].append(result)
-            self.jobid_2_real_epsilon[job_id] = result["epsilon_consume"]
             datablock_identifiers = self.jobid_2_sub_train_key_ids[job_id][-1]
-
-            if self.significance_policy.need_update_backward:
-                type_id = self.jobid_2_typeid[job_id]
-                self.significance_policy.update_job_datablock_signficance_FAIR(type_id, datablock_identifiers, result)
 
             gpu_identifier = self.jobid_2_gputarget[job_id]
             self.jobid_2_gputarget[job_id] = None
@@ -1029,7 +1015,7 @@ class Scheduler_server(object):
                 self.gpuidentifier_2_jobinstances[gpu_identifier].remove(job_id)
 
             self.jobid_2_success_siton_run_num[job_id] += 1
-            if self.enable_waiting_flag and result['test_acc'] < self.jobid_2_origininfo[job_id]["TAGRET_ACC"]:
+            if self.enable_waiting_flag and self.jobid_2_success_siton_run_num[job_id] < self.jobid_2_target_siton_run_num[job_id]:
                 self.worker_waiting_job_callback(job_id, origin_info)
             else:
                 self.sched_logger.info("=========  Scheduler: Job FINISHED! ===========")
@@ -1303,7 +1289,7 @@ class Scheduler_server(object):
             job_current_siton_run_index = self.jobid_2_current_operate_siton_run_index[job_id]
             job_id_2_dataset_name[job_id] = self.jobid_2_train_dataset_name[job_id]
             job_id_2_target_epsilon_require[job_id] = self.jobid_2_target_siton_run_epsilon[job_id]
-            job_id_2_target_datablock_selected_num[job_id] = self.jobid_2_datablock_selected_num[job_id]
+            job_id_2_target_datablock_selected_num[job_id] = self.jobid_2_target_datablock_selected_num[job_id]
             job_id_2_job_priority_weight[job_id] = self.jobid_2_priority_weight[job_id]
             job_id_2_test_dataset_name[job_id] = self.jobid_2_test_dataset_name[job_id]
             job_id_2_sub_test_key_id[job_id] = self.jobid_2_sub_test_key_id[job_id]
@@ -1358,6 +1344,7 @@ class Scheduler_server(object):
                 selected_datablock_identifiers = job_2_selected_datablock_identifiers[temp_job_id]
                 job_current_siton_run_index = self.jobid_2_current_operate_siton_run_index[temp_job_id]
                 self.jobid_2_real_significance[temp_job_id].append(copy.deepcopy(self.jobid_2_target_significance[job_id])) # 只有成功的时候才会被调用, 因此还是直接修改后push进去算了
+                self.jobid_2_sched_siton_run_epsilon[temp_job_id].append({})
                 for identifier in selected_datablock_identifiers:
                     consume_epsilon = selected_real_sched_epsilon_map[(temp_job_id, identifier)] 
                     self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] -= consume_epsilon
@@ -1372,8 +1359,8 @@ class Scheduler_server(object):
                     if identifier not in success_datasetidentifier_2_consume_epsilon[dataset_name]:
                         success_datasetidentifier_2_consume_epsilon[dataset_name][identifier] = 0.0
                     success_datasetidentifier_2_consume_epsilon[dataset_name][identifier] += consume_epsilon
-                    self.jobid_2_sched_siton_run_epsilon[temp_job_id] = consume_epsilon
-                    self.jobid_2_real_significance[temp_job_id][-1][identifier] = (self.jobid_2_sched_siton_run_epsilon[temp_job_id] / self.jobid_2_target_siton_run_epsilon[temp_job_id]) * self.jobid_2_target_significance[temp_job_id][identifier]
+                    self.jobid_2_sched_siton_run_epsilon[temp_job_id][-1][identifier] = consume_epsilon
+                    self.jobid_2_real_significance[temp_job_id][-1][identifier] = (self.jobid_2_sched_siton_run_epsilon[temp_job_id][-1][identifier] / self.jobid_2_target_siton_run_epsilon[temp_job_id]) * self.jobid_2_target_significance[temp_job_id][identifier]
                     
                 if temp_job_id not in self.jobid_2_sub_train_key_ids:
                     self.jobid_2_sub_train_key_ids[temp_job_id] = []
@@ -1435,12 +1422,13 @@ class Scheduler_server(object):
                     worker_port = self.workerip_2_ports[worker_ip]
 
                     origin_info = self.jobid_2_origininfo[job_id]
-                    sched_epsilon_one_siton_run = self.jobid_2_sched_siton_run_epsilon[job_id]
+                    
                     worker_dataset_config = {
                         "train_dataset_name": self.jobid_2_train_dataset_name[job_id],
                         "test_dataset_name": self.jobid_2_test_dataset_name[job_id],
                         "sub_train_key_ids": self.jobid_2_sub_train_key_ids[job_id][-1],
                         "sub_test_key_id": self.jobid_2_sub_test_key_id[job_id],
+                        "sched_epsilon_one_siton_run": self.jobid_2_sched_siton_run_epsilon[job_id][-1],
                         "sub_train_dataset_config_path": os.path.join(DATASET_PATH, self.dataset_name, f"{self.dataset_config_name}.json"),
                         "test_dataset_config_path": os.path.join(DATASET_PATH, self.dataset_name, f"subtest.json")
                     }
@@ -1449,8 +1437,7 @@ class Scheduler_server(object):
                     summary_writer_path = self.summary_writer_path
                     summary_writer_key = self.jobid_2_summary_writer_key[job_id]
                     siton_run_epoch_num = self.jobid_2_siton_run_epoch_num[job_id]
-                    current_success_siton_run_num = self.jobid_2_success_siton_run_num[job_id]
-                    begin_epoch_num = current_success_siton_run_num * siton_run_epoch_num
+                    begin_epoch_num = self.jobid_2_success_siton_run_num[job_id] * siton_run_epoch_num
                     current_block_selected_num = len(self.jobid_2_sub_train_key_ids[job_id][-1])
 
                     final_significance = 0.0
@@ -1464,24 +1451,20 @@ class Scheduler_server(object):
                     
                     self.sche_reflash_job_status(job_id, JOB_STATUS_KEY.DONE_ALL_SCHED, JOB_STATUS_KEY.RUNNING)
                     if not self.simulation:
-                        args.append([job_id, origin_info, sched_epsilon_one_siton_run, siton_run_epoch_num, begin_epoch_num, worker_ip, worker_port, worker_gpu_id, 
+                        args.append([job_id, origin_info, siton_run_epoch_num, begin_epoch_num, worker_ip, worker_port, worker_gpu_id, 
                                     worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path, final_significance, self.simulation])
                     else:
-                        if len(self.jobid_2_results[job_id]) > 0:
-                            last_result = self.jobid_2_results[job_id][-1]
-                            new_test_acc = last_result['test_acc'] + origin_info['siton_up_test_acc'] * (final_significance / current_block_selected_num)
-                        else:
-                            last_result_acc = origin_info['simulation_init_test_acc']
-                            new_test_acc = last_result_acc + origin_info['siton_up_test_acc'] * (final_significance / current_block_selected_num)
                         all_results = {
+                            'job_id': job_id,
                             'train_acc': 0.0,
                             'train_loss': 0.0,
-                            'test_acc': new_test_acc,
+                            'test_acc': 0.0,
                             'test_loss': 0.0,
-                            'epsilon_consume': sched_epsilon_one_siton_run,
                             'begin_epoch_num': begin_epoch_num,
                             'run_epoch_num': siton_run_epoch_num,
-                            'final_significance': final_significance
+                            'final_significance': final_significance,
+                            'epsilon_real_all_block': sum(self.jobid_2_sched_siton_run_epsilon[job_id][-1].values()),
+                            'success_datablock_num': current_block_selected_num,
                         }
                         self.worker_finished_job_callback(job_id, origin_info, all_results)
             if not self.simulation and len(args) > 0:
@@ -1574,7 +1557,7 @@ class Scheduler_server(object):
             
             all_target_datablock_num = 0
             all_success_datablock_num = 0
-            for _, target_selected_num in self.jobid_2_datablock_selected_num.items():
+            for _, target_selected_num in self.jobid_2_target_datablock_selected_num.items():
                 all_target_datablock_num += target_selected_num
             for _, success_selected_datablocks in self.jobid_2_sub_train_key_ids.items():
                 temp_one_job_success_selected_datablock_num = 0

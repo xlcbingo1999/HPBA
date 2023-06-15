@@ -50,7 +50,7 @@ def get_df_config():
     parser.add_argument("--summary_writer_key", type=str, default="")
     parser.add_argument("--model_save_path", type=str, default="")
     parser.add_argument("--LR", type=float, required=True)
-    parser.add_argument("--EPSILON_one_siton", type=float, required=True)
+    parser.add_argument("--EPSILON_one_sitons", nargs='+', type=float, required=True) # : 用这个进行split
     parser.add_argument("--DELTA", type=float, required=True)
     parser.add_argument("--MAX_GRAD_NORM", type=float, required=True)
     parser.add_argument("--BATCH_SIZE", type=int, required=True)
@@ -72,25 +72,11 @@ def do_calculate_func(job_id, model_name,
                     sub_train_dataset_config_path, test_dataset_config_path,
                     device_index,
                     model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
-                    LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
+                    LR, EPSILON_one_sitons, DELTA, MAX_GRAD_NORM, 
                     BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
                     begin_epoch_num, siton_run_epoch_num, final_significance, 
                     simulation_flag):
     begin_time = time.time()
-
-    if simulation_flag:
-        all_results = {
-            'train_acc': 0.0,
-            'train_loss': 0.0,
-            'test_acc': 0.0,
-            'test_loss': 0.0,
-            'epsilon_consume': EPSILON_one_siton,
-            'begin_epoch_num': begin_epoch_num,
-            'siton_run_epoch_num': siton_run_epoch_num,
-            'final_significance': final_significance
-        }
-        real_duration_time = time.time() - begin_time
-        return job_id, all_results, real_duration_time
     
     with open(logging_file_path, "a+") as f:
         print_console_file("check train_dataset_name: {}".format(train_dataset_name), fileHandler=f)
@@ -99,8 +85,15 @@ def do_calculate_func(job_id, model_name,
         print_console_file("check sub_test_key_id: {}".format(sub_test_key_id), fileHandler=f)
         print_console_file("check device_index: {}".format(device_index), fileHandler=f)
         print_console_file("check final_significance: {}".format(final_significance), fileHandler=f)
-        print_console_file("check EPSILON_one_siton: {}".format(EPSILON_one_siton), fileHandler=f)
+        print_console_file("check EPSILON_one_sitons: {}".format(EPSILON_one_sitons), fileHandler=f)
         
+    assert (len(set(EPSILON_one_sitons)) == 1) # TODO(xlc): 暂时只考虑非PBGMix的情况, 那种情况训练比较复杂, 暂时先不管了
+    current_EPSILON_one_siton = EPSILON_one_sitons[0]
+    if isinstance(sub_train_key_ids, list):
+        current_block_selected_num = len(sub_train_key_ids)
+    else:
+        current_block_selected_num = 1
+
     train_dataset = get_concat_dataset(train_dataset_name, sub_train_key_ids, 
                                     DATASET_PATH, sub_train_dataset_config_path, 
                                     "train")
@@ -128,7 +121,7 @@ def do_calculate_func(job_id, model_name,
         print_console_file("finished load model and state_dict", fileHandler=f)
     model.train()
 
-    if EPSILON_one_siton > 0.0:
+    if current_EPSILON_one_siton > 0.0:
         model = ModuleValidator.fix(model)
         errors = ModuleValidator.validate(model, strict=False)
         with open(logging_file_path, "a+") as f:
@@ -158,11 +151,11 @@ def do_calculate_func(job_id, model_name,
         origin_total_val_acc.append(acc)
     model.train()
 
-    privacy_engine = PrivacyEngine() if EPSILON_one_siton > 0.0 else None
+    privacy_engine = PrivacyEngine() if current_EPSILON_one_siton > 0.0 else None
     model, optimizer, train_loader = \
         get_privacy_dataloader(privacy_engine, model, optimizer, 
                                 train_loader, siton_run_epoch_num, 
-                                EPSILON_one_siton, DELTA, MAX_GRAD_NORM) 
+                                current_EPSILON_one_siton, DELTA, MAX_GRAD_NORM) 
     
     with open(logging_file_path, "a+") as f:
         print_console_file(f"job [{job_id}] origin_total_val_loss: {np.mean(origin_total_val_loss)}", fileHandler=f)
@@ -267,14 +260,16 @@ def do_calculate_func(job_id, model_name,
 
     real_duration_time = time.time() - begin_time
     all_results = {
+        'job_id': job_id,
         'train_acc': np.mean(total_train_acc),
         'train_loss': np.mean(total_train_loss),
         'test_acc': np.mean(total_val_acc) - np.mean(origin_total_val_acc), # 完成delta化
         'test_loss': np.mean(total_val_loss) - np.mean(origin_total_val_loss), # 完成delta化
-        'epsilon_consume': epsilon,
         'begin_epoch_num': begin_epoch_num,
         'siton_run_epoch_num': siton_run_epoch_num,
-        'final_significance': final_significance
+        'final_significance': final_significance,
+        'epsilon_real_all_block': current_EPSILON_one_siton * current_block_selected_num,
+        'success_datablock_num': current_block_selected_num,
     }
 
     with open(logging_file_path, "a+") as f:
@@ -310,7 +305,7 @@ if __name__ == "__main__":
     logging_file_path = args.logging_file_path
     
     LR = args.LR 
-    EPSILON_one_siton = args.EPSILON_one_siton
+    EPSILON_one_sitons = args.EPSILON_one_sitons
     DELTA = args.DELTA
     MAX_GRAD_NORM = args.MAX_GRAD_NORM 
     BATCH_SIZE = args.BATCH_SIZE
@@ -331,7 +326,7 @@ if __name__ == "__main__":
             sub_train_dataset_config_path, test_dataset_config_path,
             device_index, 
             model_save_path, summary_writer_path, summary_writer_key, logging_file_path,
-            LR, EPSILON_one_siton, DELTA, MAX_GRAD_NORM, 
+            LR, EPSILON_one_sitons, DELTA, MAX_GRAD_NORM, 
             BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, 
             begin_epoch_num, siton_run_epoch_num, final_significance, 
             simulation_flag

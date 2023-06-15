@@ -11,10 +11,11 @@ import json
 import copy
 import os
 import numpy as np
+import pandas as pd
 from queue import PriorityQueue
 from utils.logging_tools import get_logger
 from utils.generate_tools import generate_alibaba_jobs, generate_alibaba_dataset
-from utils.data_operator import read_DL_dispatcher_result_func, final_log_result, log_args_var
+from utils.data_operator import final_log_result, log_args_var
 
 def get_df_config():
     parser = argparse.ArgumentParser(
@@ -93,9 +94,11 @@ class Dispatcher(object):
         self.all_finished = True
         self.dispatcher_ip = dispatcher_ip
         self.dispatcher_port = dispatcher_port
-    
+
     def restart_dispatcher(self, jobs_list, history_jobs_list, datasets_map, current_test_all_dir, simulation, simulation_index, restart_trace):
         self.current_test_all_dir = current_test_all_dir
+        self.simulation = simulation
+        self.simulation_index = simulation_index
         all_logger_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
         if restart_trace:
             self.dispatcher_logger_path = '{}/DL_dispatcher_restart_{}.log'.format(all_logger_path, simulation_index)
@@ -128,6 +131,7 @@ class Dispatcher(object):
         self.all_start_time = time.time()
         self.current_time = 0
         self.all_finished = False
+        self.job_result_list = []
         
     def dispatch_jobs(self, pipeline_sequence_all_num, sched_ip, sched_port):
         def thread_func_timely_dispatch_job(sched_ip, sched_port):
@@ -179,8 +183,25 @@ class Dispatcher(object):
         p.start()
         self.dispatcher_logger.info("Thread [thread_func_once_dispatch_his_job] start!")
         return p
+    
+    def operator_job_results_start(self):
+        def thread_func_timely_operator_job_result(sleep_time):
+            try:
+                while not self.all_finished:
+                    while len(self.job_result_list) > 0:
+                        time, job_id, results, origin_info, success_finished_flag = self.job_result_list.pop(0)
+                        self.show_job_results(time, job_id, results, origin_info, success_finished_flag)
+                    zerorpc.gevent.sleep(sleep_time)
+                self.dispatcher_logger.info(f"Thread [thread_func_timely_operator_job_result] finished")
+            except Exception as e:
+                self.dispatcher_logger.error(f"Thread [thread_func_timely_operator_job_result] error => {str(e)}")
+                self.dispatcher_logger.exception(e)
+        p = threading.Thread(target=thread_func_timely_operator_job_result, args=(1, ), daemon=True)
+        p.start()
+        self.dispatcher_logger.info(f"Thread [thread_func_timely_operator_job_result] start")
+        return p
 
-    def show_job_results(self, job_id, results):
+    def show_job_results(self, time, job_id, results, origin_info, success_finished_flag):
         self.dispatcher_logger.info("job [{}] last result: {}".format(job_id, results))
         if len(results) <= 0:
             all_train_loss = 0.0
@@ -188,6 +209,9 @@ class Dispatcher(object):
             all_test_loss = 0.0
             all_test_accuracy = 0.0
             all_final_significance = 0.0
+            epsilon_real_all_block = 0.0
+            success_datablock_num = 0
+            target_datablock_num = origin_info["datablock_select_num"]
         else:
             last_job_res = results[-1]
             if "train_loss" in last_job_res:
@@ -198,32 +222,60 @@ class Dispatcher(object):
                 all_test_loss = last_job_res["test_loss"]
             if "test_acc" in last_job_res:
                 all_test_accuracy = last_job_res["test_acc"]
-            for sub_res in results:
-                if "final_significance" in sub_res:
-                    all_final_significance = sub_res["final_significance"]
+            if "final_significance" in last_job_res:
+                all_final_significance = last_job_res["final_significance"]
+            
+            if "target_datablock_num" in last_job_res:
+                target_datablock_num = last_job_res["target_datablock_num"]
+            if "success_datablock_num" in last_job_res:
+                success_datablock_num = last_job_res["success_datablock_num"]
+
+            if "epsilon_real_all_block" in last_job_res:
+                epsilon_real_all_block = last_job_res["epsilon_real_all_block"]
+            
+            target_datablock_num = origin_info["datablock_select_num"]
+
         self.dispatcher_logger.info(f"{job_id} train_loss: {all_train_loss}")
         self.dispatcher_logger.info(f"{job_id} train_accuracy: {all_train_accuracy}")
         self.dispatcher_logger.info(f"{job_id} test_loss: {all_test_loss}")
         self.dispatcher_logger.info(f"{job_id} test_accuracy: {all_test_accuracy}")
         self.dispatcher_logger.info(f"{job_id} final_significance: {all_final_significance}")
 
-    def finished_job_callback(self, job_id, results):
-        try:
-            self.dispatcher_logger.info("[finished job end job_id: {}] current_time: {}".format(job_id, self.current_time))
-            self.finished_labels[job_id] = True
-            self.show_job_results(job_id, results)
-        except Exception as e:
-            self.dispatcher_logger.error(f"finished_job_callback error => {str(e)}")
-            self.dispatcher_logger.exception(e)
+        # 在这里要保存每个时刻的记录, 会有资源写入竞争的bug, 最好是写一个队列出来逐步保存!
+        xlsx_save_path = "{}/{}/time_temp_log_{}.csv".format(RESULT_PATH, self.current_test_all_dir, self.simulation_index)
+        new_data = {
+            "time": [time], 
+            "job_id": [job_id], 
+            
+            "train_loss": [all_train_loss],
+            "train_acc": [all_train_accuracy],
+            "test_loss": [all_test_loss],
+            "test_acc": [all_test_accuracy],
+            "significance": [all_final_significance],
+            "success_flag": [1 if success_finished_flag else 0],
+            
+            "target_datablock_num": [target_datablock_num],
+            "success_datablock_num": [success_datablock_num],
 
-    def failed_job_callback(self, job_id, results):
-        try:
+            "epsilon_real_all_block": [epsilon_real_all_block],
+        }
+        columns = list(new_data.keys())
+        new_df_row = pd.DataFrame(new_data, columns=columns)
+        if os.path.exists(xlsx_save_path):
+            df = pd.read_csv(xlsx_save_path)
+            df = pd.concat([df, new_df_row])
+        else:
+            df = new_df_row
+        df.to_csv(xlsx_save_path, index=False)
+        self.dispatcher_logger.debug(f"{job_id} time_log save to csv!")
+
+    def send_job_info_callback(self, job_id, results, origin_info, success_finished_flag):
+        if success_finished_flag:
+            self.dispatcher_logger.info("[finished job end job_id: {}] current_time: {}".format(job_id, self.current_time))
+        else:
             self.dispatcher_logger.info("[failed job end job_id: {}] current_time: {}".format(job_id, self.current_time))
-            self.finished_labels[job_id] = True
-            self.show_job_results(job_id, results)
-        except Exception as e:
-            self.dispatcher_logger.error(f"failed_job_callback error => {str(e)}")
-            self.dispatcher_logger.exception(e)
+        self.finished_labels[job_id] = True
+        self.job_result_list.append((self.current_time, job_id, results, origin_info, success_finished_flag))
 
     def sched_update_dataset(self, sched_ip, sched_port):
         def thread_func_timely_dispatch_dataset(sched_ip, sched_port):
@@ -307,8 +359,7 @@ class Dispatcher(object):
             temp_history_job_details = convert_types(temp_history_job_details)
             temp_submit_job_details = convert_types(temp_submit_job_details)
             with get_zerorpc_client(sched_ip, sched_port) as client:
-                client.thread_finished_job_to_dispatcher_start()
-                client.thread_failed_job_to_dispatcher_start()
+                client.thread_send_job_info_to_dispatcher_start()
                 client.sched_simulation_start(subtrain_datasetidentifier_info, temp_history_job_details, temp_submit_job_details)
         except Exception as e:
             self.dispatcher_logger.error(f"sched_simulation_start error => {str(e)}")
@@ -327,17 +378,20 @@ class Dispatcher(object):
                             scheduler_update_sleep_time, 
                             placement_sleep_time):
         with get_zerorpc_client(ip, port) as client:
+            client.thread_send_job_info_to_dispatcher_start()
             client.cal_significance_dispatch_start(cal_significance_sleep_time)
             client.sched_dispatch_start(scheduler_update_sleep_time)
             client.placement_dispatch_start(placement_sleep_time)
-            client.thread_finished_job_to_dispatcher_start()
-            client.thread_failed_job_to_dispatcher_start()
     
     def sched_end(self, ip, port):
         try:
             with get_zerorpc_client(ip, port) as client:
                 client.sched_end()
                 all_result_map = client.end_and_report_dispatchers_by_sched()
+
+            xlsx_save_path = "{}/{}/time_temp_log_{}.csv".format(RESULT_PATH, self.current_test_all_dir, self.simulation_index)
+            new_xlsx_save_path = "{}/{}/time_log_{}.csv".format(RESULT_PATH, self.current_test_all_dir, self.simulation_index)
+            os.rename(xlsx_save_path, new_xlsx_save_path)
 
             current_success_num = all_result_map["current_success_num"]
             current_failed_num = all_result_map["current_failed_num"]
@@ -616,6 +670,7 @@ def testbed_experiment_start(
     if not args.without_start_load_job:
         job_p = dispatcher.dispatch_jobs(pipeline_sequence_all_num, sched_ip, sched_port)
         processes.append(job_p)
+    dispatcher.operator_job_results_start()
 
     print("Waiting for load datasets and jobs {} s".format(waiting_time))
     zerorpc.gevent.sleep(waiting_time)
@@ -759,7 +814,7 @@ def simulation_experiment_start(
             init_workerip_2_ports, init_gpuidentifiers, 
             current_test_all_dir, simulation_index
         )
-
+        dispatcher.operator_job_results_start()
         # 合并成统一的事件队列, 需要等待所有的
         dispatcher.sched_simulation_start(sched_ip, sched_port) # 同样直接启动一个线程, 完成一大堆队列操作即可
 

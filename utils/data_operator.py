@@ -2,6 +2,7 @@ import os
 import re
 import ast
 import numpy as np
+import pandas as pd
 from utils.global_variable import RESULT_PATH
 from utils.global_functions import print_console_file
 
@@ -63,13 +64,15 @@ def final_operate_data_old_version(current_test_all_dir):
         success_datablock_num_arr, failed_datablock_num_arr, target_datablock_num_arr
 
 def final_log_result(current_test_all_dir, all_result_file_name):
-    trace_save_dir_prefix = os.path.join(RESULT_PATH, current_test_all_dir)
-    all_result_path = os.path.join(trace_save_dir_prefix, all_result_file_name)
+    trace_save_all_file_dir = os.path.join(RESULT_PATH, current_test_all_dir)
+    all_result_path = os.path.join(trace_save_all_file_dir, all_result_file_name)
 
     final_used_num, success_num_arr, failed_num_arr, all_test_jobs_num_arr, \
         all_train_loss_arr, all_train_accuracy_arr, \
         all_test_loss_arr, all_test_accuracy_arr, all_final_significance_arr, \
-        all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr = read_DL_dispatcher_result_func(trace_save_dir_prefix)
+        all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr, \
+        all_epsilon_real_all_block_arr, all_significance_2_epsilon_real_blocks_arr, \
+        all_test_acc_2_epsilon_real_blocks_arr, all_test_loss_2_epsilon_real_blocks_arr = read_DL_dispatcher_result_func(trace_save_all_file_dir)
 
     with open(all_result_path, "w+") as f:
         print_console_file("final_used_num: {}".format(final_used_num), fileHandler=f)
@@ -109,13 +112,92 @@ def final_log_result(current_test_all_dir, all_result_file_name):
             print_console_file("[test_accuracy_info] {}({}~{}) === test_accuracy_mean: {} ; test_accuracy_min: {} ; test_accuracy_max: {}".format(
                 np.mean(all_test_accuracy_arr), min(all_test_accuracy_arr), max(all_test_accuracy_arr), np.mean(all_test_accuracy_arr), min(all_test_accuracy_arr), max(all_test_accuracy_arr)
             ), fileHandler=f)
+
+            print_console_file("[epsilon_real_all_block_info] {}({}~{}) === epsilon_real_all_block_mean: {} ; epsilon_real_all_block_min: {} ; epsilon_real_all_block_max: {}".format(
+                np.mean(all_epsilon_real_all_block_arr), min(all_epsilon_real_all_block_arr), max(all_epsilon_real_all_block_arr), np.mean(all_epsilon_real_all_block_arr), min(all_epsilon_real_all_block_arr), max(all_epsilon_real_all_block_arr)
+            ), fileHandler=f)
+            print_console_file("[significance_2_epsilon_real_blocks_info] {}({}~{}) === significance_2_epsilon_real_blocks_mean: {} ; significance_2_epsilon_real_blocks_min: {} ; significance_2_epsilon_real_blocks_max: {}".format(
+                np.mean(all_significance_2_epsilon_real_blocks_arr), min(all_significance_2_epsilon_real_blocks_arr), max(all_significance_2_epsilon_real_blocks_arr), np.mean(all_significance_2_epsilon_real_blocks_arr), min(all_significance_2_epsilon_real_blocks_arr), max(all_significance_2_epsilon_real_blocks_arr)
+            ), fileHandler=f)
+            print_console_file("[test_acc_2_epsilon_real_blocks_info] {}({}~{}) === test_acc_2_epsilon_real_blocks_mean: {} ; test_acc_2_epsilon_real_blocks_min: {} ; test_acc_2_epsilon_real_blocks_max: {}".format(
+                np.mean(all_test_acc_2_epsilon_real_blocks_arr), min(all_test_acc_2_epsilon_real_blocks_arr), max(all_test_acc_2_epsilon_real_blocks_arr), np.mean(all_test_acc_2_epsilon_real_blocks_arr), min(all_test_acc_2_epsilon_real_blocks_arr), max(all_test_acc_2_epsilon_real_blocks_arr)
+            ), fileHandler=f)
+            print_console_file("[test_loss_2_epsilon_real_blocks_info] {}({}~{}) === test_loss_2_epsilon_real_blocks_mean: {} ; test_loss_2_epsilon_real_blocks_min: {} ; test_loss_2_epsilon_real_blocks_max: {}".format(
+                np.mean(all_test_loss_2_epsilon_real_blocks_arr), min(all_test_loss_2_epsilon_real_blocks_arr), max(all_test_loss_2_epsilon_real_blocks_arr), np.mean(all_test_loss_2_epsilon_real_blocks_arr), min(all_test_loss_2_epsilon_real_blocks_arr), max(all_test_loss_2_epsilon_real_blocks_arr)
+            ), fileHandler=f)
             
     print(f"============================ {current_test_all_dir} [success:{final_used_num}] ====================================")
     return final_used_num, success_num_arr, failed_num_arr, all_test_jobs_num_arr, all_train_loss_arr, all_train_accuracy_arr, \
         all_test_loss_arr, all_test_accuracy_arr, all_final_significance_arr, \
-        all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr
+        all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr, \
+        all_epsilon_real_all_block_arr, all_significance_2_epsilon_real_blocks_arr, \
+        all_test_acc_2_epsilon_real_blocks_arr, all_test_loss_2_epsilon_real_blocks_arr
 
-def read_DL_dispatcher_result_func(trace_save_path):
+def read_DL_dispatcher_result_func(trace_save_all_file_dir):
+    final_used_num = 0
+    all_need_iter_paths = []
+    for file_dir in os.listdir(trace_save_all_file_dir):
+        if "time_log" in file_dir:
+            result_dispatcher_file_dir = os.path.join(trace_save_all_file_dir, file_dir)
+            all_need_iter_paths.append(result_dispatcher_file_dir)
+            final_used_num += 1
+
+    success_num_arr = []
+    failed_num_arr = []
+    all_test_jobs_num_arr = []
+
+    all_train_loss_arr = []
+    all_train_accuracy_arr = []
+    all_test_loss_arr = []
+    all_test_accuracy_arr = []
+    all_final_significance_arr = []
+    all_target_datablock_num_arr = []
+    all_success_datablock_num_arr = []
+    all_failed_datablock_num_arr = []
+    
+    all_epsilon_real_all_block_arr = []
+    all_significance_2_epsilon_real_blocks_arr = []
+    all_test_acc_2_epsilon_real_blocks_arr = []
+    all_test_loss_2_epsilon_real_blocks_arr = []
+
+    for file_path in all_need_iter_paths:
+        result_df = pd.read_csv(file_path)
+        
+        success_num_arr.append(len(result_df[result_df["success_flag"] == 1]))
+        failed_num_arr.append(len(result_df[result_df["success_flag"] == 0]))
+        all_test_jobs_num_arr.append(len(result_df))
+        
+        all_train_loss_arr.append(np.sum(list(result_df["train_loss"])))
+        all_train_accuracy_arr.append(np.sum(list(result_df["train_acc"])))
+        test_loss = np.sum(list(result_df["test_loss"]))
+        all_test_loss_arr.append(test_loss)
+        test_acc = np.sum(list(result_df["test_acc"]))
+        all_test_accuracy_arr.append(test_acc)
+        sig = np.sum(list(result_df["significance"]))
+        all_final_significance_arr.append(sig)
+        
+        all_target_datablock_num_arr.append(np.sum(list(result_df["target_datablock_num"])))
+        all_success_datablock_num_arr.append(np.sum(list(result_df["success_datablock_num"])))
+        all_failed_datablock_num_arr.append(np.sum(list(result_df["target_datablock_num"] - result_df["success_datablock_num"])))
+
+
+        epsilon_real = np.sum(list(result_df["epsilon_real_all_block"]))
+        all_epsilon_real_all_block_arr.append(epsilon_real)
+        
+        all_significance_2_epsilon_real_blocks_arr.append(sig/epsilon_real)
+        all_test_acc_2_epsilon_real_blocks_arr.append(test_acc/epsilon_real)
+        all_test_loss_2_epsilon_real_blocks_arr.append(test_loss/epsilon_real)
+        
+    return final_used_num, success_num_arr, failed_num_arr, all_test_jobs_num_arr, \
+            all_train_loss_arr, all_train_accuracy_arr, \
+            all_test_loss_arr, all_test_accuracy_arr, all_final_significance_arr, \
+            all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr, \
+            all_epsilon_real_all_block_arr, all_significance_2_epsilon_real_blocks_arr, \
+            all_test_acc_2_epsilon_real_blocks_arr, all_test_loss_2_epsilon_real_blocks_arr
+
+        
+
+def read_DL_dispatcher_result_func_zhengze(trace_save_path):
     success_fail_num_pattern = r'current_success_num:\s*(?P<success>[-+]?\d+(?:\.\d+)?);\s+current_failed_num:\s*(?P<failed>[-+]?\d+(?:\.\d+)?);\s+current_no_submit_num:\s*(?P<no_submit>[-+]?\d+(?:\.\d+)?);\s+current_no_sche_num:\s*(?P<no_sche>[-+]?\d+(?:\.\d+)?);'
     all_test_jobs_num_pattern = r'all_test_jobs_num:\s*(?P<all_test_jobs_num>[-+]?\d+(?:\.\d+)?)'
     all_train_loss_pattern = r'all_train_loss:\s*(?P<all_train_loss>[-+]?\d+(?:\.\d+)?)'
@@ -260,7 +342,6 @@ def read_DL_dispatcher_result_func(trace_save_path):
             all_train_loss_arr, all_train_accuracy_arr, \
             all_test_loss_arr, all_test_accuracy_arr, all_final_significance_arr, \
             all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr
-
 
 def read_DL_dispatcher_result_func_simulation_old_version(trace_save_path):
     
