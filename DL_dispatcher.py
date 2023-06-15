@@ -77,7 +77,6 @@ def get_df_config():
     parser.add_argument("--scheduler_update_sleep_time", type=float, default=1.0)
     parser.add_argument("--cal_significance_sleep_time", type=float, default=1.0)
     parser.add_argument("--placement_sleep_time", type=float, default=2.0)
-    parser.add_argument("--update_timeout", type=int, default=500)
 
     
     parser.add_argument("--without_start_load_job", action="store_true")
@@ -130,8 +129,8 @@ class Dispatcher(object):
         self.current_time = 0
         self.all_finished = False
         
-    def dispatch_jobs(self, pipeline_sequence_all_num, sched_ip, sched_port, update_timeout):
-        def thread_func_timely_dispatch_job(sched_ip, sched_port, update_timeout):
+    def dispatch_jobs(self, pipeline_sequence_all_num, sched_ip, sched_port):
+        def thread_func_timely_dispatch_job(sched_ip, sched_port):
             try:
                 while not self.all_finished:
                     count = self.dispatch_jobs_count
@@ -148,9 +147,10 @@ class Dispatcher(object):
                             dispatch_jobs_detail[job_id] = info
                     if count > self.dispatch_jobs_count:
                         self.dispatch_jobs_count = count
-                        client = get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
                         dispatch_jobs_detail = convert_types(dispatch_jobs_detail)
-                        client.update_jobs(dispatch_jobs_detail) # 提交上去后, 任务即进入NO_SCHED状态, 之后就是调度器自身会启动一个不断循环的获取计算Siginificane策略和调度策略
+                        with get_zerorpc_client(sched_ip, sched_port) as client:
+                            client.update_jobs(dispatch_jobs_detail) # 提交上去后, 任务即进入NO_SCHED状态, 之后就是调度器自身会启动一个不断循环的获取计算Siginificane策略和调度策略
+                            client.close()
                     if self.dispatch_jobs_count == len(self.jobs_detail):
                         self.dispatcher_logger.info("Finished Job Dispatch!")
                         break
@@ -160,22 +160,22 @@ class Dispatcher(object):
                 self.dispatcher_logger.error(f"Thread [thread_func_timely_dispatch_job] error => {str(e)}")
                 self.dispatcher_logger.exception(e)
         # 在最开始一定要将真实的历史结果传过去
-        p = threading.Thread(target=thread_func_timely_dispatch_job, args=(sched_ip, sched_port, update_timeout), daemon=True)
+        p = threading.Thread(target=thread_func_timely_dispatch_job, args=(sched_ip, sched_port), daemon=True)
         self.dispatcher_logger.info("Thread [thread_func_timely_dispatch_job] start!")
         p.start()
         return p
 
-    def dispatch_history_jobs(self, sched_ip, sched_port, update_timeout):
-        def thread_func_once_dispatch_his_job(sched_ip, sched_port, update_timeout):
+    def dispatch_history_jobs(self, sched_ip, sched_port):
+        def thread_func_once_dispatch_his_job(sched_ip, sched_port):
             try:
-                client = get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
                 history_jobs_detail = convert_types(self.history_jobs_detail)
-                client.update_history_jobs(history_jobs_detail)
+                with get_zerorpc_client(sched_ip, sched_port) as client:
+                    client.update_history_jobs(history_jobs_detail)
                 self.dispatcher_logger.info("Thread [thread_func_once_dispatch_his_job] finished!")
             except Exception as e:
                 self.dispatcher_logger.error(f"Thread [thread_func_once_dispatch_his_job] error => {str(e)}")
                 self.dispatcher_logger.exception(e)
-        p = threading.Thread(target=thread_func_once_dispatch_his_job, args=(sched_ip, sched_port, update_timeout), daemon=True)
+        p = threading.Thread(target=thread_func_once_dispatch_his_job, args=(sched_ip, sched_port), daemon=True)
         p.start()
         self.dispatcher_logger.info("Thread [thread_func_once_dispatch_his_job] start!")
         return p
@@ -225,8 +225,8 @@ class Dispatcher(object):
             self.dispatcher_logger.error(f"failed_job_callback error => {str(e)}")
             self.dispatcher_logger.exception(e)
 
-    def sched_update_dataset(self, sched_ip, sched_port, update_timeout):
-        def thread_func_timely_dispatch_dataset(sched_ip, sched_port, update_timeout):
+    def sched_update_dataset(self, sched_ip, sched_port):
+        def thread_func_timely_dispatch_dataset(sched_ip, sched_port):
             try:
                 while not self.all_finished:
                     count = self.dispatch_datasets_count
@@ -249,9 +249,9 @@ class Dispatcher(object):
                                 }
                     if count > self.dispatch_datasets_count:
                         self.dispatch_datasets_count = count
-                        client = get_zerorpc_client(sched_ip, sched_port, timeout=update_timeout)
                         subtrain_datasetidentifier_info = convert_types(subtrain_datasetidentifier_info)
-                        client.update_dataset(subtrain_datasetidentifier_info)
+                        with get_zerorpc_client(sched_ip, sched_port) as client:
+                            client.update_dataset(subtrain_datasetidentifier_info)
                     if self.dispatch_datasets_count == self.all_datasets_count:
                         self.dispatcher_logger.info("Finished Dataset Dispatch!")
                         break
@@ -260,7 +260,7 @@ class Dispatcher(object):
             except Exception as e:
                 self.dispatcher_logger.error(f"Thread [thread_func_timely_dispatch_dataset] error => {str(e)}")
                 self.dispatcher_logger.exception(e)
-        p = threading.Thread(target=thread_func_timely_dispatch_dataset, args=(sched_ip, sched_port, update_timeout), daemon=True)
+        p = threading.Thread(target=thread_func_timely_dispatch_dataset, args=(sched_ip, sched_port), daemon=True)
         p.start()
         self.dispatcher_logger.info("Thread [thread_func_timely_dispatch_dataset] start!")
         return p
@@ -306,41 +306,38 @@ class Dispatcher(object):
             subtrain_datasetidentifier_info = convert_types(subtrain_datasetidentifier_info)
             temp_history_job_details = convert_types(temp_history_job_details)
             temp_submit_job_details = convert_types(temp_submit_job_details)
-            client = get_zerorpc_client(sched_ip, sched_port)
-            client.thread_finished_job_to_dispatcher_start()
-            client.thread_failed_job_to_dispatcher_start()
-            client.sched_simulation_start(subtrain_datasetidentifier_info, temp_history_job_details, temp_submit_job_details)
+            with get_zerorpc_client(sched_ip, sched_port) as client:
+                client.thread_finished_job_to_dispatcher_start()
+                client.thread_failed_job_to_dispatcher_start()
+                client.sched_simulation_start(subtrain_datasetidentifier_info, temp_history_job_details, temp_submit_job_details)
         except Exception as e:
             self.dispatcher_logger.error(f"sched_simulation_start error => {str(e)}")
             self.dispatcher_logger.exception(e)
 
     def sched_clear_all(self, ip, port):
-        client = get_zerorpc_client(ip, port)
-        client.clear_all()
+        with get_zerorpc_client(ip, port) as client:
+            client.clear_all()
 
     def stop_all(self, ip, port):
-        client = get_zerorpc_client(ip, port)
-        client.stop_all()
+        with get_zerorpc_client(ip, port) as client:
+            client.stop_all()
 
     def sched_dispatch_start(self, ip, port, 
-                            update_timeout, cal_significance_sleep_time, 
-                            scheduler_update_sleep_time, placement_sleep_time):
-        try:
-            client = get_zerorpc_client(ip, port)
+                            cal_significance_sleep_time, 
+                            scheduler_update_sleep_time, 
+                            placement_sleep_time):
+        with get_zerorpc_client(ip, port) as client:
             client.cal_significance_dispatch_start(cal_significance_sleep_time)
             client.sched_dispatch_start(scheduler_update_sleep_time)
             client.placement_dispatch_start(placement_sleep_time)
             client.thread_finished_job_to_dispatcher_start()
             client.thread_failed_job_to_dispatcher_start()
-        except Exception as e:
-            self.dispatcher_logger.error(f"sched_dispatch_start error => {str(e)}")
-            self.dispatcher_logger.exception(e)
     
     def sched_end(self, ip, port):
         try:
-            client = get_zerorpc_client(ip, port)
-            client.sched_end()
-            all_result_map = client.end_and_report_dispatchers_by_sched()
+            with get_zerorpc_client(ip, port) as client:
+                client.sched_end()
+                all_result_map = client.end_and_report_dispatchers_by_sched()
 
             current_success_num = all_result_map["current_success_num"]
             current_failed_num = all_result_map["current_failed_num"]
@@ -390,12 +387,12 @@ class Dispatcher(object):
             self.dispatcher_logger.exception(e)
 
     def sched_report_status(self, ip, port, location):
-        client = get_zerorpc_client(ip, port)
-        client.report_status(location)
+        with get_zerorpc_client(ip, port) as client:
+            client.report_status(location)
 
     def sched_update_gpu_status_start(self, ip, port, init_workerip_2_ports, init_gpuidentifiers, current_test_all_dir, simulation_index):
-        client = get_zerorpc_client(ip, port)
-        client.sched_update_gpu_status_start(init_workerip_2_ports, init_gpuidentifiers, current_test_all_dir, simulation_index)
+        with get_zerorpc_client(ip, port) as client:
+            client.sched_update_gpu_status_start(init_workerip_2_ports, init_gpuidentifiers, current_test_all_dir, simulation_index)
 
     def sched_init_sched_register(self, ip, port, args, seed, 
                                 assignment_policy, significance_policy, 
@@ -404,22 +401,6 @@ class Dispatcher(object):
                                 all_or_nothing_flag, enable_waiting_flag,
                                 simulation, simulation_index):
         try:
-            client = get_zerorpc_client(ip, port)
-            client.restart_sched()
-            client.initialize_sched_configs(
-                simulation, 
-                simulation_index,
-                seed, 
-                self.current_test_all_dir, 
-                all_or_nothing_flag, 
-                enable_waiting_flag,
-                pipeline_sequence_all_num,
-                job_request_all_num,
-                config_max_operate_siton_run_num,
-                dataset_name, 
-                dataset_config_name,
-                max_gpu_fuzai
-            )
             if assignment_policy == "PBGPolicy" or assignment_policy == "PBG":
                 comparison_cost_epsilon_list = args.pbg_comparison_cost_epsilons
                 comparison_z_threshold_list = args.pbg_comparison_z_thresholds
@@ -461,9 +442,26 @@ class Dispatcher(object):
                 significance_args = args.temp_sig_metric
             else:
                 significance_args = None
-            client.sched_update_assignment_policy(assignment_policy, assignment_args)
-            client.sched_update_significance_policy(significance_policy, significance_args)
-            client.sched_update_current_time(self.all_start_time)
+            
+            with get_zerorpc_client(ip, port) as client:
+                client.restart_sched()
+                client.initialize_sched_configs(
+                    simulation, 
+                    simulation_index,
+                    seed, 
+                    self.current_test_all_dir, 
+                    all_or_nothing_flag, 
+                    enable_waiting_flag,
+                    pipeline_sequence_all_num,
+                    job_request_all_num,
+                    config_max_operate_siton_run_num,
+                    dataset_name, 
+                    dataset_config_name,
+                    max_gpu_fuzai
+                )
+                client.sched_update_assignment_policy(assignment_policy, assignment_args)
+                client.sched_update_significance_policy(significance_policy, significance_args)
+                client.sched_update_current_time(self.all_start_time)
             self.dispatcher_logger.info("sched_init_sched_register finished!")
             log_args_var(args, self.dispatcher_logger_path)
         except Exception as e:
@@ -496,7 +494,7 @@ def testbed_experiment_start(
     worker_ips, worker_ports, 
     init_gpuidentifiers, 
     init_workerip_2_ports,
-    global_sleep_time, update_timeout, 
+    global_sleep_time,
     scheduler_update_sleep_time, 
     cal_significance_sleep_time,
     placement_sleep_time, 
@@ -605,7 +603,7 @@ def testbed_experiment_start(
     )
     
     if not args.without_start_load_job:
-        dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port, update_timeout)
+        dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port)
         processes.append(dataset_p)
     
     zerorpc.gevent.sleep(waiting_time)
@@ -613,17 +611,16 @@ def testbed_experiment_start(
     processes.append(time_p)
 
     if not args.without_start_load_history_job:
-        history_job_p = dispatcher.dispatch_history_jobs(sched_ip, sched_port, update_timeout)
+        history_job_p = dispatcher.dispatch_history_jobs(sched_ip, sched_port)
         processes.append(history_job_p)
     if not args.without_start_load_job:
-        job_p = dispatcher.dispatch_jobs(pipeline_sequence_all_num, sched_ip, sched_port, update_timeout)
+        job_p = dispatcher.dispatch_jobs(pipeline_sequence_all_num, sched_ip, sched_port)
         processes.append(job_p)
 
     print("Waiting for load datasets and jobs {} s".format(waiting_time))
     zerorpc.gevent.sleep(waiting_time)
     dispatcher.sched_dispatch_start(
         ip=sched_ip, port=sched_port, 
-        update_timeout=update_timeout,
         cal_significance_sleep_time=cal_significance_sleep_time, 
         scheduler_update_sleep_time=scheduler_update_sleep_time, 
         placement_sleep_time=placement_sleep_time
@@ -861,7 +858,6 @@ if __name__ == '__main__':
             init_workerip_2_ports=init_workerip_2_ports,
             
             global_sleep_time=args.global_sleep_time, 
-            update_timeout=args.update_timeout, 
             scheduler_update_sleep_time=args.scheduler_update_sleep_time,
             cal_significance_sleep_time=args.cal_significance_sleep_time, 
             placement_sleep_time=args.placement_sleep_time, 

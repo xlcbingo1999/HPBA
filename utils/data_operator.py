@@ -109,6 +109,7 @@ def final_log_result(current_test_all_dir, all_result_file_name):
             print_console_file("[test_accuracy_info] {}({}~{}) === test_accuracy_mean: {} ; test_accuracy_min: {} ; test_accuracy_max: {}".format(
                 np.mean(all_test_accuracy_arr), min(all_test_accuracy_arr), max(all_test_accuracy_arr), np.mean(all_test_accuracy_arr), min(all_test_accuracy_arr), max(all_test_accuracy_arr)
             ), fileHandler=f)
+            
     print(f"============================ {current_test_all_dir} [success:{final_used_num}] ====================================")
     return final_used_num, success_num_arr, failed_num_arr, all_test_jobs_num_arr, all_train_loss_arr, all_train_accuracy_arr, \
         all_test_loss_arr, all_test_accuracy_arr, all_final_significance_arr, \

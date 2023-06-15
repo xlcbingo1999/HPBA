@@ -38,13 +38,11 @@ from queue import PriorityQueue
 
 def DL_server_do_jobs(job_id, origin_info, sched_epsilon_one_siton_run, siton_run_epoch_num, begin_epoch_num, worker_ip, worker_port, worker_gpu_id, 
                     worker_dataset_config, model_save_path, summary_writer_path, summary_writer_key, logging_file_path, final_significance, simulation_flag):
-    client = zerorpc.Client(timeout=500)
-    client.connect("tcp://{}:{}".format(worker_ip, worker_port))
-    
-    client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info, 
-                    sched_epsilon_one_siton_run, begin_epoch_num, siton_run_epoch_num, 
-                    model_save_path, summary_writer_path, summary_writer_key, logging_file_path, 
-                    final_significance, simulation_flag)
+    with get_zerorpc_client(worker_ip, worker_port) as client:
+        client.begin_job(job_id, worker_gpu_id, worker_dataset_config, origin_info, 
+                        sched_epsilon_one_siton_run, begin_epoch_num, siton_run_epoch_num, 
+                        model_save_path, summary_writer_path, summary_writer_key, logging_file_path, 
+                        final_significance, simulation_flag)
 
 class SchedEvent(object):
     def __init__(self, priority, event_key, metadata):
@@ -225,9 +223,9 @@ class Scheduler_server(object):
 
     def clear_all(self):
         for worker_ip, worker_port in self.workerip_2_ports.items():
-            client = get_zerorpc_client(worker_ip, worker_port)
+            with get_zerorpc_client(worker_ip, worker_port) as client:
+                client.clear_all_jobs()
             self.sched_logger.debug("xlc clear all worker_ip: {} worker_port: {}".format(worker_ip, worker_port))
-            client.clear_all_jobs()
 
         self.simulation = False
         self.simulation_index = 0
@@ -343,15 +341,9 @@ class Scheduler_server(object):
     def stop_all(self):
         print("sched stop_all")
         for worker_ip, worker_port in self.workerip_2_ports.items():
-            client = get_zerorpc_client(worker_ip, worker_port)
-            client.stop_all()
+            with get_zerorpc_client(worker_ip, worker_port) as client:
+                client.stop_all()
         self.all_stop = True
-
-    def get_zerorpc_client(self, ip, port, timeout=500):
-        tcp_ip_port = "tcp://{}:{}".format(ip, port)
-        client = zerorpc.Client(timeout=timeout)
-        client.connect(tcp_ip_port)
-        return client
 
     def get_worker_identifier_detail(self, worker_identifier):
         worker_ip, worker_gpu_id = worker_identifier.split("-")
@@ -921,8 +913,8 @@ class Scheduler_server(object):
                         dispatcher_port = details["dispatcher_port"]
                         results = details["results"]
                         
-                        dispatcher_client = get_zerorpc_client(dispatcher_ip, dispatcher_port)
-                        dispatcher_client.finished_job_callback(job_id, results)
+                        with get_zerorpc_client(dispatcher_ip, dispatcher_port) as client:
+                            client.finished_job_callback(job_id, results)
                     time.sleep(sleep_time)
                 self.sched_logger.info("Thread [thread_func_finished_job_to_dispatcher] finished!")
             except Exception as e:
@@ -944,8 +936,8 @@ class Scheduler_server(object):
                         dispatcher_port = details["dispatcher_port"]
                         results = details["results"]
 
-                        dispatcher_client = get_zerorpc_client(dispatcher_ip, dispatcher_port)
-                        dispatcher_client.failed_job_callback(job_id, results)
+                        with get_zerorpc_client(dispatcher_ip, dispatcher_port) as client:
+                            client.failed_job_callback(job_id, results)
                     time.sleep(sleep_time)
                 self.sched_logger.info("Thread [thread_func_failed_job_to_dispatcher] finished!")
             except Exception as e:
@@ -1624,8 +1616,8 @@ class Scheduler_server(object):
             self.sched_logger.info("Thread [thread_func_timely_update_gpu] started!")
             for worker_ip, worker_port in init_workerip_2_ports.items():
                 self.workerip_2_ports[worker_ip] = worker_port
-                work_client = self.get_zerorpc_client(worker_ip, worker_port)
-                work_client.initialize_logging_path(current_test_all_dir, simulation_index)
+                with get_zerorpc_client(worker_ip, worker_port) as client:
+                    client.initialize_logging_path(current_test_all_dir, simulation_index)
             for gpu_identifier in init_gpuidentifiers:
                 self.gpuidentifier_2_jobinstances[gpu_identifier] = []
             self.sched_logger.info("Thread [thread_func_timely_update_gpu] success!")

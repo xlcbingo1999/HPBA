@@ -156,8 +156,8 @@ class Worker_server(object):
                         job_id = details["job_id"]
                         origin_info = details["origin_info"]
                         exception_log = details["exception_log"]
-                        client = get_zerorpc_client(self.sched_ip, self.sched_port)
-                        client.worker_runtime_failed_job_callback(job_id, origin_info, exception_log)
+                        with get_zerorpc_client(self.sched_ip, self.sched_port) as client:
+                            client.worker_runtime_failed_job_callback(job_id, origin_info, exception_log)
                     zerorpc.gevent.sleep(sleep_time)
                 print("Thread [thread_func_timely_runtime_failed_job_callback] finished!")
             except Exception as e:
@@ -177,8 +177,8 @@ class Worker_server(object):
                         job_id = details["job_id"]
                         origin_info = details["origin_info"]
                         result = details["result"]
-                        client = get_zerorpc_client(self.sched_ip, self.sched_port)
-                        client.worker_finished_job_callback(job_id, origin_info, result)
+                        with get_zerorpc_client(self.sched_ip, self.sched_port) as client:
+                            client.worker_finished_job_callback(job_id, origin_info, result)
                     zerorpc.gevent.sleep(sleep_time)
                 print("Thread [thread_func_timely_finished_job_callback] finished!")
             except Exception as e:
