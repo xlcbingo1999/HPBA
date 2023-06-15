@@ -119,11 +119,11 @@ def final_log_result(current_test_all_dir, all_result_file_name):
             print_console_file("[significance_2_epsilon_real_blocks_info] {}({}~{}) === significance_2_epsilon_real_blocks_mean: {} ; significance_2_epsilon_real_blocks_min: {} ; significance_2_epsilon_real_blocks_max: {}".format(
                 np.mean(all_significance_2_epsilon_real_blocks_arr), min(all_significance_2_epsilon_real_blocks_arr), max(all_significance_2_epsilon_real_blocks_arr), np.mean(all_significance_2_epsilon_real_blocks_arr), min(all_significance_2_epsilon_real_blocks_arr), max(all_significance_2_epsilon_real_blocks_arr)
             ), fileHandler=f)
-            print_console_file("[test_acc_2_epsilon_real_blocks_info] {}({}~{}) === test_acc_2_epsilon_real_blocks_mean: {} ; test_acc_2_epsilon_real_blocks_min: {} ; test_acc_2_epsilon_real_blocks_max: {}".format(
-                np.mean(all_test_acc_2_epsilon_real_blocks_arr), min(all_test_acc_2_epsilon_real_blocks_arr), max(all_test_acc_2_epsilon_real_blocks_arr), np.mean(all_test_acc_2_epsilon_real_blocks_arr), min(all_test_acc_2_epsilon_real_blocks_arr), max(all_test_acc_2_epsilon_real_blocks_arr)
-            ), fileHandler=f)
             print_console_file("[test_loss_2_epsilon_real_blocks_info] {}({}~{}) === test_loss_2_epsilon_real_blocks_mean: {} ; test_loss_2_epsilon_real_blocks_min: {} ; test_loss_2_epsilon_real_blocks_max: {}".format(
                 np.mean(all_test_loss_2_epsilon_real_blocks_arr), min(all_test_loss_2_epsilon_real_blocks_arr), max(all_test_loss_2_epsilon_real_blocks_arr), np.mean(all_test_loss_2_epsilon_real_blocks_arr), min(all_test_loss_2_epsilon_real_blocks_arr), max(all_test_loss_2_epsilon_real_blocks_arr)
+            ), fileHandler=f)
+            print_console_file("[test_acc_2_epsilon_real_blocks_info] {}({}~{}) === test_acc_2_epsilon_real_blocks_mean: {} ; test_acc_2_epsilon_real_blocks_min: {} ; test_acc_2_epsilon_real_blocks_max: {}".format(
+                np.mean(all_test_acc_2_epsilon_real_blocks_arr), min(all_test_acc_2_epsilon_real_blocks_arr), max(all_test_acc_2_epsilon_real_blocks_arr), np.mean(all_test_acc_2_epsilon_real_blocks_arr), min(all_test_acc_2_epsilon_real_blocks_arr), max(all_test_acc_2_epsilon_real_blocks_arr)
             ), fileHandler=f)
             
     print(f"============================ {current_test_all_dir} [success:{final_used_num}] ====================================")
@@ -131,7 +131,7 @@ def final_log_result(current_test_all_dir, all_result_file_name):
         all_test_loss_arr, all_test_accuracy_arr, all_final_significance_arr, \
         all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr, \
         all_epsilon_real_all_block_arr, all_significance_2_epsilon_real_blocks_arr, \
-        all_test_acc_2_epsilon_real_blocks_arr, all_test_loss_2_epsilon_real_blocks_arr
+        all_test_loss_2_epsilon_real_blocks_arr, all_test_acc_2_epsilon_real_blocks_arr
 
 def read_DL_dispatcher_result_func(trace_save_all_file_dir):
     final_used_num = 0
@@ -175,7 +175,7 @@ def read_DL_dispatcher_result_func(trace_save_all_file_dir):
         test_acc = np.sum(list(result_df["test_acc"]))
         all_test_accuracy_arr.append(test_acc/all_test_job_num)
         sig = np.sum(list(result_df["significance"]))
-        all_final_significance_arr.append(sig/all_test_job_num)
+        all_final_significance_arr.append(sig)
         
         all_target_datablock_num_arr.append(np.sum(list(result_df["target_datablock_num"])))
         all_success_datablock_num_arr.append(np.sum(list(result_df["success_datablock_num"])))
