@@ -18,6 +18,10 @@ def write_to_df(df, index,
                 all_target_datablock_num_arr,
                 all_success_datablock_num_arr, 
                 all_failed_datablock_num_arr,
+                all_epsilon_real_all_block_arr,
+                all_significance_2_epsilon_real_blocks_arr,
+                all_test_loss_2_epsilon_real_blocks_arr,
+                all_test_acc_2_epsilon_real_blocks_arr,
                 run_time):
     df.loc[index, "Success num"] = f"{np.mean(success_num_arr)}({min(success_num_arr)}~{max(success_num_arr)})"
     df.loc[index, "Failed num"] = f"{np.mean(failed_num_arr)}({min(failed_num_arr)}~{max(failed_num_arr)})"
@@ -33,6 +37,11 @@ def write_to_df(df, index,
     df.loc[index, "Target Datablock Num"] = f"{np.mean(all_target_datablock_num_arr)}({min(all_target_datablock_num_arr)}~{max(all_target_datablock_num_arr)})"
     df.loc[index, "Success Datablock Num"] = f"{np.mean(all_success_datablock_num_arr)}({min(all_success_datablock_num_arr)}~{max(all_success_datablock_num_arr)})"
     df.loc[index, "Failed Datablock Num"] = f"{np.mean(all_failed_datablock_num_arr)}({min(all_failed_datablock_num_arr)}~{max(all_failed_datablock_num_arr)})"
+
+    df.loc[index, "Epsilon_Real_All_Block"] = f"{np.mean(all_epsilon_real_all_block_arr)}({min(all_epsilon_real_all_block_arr)}~{max(all_epsilon_real_all_block_arr)})"
+    df.loc[index, "Significance_Epsilon_Ratio"] = f"{np.mean(all_significance_2_epsilon_real_blocks_arr)}({min(all_significance_2_epsilon_real_blocks_arr)}~{max(all_significance_2_epsilon_real_blocks_arr)})"
+    df.loc[index, "Test_Loss_Epsilon_Ratio"] = f"{np.mean(all_test_loss_2_epsilon_real_blocks_arr)}({min(all_test_loss_2_epsilon_real_blocks_arr)}~{max(all_test_loss_2_epsilon_real_blocks_arr)})"
+    df.loc[index, "Test_Accuracy_Epsilon_Ratio"] = f"{np.mean(all_test_acc_2_epsilon_real_blocks_arr)}({min(all_test_acc_2_epsilon_real_blocks_arr)}~{max(all_test_acc_2_epsilon_real_blocks_arr)})"
 
     df.loc[index, "Run Time"] = int(run_time)
     return df
@@ -53,6 +62,11 @@ def update_df_real(df):
         "Target Datablock Num",
         "Success Datablock Num",
         "Failed Datablock Num",
+
+        "Epsilon_Real_All_Block"
+        "Test_Accuracy_Epsilon_Ratio",
+        "Significance_Epsilon_Ratio",
+        "Test_Loss_Epsilon_Ratio"
     ]
     mulu_column_key = "log目录"
     mulu_column_key_format_len = 41
@@ -98,7 +112,9 @@ def update_df_real(df):
             if os.path.exists(log_trace_full_path):
                 final_used_num, success_num_arr, failed_num_arr, all_test_jobs_num_arr, all_train_loss_arr, all_train_accuracy_arr, \
                     all_test_loss_arr, all_test_accuracy_arr, all_final_significance_arr, \
-                    all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr = final_log_result(log_trace_path, "all_result.log")
+                    all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr, \
+                    all_epsilon_real_all_block_arr, all_significance_2_epsilon_real_blocks_arr, \
+                    all_test_loss_2_epsilon_real_blocks_arr, all_test_acc_2_epsilon_real_blocks_arr = final_log_result(log_trace_path, "all_result.log")
                 if final_used_num > 0:
                     df = write_to_df(df, index, 
                                     success_num_arr, 
@@ -112,6 +128,10 @@ def update_df_real(df):
                                     all_target_datablock_num_arr,
                                     all_success_datablock_num_arr, 
                                     all_failed_datablock_num_arr, 
+                                    all_epsilon_real_all_block_arr,
+                                    all_significance_2_epsilon_real_blocks_arr,
+                                    all_test_loss_2_epsilon_real_blocks_arr,
+                                    all_test_acc_2_epsilon_real_blocks_arr,
                                     final_used_num)
                     print(f"write success!")
             else:

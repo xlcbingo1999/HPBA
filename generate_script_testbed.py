@@ -9,10 +9,10 @@ nohup_target_dir_prefix = "/home/netlab/DL_lab/opacus_testbed/log_temp_store/"
 target_time_minute = 60
 
 current_ip_index = 3
-current_cmd_index = 0
+current_cmd_index = 1
 
 # testbed
-worker_indexes = [0, 1]
+worker_indexes = [2, 3]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 # simulation
