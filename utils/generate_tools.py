@@ -80,7 +80,7 @@ def poisson_arrival_times(last_arrival_time, lambdas):
     arrival_time = last_arrival_time + np.random.exponential(scale=1/lambdas)
     return arrival_time
 
-def generate_alibaba_jobs(all_num, 
+def generate_alibaba_jobs(all_num, offline_num,
                 time_speed_up, is_history,
                 valid_max_epsilon_require, 
                 job_require_select_block_min_num, job_require_select_block_max_num,
@@ -157,12 +157,9 @@ def generate_alibaba_jobs(all_num,
 
             DELTA = result_df_line["delta"]
 
-            if enable_waiting_flag:
-                arrival_time = offline_time_default
-            else:
-                arrival_time = online_time_iterval * current_decision_num
+            arrival_time_zhanwei = offline_time_default
             job = generate_normal_one_job(
-                arrival_time, model_name, train_dataset_name, test_dataset_name, datablock_select_num, 
+                arrival_time_zhanwei, model_name, train_dataset_name, test_dataset_name, datablock_select_num, 
                 BATCH_SIZE, MAX_PHYSICAL_BATCH_SIZE, EPSILON_PER_EPOCH, DELTA, 
                 TARGET_EPOCHS, SITON_RUN_EPOCH_NUM, TAGRET_ACC, dispatcher_ip, dispatcher_port, 
                 is_history
@@ -183,8 +180,10 @@ def generate_alibaba_jobs(all_num,
         for job_detail_index, job_detail in enumerate(jobs):
             if enable_waiting_flag:
                 norm_time = offline_time_default
+            elif job_detail_index < offline_num:
+                norm_time = offline_time_default
             else:
-                norm_time = online_time_iterval * job_detail_index
+                norm_time = online_time_iterval * (job_detail_index - offline_num)
             jobs[job_detail_index] = change_arrival_time(job_detail, norm_time)
             all_norm_time.append(norm_time)
             all_time_interval.append(norm_time - last_time)
@@ -236,15 +235,12 @@ def generate_alibaba_dataset(num, offline_num, time_speed_up,
             datasets_list[name] = {}
             for index in range(num):
                 sub_datablock_name = "train_sub_{}".format(index)
-                if index < offline_num:
-                    arrival_time = offline_time_default
-                else:
-                    arrival_time = online_time_iterval * (index - offline_num)
+                arrival_time_zhanwei = offline_time_default
                 datasets_list[name][sub_datablock_name] = {
                     "submited": False,
                     "epsilon_capacity": fix_epsilon,
                     "delta_capacity": fix_delta,
-                    "time": arrival_time
+                    "time": arrival_time_zhanwei
                 }
             print(datasets_list[name])
     

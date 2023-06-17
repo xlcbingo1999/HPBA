@@ -73,6 +73,7 @@ class OfflinePolicy(Policy):
         else:
             constraints.append(cp.sum(matrix_X, axis=1) <= job_target_datablock_selected_num_list)
 
+        '''
         if not enable_waiting_flag:
             add_time_constraints = []
             for job_index, job_arrival_time in enumerate(job_arrival_time_list):
@@ -83,10 +84,11 @@ class OfflinePolicy(Policy):
                         constraints.append(matrix_X[job_index, datablock_index] == 0)
                         add_time_constraints.append((job_index, datablock_index))
             self.logger.debug(f"add_time_constraint_num[{len(add_time_constraints)}]: {add_time_constraints}")
+        '''
 
         cvxprob = cp.Problem(objective, constraints)
         result = cvxprob.solve(solver, verbose=False)
-        # print(matrix_X.value)
+        self.logger.debug(f"solve time result: {result}")
         if cvxprob.status != "optimal":
             self.logger.warning('WARNING: Allocation returned by policy not optimal!')
 
@@ -94,11 +96,11 @@ class OfflinePolicy(Policy):
         self.logger.debug(matrix_X.value)
         if matrix_X.value is None:
             success = False
-            result = np.zeros(shape=(job_num, datablock_num))
+            resultX = np.zeros(shape=(job_num, datablock_num))
         else:
             success = True
-            result = matrix_X.value
-        return result, success
+            resultX = matrix_X.value
+        return resultX, success
     
     def get_schedule_order(self, waiting_job_selected_sign):
         job_num = len(waiting_job_selected_sign)
