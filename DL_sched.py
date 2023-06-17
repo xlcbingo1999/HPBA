@@ -1599,11 +1599,11 @@ class Scheduler_server(object):
             pipeline_sequence_all_num, job_request_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta = assignment_args
             policy_item = PBGMixPolicy(pipeline_sequence_all_num, job_request_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, self.seed, self.sched_logger)
         elif assignment_policy == "HISwithOrderProVersionPolicy" or assignment_policy == "HISwithOrderProVersion":
-            beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag = assignment_args
-            policy_item = HISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, self.seed, self.sched_logger)
+            beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, greedy_flag, greedy_threshold = assignment_args
+            policy_item = HISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, greedy_flag, greedy_threshold, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISwithOrderProVersionPolicy" or assignment_policy == "IterativeHISwithOrderProVersion":
-            beta, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch, infinity_flag = assignment_args
-            policy_item = IterativeHISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch, infinity_flag, self.seed, self.sched_logger)
+            beta, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch, infinity_flag, greedy_flag, greedy_threshold = assignment_args
+            policy_item = IterativeHISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch, infinity_flag, greedy_flag, greedy_threshold, self.seed, self.sched_logger)
         elif assignment_policy == "SagewithRemainPolicy" or assignment_policy == "SagewithRemain":
             pipeline_sequence_all_num, job_request_all_num = assignment_args
             policy_item = SagewithRemainPolicy(pipeline_sequence_all_num, job_request_all_num, self.seed, self.sched_logger)

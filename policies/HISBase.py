@@ -8,7 +8,10 @@ import json
 import sys
 
 class HISBasePolicy(Policy):
-    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, seed, logger):
+    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, 
+                infinity_flag, 
+                greedy_flag, greedy_threshold,
+                seed, logger):
         super().__init__(pipeline_sequence_all_num, job_request_all_num)
         self.beta = beta
         self.logger = logger
@@ -16,6 +19,8 @@ class HISBasePolicy(Policy):
         self.only_one = True
         self.need_history = True
         self._infinity_flag = infinity_flag
+        self._greedy_flag = greedy_flag
+        self._greedy_threshold = greedy_threshold
         self.initialize_seeds(seed)
     
         self.offline_history_job_ids = []
@@ -41,6 +46,17 @@ class HISBasePolicy(Policy):
         self.online_history_job_sub_test_key_id = []
         self.online_history_job_train_dataset_name = []
         self.online_history_job_model_name = []
+
+    @property
+    def is_greedy_flag(self):
+        return self._greedy_flag
+
+    @property
+    def greedy_threshold(self):
+        if self._greedy_flag:
+            return self._greedy_threshold
+        else:
+            return 1.0
 
     @property
     def is_infinity_flag(self):

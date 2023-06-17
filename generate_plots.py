@@ -524,6 +524,7 @@ def draw_testbed_fig_2():
     keys_str = ["policy", "Online job num"]
     env_x_groups = [200, 400, 800]
     env_policy_groups = [
+        "OfflinePolicy",
         "HISwithOrderProVersionPolicy(infinity)", 
         "IterativeHISwithOrderProVersionPolicy(adaptive)", 
         "PBGPolicy",
@@ -557,24 +558,22 @@ def draw_testbed_fig_2():
         "bbox_to_anchor": (0.5,1.35),
         "label_spacing": 0.05,
         "column_spacing": 0.2,
-        "ncol": 3,
+        "ncol": 4,
         "center_ratio": 2.5,
         "bar_width_ratio": 2,
-        "marker_size": 10,
-        "same_distance": True
     }
     y_label_name_arr = [
         "Significance of all jobs", 
-        "Average Significance of allocated jobs",
         "Ratio of Allocated Datablocks",
         "Epsilon_Real_All_Block",	
         "Significance_Epsilon_Ratio",	
         "Test_Loss_Epsilon_Ratio",
-        "Test_Accuracy_Epsilon_Ratio"
+        "Test_Accuracy_Epsilon_Ratio",
+        "Test Accuracy",
+        "Test Loss",
     ]
-    fill_between_flag = False
-    draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                    y_label_name_arr, env_x_label, params, fill_between_flag, get_testbed_fig_2_policy_map)
+    draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
+                    y_label_name_arr, env_x_label, params, get_testbed_fig_2_policy_map)
 
 if __name__ == "__main__":
     # draw_fig_1()

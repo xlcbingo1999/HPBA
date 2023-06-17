@@ -56,6 +56,8 @@ assignment_policy = "IterativeHISwithOrderProVersionPolicy"
 his_betas = 0.0
 his_batch_size_for_one_epochs = 5
 his_infinity_flag = True
+his_greedy_flag = False
+his_greedy_threshold = 1.0
 pbg_comparison_cost_epsilons = 0.0
 pbg_comparison_z_thresholds = 0.9
 pbg_Ls = 0.01
@@ -166,6 +168,11 @@ if "HIS" in assignment_policy:
     dispatcher_cmds.append(f"--his_batch_size_for_one_epochs {his_batch_size_for_one_epochs}")
     if his_infinity_flag:
         dispatcher_cmds.append(f"--his_infinity_flag")
+    if his_greedy_flag:
+        dispatcher_cmds.append(f"--his_greedy_flag")
+        dispatcher_cmds.append(f"--his_greedy_threshold {his_greedy_threshold}")
+    else:
+        dispatcher_cmds.append(f"--his_greedy_threshold 1.0")
 
 dispatcher_cmds.append(f"--significance_policy {significance_policy}")
 dispatcher_cmds.append(f"--temp_sig_metric {temp_sig_metric}")

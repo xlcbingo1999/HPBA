@@ -58,15 +58,14 @@ def update_df_real(df):
         "Test Accuracy",
 
         "Mean Significance (ALL)", 
-        # "Mean Significance (Success)",
         "Target Datablock Num",
         "Success Datablock Num",
         "Failed Datablock Num",
 
-        "Epsilon_Real_All_Block"
+        "Epsilon_Real_All_Block",
         "Test_Accuracy_Epsilon_Ratio",
         "Significance_Epsilon_Ratio",
-        "Test_Loss_Epsilon_Ratio"
+        "Test_Loss_Epsilon_Ratio",
     ]
     mulu_column_key = "log目录"
     mulu_column_key_format_len = 41

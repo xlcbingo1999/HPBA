@@ -16,8 +16,14 @@ class QueueItem(object):
         self.significance = significance
 
 class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
-    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch, infinity_flag, seed, logger):
-        super().__init__(beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, seed, logger)
+    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, 
+                batch_size_for_one_epoch, infinity_flag, 
+                greedy_flag, greedy_threshold,
+                seed, logger):
+        super().__init__(beta, pipeline_sequence_all_num, job_request_all_num, 
+                        infinity_flag, 
+                        greedy_flag, greedy_threshold,
+                        seed, logger)
         self._name = 'IterativeHISwithOrderProVersionPolicy'
         self.beta = beta
         self.logger = logger
@@ -235,11 +241,14 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
             if datablock_privacy_budget_remain_list[sorted_index] < target_epsilon_require:
                 prob_true = 0.0
             if prob_true > 0.0:
-                prob_false = 1.0 - prob_true
-                prob_vec = [prob_false, prob_true]
-                choice_result = np.random.choice(a=range(2), size=1, replace=False, p=prob_vec)
-                if choice_result == 1:
+                if self.is_greedy_flag and prob_true > self.greedy_threshold:
                     choose_indexes.append(sorted_index)
+                else:
+                    prob_false = 1.0 - prob_true
+                    prob_vec = [prob_false, prob_true]
+                    choice_result = np.random.choice(a=range(2), size=1, replace=False, p=prob_vec)
+                    if choice_result == 1:
+                        choose_indexes.append(sorted_index)
 
         for choose_index in choose_indexes:
             datablock_identifier = temp_index_2_datablock_identifier[choose_index]

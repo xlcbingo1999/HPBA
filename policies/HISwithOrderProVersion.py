@@ -8,8 +8,14 @@ import cvxpy as cp
 import json
 
 class HISwithOrderProVersionPolicy(HISBasePolicy):
-    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, seed, logger):
-        super().__init__(beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, seed, logger)
+    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, 
+                infinity_flag, 
+                greedy_flag, greedy_threshold,
+                seed, logger):
+        super().__init__(beta, pipeline_sequence_all_num, job_request_all_num, 
+                        infinity_flag, 
+                        greedy_flag, greedy_threshold,
+                        seed, logger)
         self._name = 'HISwithOrderProVersionPolicy'
         self.beta = beta
         # self.gamma = gamma
@@ -216,11 +222,15 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
             prob_true = min(1.0, max(0.0, current_job_probability_list[sorted_index]))
             if sub_train_datasetidentifier_2_epsilon_remain[temp_index_2_datablock_identifier[sorted_index]] < target_epsilon_require:
                 prob_true = 0.0
-            prob_false = 1.0 - prob_true
-            prob_vec = [prob_false, prob_true]
-            choice_result = np.random.choice(a=range(2), size=1, replace=False, p=prob_vec)
-            if choice_result == 1:
-                choose_indexes.append(sorted_index)
+            if prob_true > 0.0:
+                if self.is_greedy_flag and prob_true > self.greedy_threshold:
+                    choose_indexes.append(sorted_index)
+                else:
+                    prob_false = 1.0 - prob_true
+                    prob_vec = [prob_false, prob_true]
+                    choice_result = np.random.choice(a=range(2), size=1, replace=False, p=prob_vec)
+                    if choice_result == 1:
+                        choose_indexes.append(sorted_index)
 
             self.logger.debug(f"(job_id[{job_id}], datablock_identifier[{temp_index_2_datablock_identifier[sorted_index]}]) => remain: {datablock_privacy_budget_remain_list[sorted_index]}; pro: {current_job_probability_list[sorted_index]}; choice_result: {choice_result}")
         
