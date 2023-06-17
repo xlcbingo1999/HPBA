@@ -223,14 +223,14 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
             if prob_true > 0.0:
                 if self.is_greedy_flag and prob_true > self.greedy_threshold:
                     choose_indexes.append(sorted_index)
+                    self.logger.debug(f"(job_id[{job_id}], datablock_identifier[{temp_index_2_datablock_identifier[sorted_index]}]) => remain: {datablock_privacy_budget_remain_list[sorted_index]}; pro: {current_job_probability_list[sorted_index]}")
                 else:
                     prob_false = 1.0 - prob_true
                     prob_vec = [prob_false, prob_true]
                     choice_result = np.random.choice(a=range(2), size=1, replace=False, p=prob_vec)
                     if choice_result == 1:
                         choose_indexes.append(sorted_index)
-
-            self.logger.debug(f"(job_id[{job_id}], datablock_identifier[{temp_index_2_datablock_identifier[sorted_index]}]) => remain: {datablock_privacy_budget_remain_list[sorted_index]}; pro: {current_job_probability_list[sorted_index]}; choice_result: {choice_result}")
+                    self.logger.debug(f"(job_id[{job_id}], datablock_identifier[{temp_index_2_datablock_identifier[sorted_index]}]) => remain: {datablock_privacy_budget_remain_list[sorted_index]}; pro: {current_job_probability_list[sorted_index]}; choice_result: {choice_result}")
         
         self.logger.debug(f"job_id[{job_id}] step[pro]: choose_indexes: {choose_indexes}")
 
