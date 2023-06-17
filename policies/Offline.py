@@ -7,14 +7,20 @@ import heapq
 import json
 
 class WaitingJob(object):
-    def __init__(self, job_id, train_dataset_name, target_datablock_select_num, target_epsilon_require, job_priority_weight, sub_train_datasetidentifier_2_significance, arrival_time):
+    def __init__(self, job_id, target_datablock_select_num, target_epsilon_require, 
+                job_priority_weight, sub_train_datasetidentifier_2_significance, arrival_time, 
+                test_dataset_name, sub_test_key_id,
+                train_dataset_name, model_name):
         self.job_id = job_id
-        self.train_dataset_name = train_dataset_name
         self.target_datablock_select_num = target_datablock_select_num
         self.target_epsilon_require = target_epsilon_require
         self.job_priority_weight = job_priority_weight
         self.sub_train_datasetidentifier_2_significance = sub_train_datasetidentifier_2_significance
         self.arrival_time = arrival_time
+        self.test_dataset_name = test_dataset_name
+        self.sub_test_key_id = sub_test_key_id
+        self.train_dataset_name = train_dataset_name
+        self.model_name = model_name
         self.dominant_share = 0.0
 
 class OfflinePolicy(Policy):
@@ -116,24 +122,39 @@ class OfflinePolicy(Policy):
         # assert target_datablock_select_num == 1
         calcu_compare_epsilon = 0.0
         
+        current_all_job_ids = []
         current_all_job_priority_weights = []
         current_all_job_budget_consumes = []
         current_all_job_significances = []
         current_all_job_target_datablock_selected_nums = []
         current_all_job_arrival_times = []
+        current_all_job_test_dataset_names = []
+        current_all_job_sub_test_key_ids = []
+        current_all_job_train_dataset_names = []
+        current_all_job_model_names = []
 
         for job_item in self.waiting_queue:
+            current_all_job_ids.append(job_item.job_id)
             current_all_job_priority_weights.append(job_item.job_priority_weight)
             current_all_job_budget_consumes.append(job_item.target_epsilon_require)
             current_all_job_significances.append(job_item.sub_train_datasetidentifier_2_significance)
             current_all_job_target_datablock_selected_nums.append(job_item.target_datablock_select_num)
             current_all_job_arrival_times.append(job_item.arrival_time)
+            current_all_job_test_dataset_names.append(job_item.test_dataset_name)
+            current_all_job_sub_test_key_ids.append(job_item.sub_test_key_id)
+            current_all_job_train_dataset_names.append(job_item.train_dataset_name)
+            current_all_job_model_names.append(job_item.model_name)
         
         self.logger.debug(f"first check waiting_queue len: {len(self.waiting_queue)}")
         self.logger.debug(f"first check datablock len: {len(sub_train_datasetidentifier_2_epsilon_capcity)}")
         sign_matrix, temp_index_2_datablock_identifier = self.get_sign_matrix(
+            current_all_job_ids,
             current_all_job_priority_weights,
             current_all_job_significances,
+            current_all_job_test_dataset_names,
+            current_all_job_sub_test_key_ids,
+            current_all_job_train_dataset_names,
+            current_all_job_model_names,
             sub_train_datasetidentifier_2_epsilon_capcity
         )
         self.logger.debug(f"second check sign_matrix shape: {sign_matrix.shape}")
@@ -189,9 +210,13 @@ class OfflinePolicy(Policy):
         job_id_2_target_epsilon_require = state["job_id_2_target_epsilon_require"]
         job_id_2_target_datablock_select_num = state["job_id_2_target_datablock_selected_num"]
         job_id_2_job_priority_weight = state["job_id_2_job_priority_weight"]
-        job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]
         job_id_2_significance = state["job_id_2_significance"]
         job_id_2_arrival_index = state["job_id_2_arrival_index"]
+        
+        job_id_2_test_dataset_name = state["job_id_2_test_dataset_name"]
+        job_id_2_sub_test_key_id = state["job_id_2_sub_test_key_id"]
+        job_id_2_train_dataset_name = state["job_id_2_train_dataset_name"]
+        job_id_2_model_name = state["job_id_2_model_name"]
 
         self.logger.debug(f"in offline job_id_2_train_dataset_name: {job_id_2_train_dataset_name}")
 
@@ -211,10 +236,14 @@ class OfflinePolicy(Policy):
                 job_priority_weight = job_id_2_job_priority_weight[job_id]
                 sub_train_datasetidentifier_2_significance = job_id_2_significance[job_id]
                 arrival_time = job_id_2_arrival_index[job_id]
-                waiting_job = WaitingJob(job_id, train_dataset_name, 
+                test_dataset_name = job_id_2_test_dataset_name[job_id]
+                sub_test_key_id = job_id_2_sub_test_key_id[job_id]
+                model_name = job_id_2_model_name[job_id]
+                waiting_job = WaitingJob(job_id, 
                                         target_datablock_select_num, target_epsilon_require, 
-                                        job_priority_weight, sub_train_datasetidentifier_2_significance,
-                                        arrival_time)
+                                        job_priority_weight, sub_train_datasetidentifier_2_significance, arrival_time, 
+                                        test_dataset_name, sub_test_key_id,
+                                        train_dataset_name, model_name)
                 self.waiting_queue_jobid_set.add(job_id)
                 self.waiting_queue.append(waiting_job)
         

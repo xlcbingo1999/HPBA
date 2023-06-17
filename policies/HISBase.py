@@ -18,26 +18,28 @@ class HISBasePolicy(Policy):
         self._infinity_flag = infinity_flag
         self.initialize_seeds(seed)
     
+        self.offline_history_job_ids = []
         self.offline_history_job_priority_weights = []
         self.offline_history_job_budget_consumes = []
         self.offline_history_job_target_selected_num = []
-        self.offline_history_job_train_dataset_name = []
-        self.offline_history_job_test_dataset_name = []
-        self.offline_history_job_sub_test_key_id = []
         self.offline_history_job_type_id = []
         self.offline_history_job_significance = []
         self.offline_history_job_arrival_time = []
+        self.offline_history_job_test_dataset_name = []
+        self.offline_history_job_sub_test_key_id = []
+        self.offline_history_job_train_dataset_name = []
         self.offline_history_job_model_name = []
 
+        self.online_history_job_ids = []
         self.online_history_job_priority_weights = []
         self.online_history_job_budget_consumes = []
         self.online_history_job_target_selected_num = []
-        self.online_history_job_train_dataset_name = []
-        self.online_history_job_test_dataset_name = []
-        self.online_history_job_sub_test_key_id = []
         self.online_history_job_type_id = []
         self.online_history_job_significance = []
         self.online_history_job_arrival_time = []
+        self.online_history_job_test_dataset_name = []
+        self.online_history_job_sub_test_key_id = []
+        self.online_history_job_train_dataset_name = []
         self.online_history_job_model_name = []
 
     @property
@@ -48,39 +50,45 @@ class HISBasePolicy(Policy):
         np.random.seed(seed)
         random.seed(seed+1)
     
-    def push_offline_history_to_assignment_policy(self, offline_history_job_priority_weights, offline_history_job_budget_consumes,
+    def push_offline_history_to_assignment_policy(self, offline_history_job_ids,
+            offline_history_job_priority_weights, offline_history_job_budget_consumes,
             offline_history_job_target_selected_num, offline_history_job_train_dataset_name, offline_history_job_test_dataset_name,
             offline_history_job_sub_test_key_id, offline_history_job_type_id, offline_history_job_significance, 
             offline_history_job_arrival_time, offline_history_job_model_name):
+        self.offline_history_job_ids = offline_history_job_ids
         self.offline_history_job_priority_weights = offline_history_job_priority_weights
         self.offline_history_job_budget_consumes = offline_history_job_budget_consumes
-        self.offline_history_job_target_selected_num = offline_history_job_target_selected_num
-        self.offline_history_job_train_dataset_name = offline_history_job_train_dataset_name
-        self.offline_history_job_test_dataset_name = offline_history_job_test_dataset_name
-        self.offline_history_job_sub_test_key_id = offline_history_job_sub_test_key_id
+        self.offline_history_job_target_selected_num = offline_history_job_target_selected_num    
         self.offline_history_job_type_id = offline_history_job_type_id
         self.offline_history_job_significance = offline_history_job_significance
         self.offline_history_job_arrival_time = offline_history_job_arrival_time
+        self.offline_history_job_test_dataset_name = offline_history_job_test_dataset_name
+        self.offline_history_job_sub_test_key_id = offline_history_job_sub_test_key_id
+        self.offline_history_job_train_dataset_name = offline_history_job_train_dataset_name
         self.offline_history_job_model_name = offline_history_job_model_name
 
-    def push_online_history_to_assignment_policy(self, online_job_priority_weight, online_job_budget_consume, 
+    def push_online_history_to_assignment_policy(self, online_history_job_id, 
+            online_job_priority_weight, online_job_budget_consume, 
             online_job_datablock_selected_num, online_job_train_dataset_name, online_job_test_dataset_name, 
             online_job_sub_test_key_id, online_job_type_id, online_job_significance, 
             online_job_arrival_time, online_job_model_name):
+        self.online_history_job_ids.append(online_history_job_id)
         self.online_history_job_priority_weights.append(online_job_priority_weight)
         self.online_history_job_budget_consumes.append(online_job_budget_consume)
         self.online_history_job_target_selected_num.append(online_job_datablock_selected_num)
-        self.online_history_job_train_dataset_name.append(online_job_train_dataset_name)
-        self.online_history_job_test_dataset_name.append(online_job_test_dataset_name)
-        self.online_history_job_sub_test_key_id.append(online_job_sub_test_key_id)
         self.online_history_job_type_id.append(online_job_type_id)
         self.online_history_job_significance.append(online_job_significance)
         self.online_history_job_arrival_time.append(online_job_arrival_time)
+        self.online_history_job_test_dataset_name.append(online_job_test_dataset_name)
+        self.online_history_job_sub_test_key_id.append(online_job_sub_test_key_id)
+        self.online_history_job_train_dataset_name.append(online_job_train_dataset_name)
         self.online_history_job_model_name.append(online_job_model_name)
 
     def pull_offline_history_from_assignment_policy(self, target_keys):
         result = {}
         for key in target_keys:
+            if key == "offline_history_job_ids":
+                result[key] = self.offline_history_job_ids
             if key == "offline_history_job_priority_weights":
                 result[key] = self.offline_history_job_priority_weights
             if key == "offline_history_job_budget_consumes":
@@ -106,6 +114,8 @@ class HISBasePolicy(Policy):
     def pull_online_history_from_assignment_policy(self, target_keys):
         result = {}
         for key in target_keys:
+            if key == "online_history_job_ids":
+                result[key] = self.online_history_job_ids
             if key == "online_history_job_priority_weights":
                 result[key] = self.online_history_job_priority_weights
             if key == "online_history_job_budget_consumes":
@@ -145,18 +155,6 @@ class HISBasePolicy(Policy):
         self.logger.debug(f"all_blocks_require_mean: {all_blocks_require_mean}")
         self.logger.debug(f"need_siton_block_num_mean: {need_siton_block_num_mean}")
         return one_block_require_mean, all_blocks_require_mean, need_siton_block_num_mean
-
-    # def get_his_right_capacity_for_single_job_version_predict(self, current_all_job_budget_consumes,
-    #                                             target_epsilon_require,
-    #                                             current_all_job_target_datablock_selected_nums,
-    #                                             target_datablock_select_num,
-    #                                             datablock_privacy_budget_remain_list, 
-    #                                             batch_size_for_one_epoch):
-    #     one_block_require_mean, all_blocks_require_mean, need_siton_block_num_mean = self.get_his_single_job_require_epsilon(
-    #         current_all_job_budget_consumes, current_all_job_target_datablock_selected_nums, batch_size_for_one_epoch
-    #     )
-
-    #     siton_block_epsilon_capacity = one_block_require_mean
         
 
     def get_his_right_capacity_for_single_job(self, current_all_job_budget_consumes,

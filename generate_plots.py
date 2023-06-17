@@ -10,6 +10,41 @@ from utils.plot_operator import add_df_with_min_max, get_mark_color_hatch_marker
 # plt.rcParams['font.sans-serif'] = ['Times New Roman']  # 如果要显示中文字体,则在此处设为：SimHei
 plt.rcParams['axes.unicode_minus'] = False  # 显示负号
 
+def from_y_label_name_2_add_columns_keys_2_need_max_map(y_label_name_arr):
+    add_columns_keys_2_need_max_map = {}
+    for y_label_name in y_label_name_arr:
+        if y_label_name == "Number of Allocated Jobs":
+            add_columns_keys_2_need_max_map["Success num"] = True
+        elif y_label_name == "Number of Failed Jobs":
+            add_columns_keys_2_need_max_map["Failed num"] = True
+        elif y_label_name == "Ratio of Allocated Jobs":
+            add_columns_keys_2_need_max_map["Success num"] = True
+        elif y_label_name == "Ratio of Allocated Datablocks":
+            add_columns_keys_2_need_max_map["Success Datablock Num"] = True
+            add_columns_keys_2_need_max_map["Target Datablock Num"] = True
+        elif y_label_name == "Average Significance of all jobs":
+            add_columns_keys_2_need_max_map["Mean Significance (ALL)"] = True
+        elif y_label_name == "Average Significance of allocated jobs":
+            add_columns_keys_2_need_max_map["Mean Significance (Success)"] = True
+        elif y_label_name == "Significance of all jobs":
+            add_columns_keys_2_need_max_map["Mean Significance (ALL)"] = True
+        elif y_label_name == "Significance of allocated jobs":
+            add_columns_keys_2_need_max_map["Mean Significance (Success)"] = True
+            add_columns_keys_2_need_max_map["Success num"] = True
+        elif (y_label_name == "Train Accuracy" or y_label_name == "Test Accuracy") :
+            add_columns_keys_2_need_max_map[y_label_name] = True
+        elif (y_label_name == "Train Loss" or y_label_name == "Test Loss"):
+            add_columns_keys_2_need_max_map[y_label_name] = False
+        elif y_label_name == "Epsilon_Real_All_Block":
+            add_columns_keys_2_need_max_map[y_label_name] = False
+        elif (y_label_name == "Epsilon_Real_All_Block"
+            or y_label_name == "Significance_Epsilon_Ratio" 
+            or y_label_name == "Test_Loss_Epsilon_Ratio"
+            or y_label_name == "Test_Accuracy_Epsilon_Ratio"
+        ):
+            add_columns_keys_2_need_max_map[y_label_name] = True
+    return add_columns_keys_2_need_max_map
+
 def draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
                 y_label_name_arr, env_x_label, params, fill_between_flag, get_policy_map_func):
     current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
@@ -19,7 +54,9 @@ def draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups,
     df_with_key = df.set_index(keys_str, drop=False)
     unique_values = df_with_key.index.unique()
     print(unique_values)
-    df_with_key = add_df_with_min_max(df_with_key)
+
+    add_columns_keys_2_need_max_map = from_y_label_name_2_add_columns_keys_2_need_max_map(y_label_name_arr)
+    df_with_key = add_df_with_min_max(df_with_key, add_columns_keys_2_need_max_map)
     print("---- df.info ----")
     df_with_key.info()
 
@@ -118,7 +155,8 @@ def draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups,
     unique_values = df_with_key.index.unique()
     print(unique_values)
     
-    df_with_key = add_df_with_min_max(df_with_key)
+    add_columns_keys_2_need_max_map = from_y_label_name_2_add_columns_keys_2_need_max_map(y_label_name_arr)
+    df_with_key = add_df_with_min_max(df_with_key, add_columns_keys_2_need_max_map)
     print("---- df.info ----")
     df_with_key.info()
 
@@ -325,11 +363,7 @@ def draw_fig_6():
         "HISwithOrderProVersionPolicy(1000)",
         "OfflinePolicy",
     ]
-    y_label_name_arr = [
-        "Significance of all jobs", 
-        "Average Significance of allocated jobs",
-        "Ratio of Allocated Datablocks"
-    ]
+    
     def get_fig_6_policy_map(origin_policy):
         result_policy = ""
         if origin_policy == "OfflinePolicy":
@@ -367,6 +401,11 @@ def draw_fig_6():
         "center_ratio": 2.5,
         "bar_width_ratio": 2,
     }
+    y_label_name_arr = [
+        "Significance of all jobs", 
+        "Average Significance of allocated jobs",
+        "Ratio of Allocated Datablocks"
+    ]
     draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
                     y_label_name_arr, env_x_label, params, get_fig_6_policy_map)
 
@@ -451,14 +490,8 @@ def draw_testbed_fig_1():
             result_policy = "BestFit"
         elif origin_policy == "HISwithOrderProVersionPolicy(infinity)":
             result_policy = "HIS"
-            # match = 
-            # if match:
-            #     result_policy = result_policy + "({})".format(match.group("history_num"))
         elif origin_policy == "IterativeHISwithOrderProVersionPolicy(adaptive)":
             result_policy = "IterativeHIS"
-            # match = re.match(r"IterativeHISwithOrderPolicy\((?P<iteration_num>\d+)\)", origin_policy)
-            # if match:
-            #     result_policy = result_policy + "({})".format(match.group("iteration_num"))
         return result_policy
     env_x_label = r"Number of Test Job"
     params = {
@@ -486,13 +519,69 @@ def draw_testbed_fig_1():
     draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
                     y_label_name_arr, env_x_label, params, fill_between_flag, get_testbed_fig_1_policy_map)
     
+def draw_testbed_fig_2():
+    target_pic_name = "testbed_fig_2_right"
+    keys_str = ["policy", "Online job num"]
+    env_x_groups = [200, 400, 800]
+    env_policy_groups = [
+        "HISwithOrderProVersionPolicy(infinity)", 
+        "IterativeHISwithOrderProVersionPolicy(adaptive)", 
+        "PBGPolicy",
+        "SagewithRemainPolicy",
+        "BestFitwithRemainPolicy"
+    ]
+    def get_testbed_fig_2_policy_map(origin_policy):
+        result_policy = ""
+        if origin_policy == "OfflinePolicy":
+            result_policy = "Ground Truth"
+        elif origin_policy == "PBGPolicy":
+            result_policy = "PBG"
+        elif origin_policy == "PBGMixPolicy": 
+            result_policy = "PBGMix"
+        elif origin_policy == "SagewithRemainPolicy":
+            result_policy = "Sage"
+        elif origin_policy == "BestFitwithRemainPolicy":
+            result_policy = "BestFit"
+        elif origin_policy == "HISwithOrderProVersionPolicy(infinity)":
+            result_policy = "HIS"
+        elif origin_policy == "IterativeHISwithOrderProVersionPolicy(adaptive)":
+            result_policy = "IterativeHIS"
+        return result_policy
+    env_x_label = r"Number of Test Job"
+    params = {
+        "font_size": 20,
+        "line_width": 1.5,
+        "bar_width": 0.23,
+        "fill_between_alpha": 0.5,
+        "max_one_line_length": 20,
+        "bbox_to_anchor": (0.5,1.35),
+        "label_spacing": 0.05,
+        "column_spacing": 0.2,
+        "ncol": 3,
+        "center_ratio": 2.5,
+        "bar_width_ratio": 2,
+        "marker_size": 10,
+        "same_distance": True
+    }
+    y_label_name_arr = [
+        "Significance of all jobs", 
+        "Average Significance of allocated jobs",
+        "Ratio of Allocated Datablocks",
+        "Epsilon_Real_All_Block",	
+        "Significance_Epsilon_Ratio",	
+        "Test_Loss_Epsilon_Ratio",
+        "Test_Accuracy_Epsilon_Ratio"
+    ]
+    fill_between_flag = False
+    draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
+                    y_label_name_arr, env_x_label, params, fill_between_flag, get_testbed_fig_2_policy_map)
 
 if __name__ == "__main__":
     # draw_fig_1()
     # draw_fig_2()
     # draw_fig_6()
     # draw_fig_5()
-    draw_testbed_fig_1()
+    draw_testbed_fig_2()
     
     # "Number of Allocated Jobs", 
     # "Ratio of Allocated Jobs", 

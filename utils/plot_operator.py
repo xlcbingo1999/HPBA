@@ -12,24 +12,10 @@ def get_mark_color_hatch_marker():
     markers = ['x', 'o', 'v', '^', '<', '>', 's', 'P', 'X', 'D']
     return colors, hatchs, markers
 
-def add_df_with_min_max(df):
-    add_columns_keys = [
-        "Success num", 
-        "Failed num", 
-        "Mean Significance (ALL)", 
-        "Mean Significance (Success)",
-        "Success Datablock Num",
-        "Failed Datablock Num",
-        "Target Datablock Num",
-        "Train Loss",	
-        "Train Accuracy",	
-        "Test Loss",	
-        "Test Accuracy"
-    ]
-    key_need_max = [True, False, True, True, True, False, True]
+def add_df_with_min_max(df, add_columns_keys_2_need_max_map):
     # 遍历每一行并进行正则表达式匹配和提取
     for index, row in df.iterrows():
-        for key_index, key in enumerate(add_columns_keys):
+        for key, key_need_max in add_columns_keys_2_need_max_map.items():
             success_num = row[key]
             success_num_str = str(success_num)
             # print(f"success_num_str: {success_num}")
@@ -41,7 +27,7 @@ def add_df_with_min_max(df):
             elif '[' in success_num_str and ']' in success_num_str:
                 all_success_num_strs = success_num_str.split(";")
                 print(f"all_success_num_strs: {all_success_num_strs}")
-                need_max = key_need_max[key_index]
+                need_max = key_need_max
                 nedd_avg = -float("inf") if need_max else float("inf")
                 for temp_success_num_str in all_success_num_strs:
                     split_name_kuohao = temp_success_num_str.split("]")
@@ -129,7 +115,9 @@ def get_result_avg_min_max_for_y_label_name(df_with_key, out_loop_groups, in_loo
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} min"] * df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"]
                 results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} max"] * df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"]
             elif (y_label_name == "Train Loss" or y_label_name == "Train Accuracy" or 
-                y_label_name == "Test Loss" or y_label_name == "Test Accuracy") :
+                y_label_name == "Test Loss" or y_label_name == "Test Accuracy" or
+                y_label_name == "Epsilon_Real_All_Block" or y_label_name == "Significance_Epsilon_Ratio" or 
+                y_label_name == "Test_Loss_Epsilon_Ratio" or y_label_name == "Test_Accuracy_Epsilon_Ratio") :
                 train_accuracy_prefix = y_label_name
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_accuracy_prefix} avg"]
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_accuracy_prefix} min"]

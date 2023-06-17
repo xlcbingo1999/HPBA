@@ -133,7 +133,7 @@ class Dispatcher(object):
         self.all_finished = False
         self.job_result_list = []
         
-    def dispatch_jobs(self, pipeline_sequence_all_num, sched_ip, sched_port):
+    def testbed_dispatch_jobs(self, pipeline_sequence_all_num, sched_ip, sched_port):
         def thread_func_timely_dispatch_job(sched_ip, sched_port):
             try:
                 while not self.all_finished:
@@ -169,7 +169,7 @@ class Dispatcher(object):
         p.start()
         return p
 
-    def dispatch_history_jobs(self, sched_ip, sched_port):
+    def testbed_dispatch_history_jobs(self, sched_ip, sched_port):
         def thread_func_once_dispatch_his_job(sched_ip, sched_port):
             try:
                 history_jobs_detail = convert_types(self.history_jobs_detail)
@@ -277,7 +277,7 @@ class Dispatcher(object):
         self.finished_labels[job_id] = True
         self.job_result_list.append((self.current_time, job_id, results, origin_info, success_finished_flag))
 
-    def sched_update_dataset(self, sched_ip, sched_port):
+    def testbed_sched_update_dataset(self, sched_ip, sched_port):
         def thread_func_timely_dispatch_dataset(sched_ip, sched_port):
             try:
                 while not self.all_finished:
@@ -359,7 +359,6 @@ class Dispatcher(object):
             temp_history_job_details = convert_types(temp_history_job_details)
             temp_submit_job_details = convert_types(temp_submit_job_details)
             with get_zerorpc_client(sched_ip, sched_port) as client:
-                client.thread_send_job_info_to_dispatcher_start()
                 client.sched_simulation_start(subtrain_datasetidentifier_info, temp_history_job_details, temp_submit_job_details)
         except Exception as e:
             self.dispatcher_logger.error(f"sched_simulation_start error => {str(e)}")
@@ -373,15 +372,15 @@ class Dispatcher(object):
         with get_zerorpc_client(ip, port) as client:
             client.stop_all()
 
-    def sched_dispatch_start(self, ip, port, 
+    def testbed_sched_dispatch_start(self, ip, port, 
                             cal_significance_sleep_time, 
                             scheduler_update_sleep_time, 
                             placement_sleep_time):
         with get_zerorpc_client(ip, port) as client:
-            client.thread_send_job_info_to_dispatcher_start()
             client.cal_significance_dispatch_start(cal_significance_sleep_time)
             client.sched_dispatch_start(scheduler_update_sleep_time)
             client.placement_dispatch_start(placement_sleep_time)
+            client.thread_send_job_info_to_dispatcher_start()
     
     def sched_end(self, ip, port):
         try:
@@ -657,7 +656,7 @@ def testbed_experiment_start(
     )
     
     if not args.without_start_load_job:
-        dataset_p = dispatcher.sched_update_dataset(sched_ip, sched_port)
+        dataset_p = dispatcher.testbed_sched_update_dataset(sched_ip, sched_port)
         processes.append(dataset_p)
     
     zerorpc.gevent.sleep(waiting_time)
@@ -665,16 +664,16 @@ def testbed_experiment_start(
     processes.append(time_p)
 
     if not args.without_start_load_history_job:
-        history_job_p = dispatcher.dispatch_history_jobs(sched_ip, sched_port)
+        history_job_p = dispatcher.testbed_dispatch_history_jobs(sched_ip, sched_port)
         processes.append(history_job_p)
     if not args.without_start_load_job:
-        job_p = dispatcher.dispatch_jobs(pipeline_sequence_all_num, sched_ip, sched_port)
+        job_p = dispatcher.testbed_dispatch_jobs(pipeline_sequence_all_num, sched_ip, sched_port)
         processes.append(job_p)
     dispatcher.operator_job_results_start()
 
     print("Waiting for load datasets and jobs {} s".format(waiting_time))
     zerorpc.gevent.sleep(waiting_time)
-    dispatcher.sched_dispatch_start(
+    dispatcher.testbed_sched_dispatch_start(
         ip=sched_ip, port=sched_port, 
         cal_significance_sleep_time=cal_significance_sleep_time, 
         scheduler_update_sleep_time=scheduler_update_sleep_time, 
@@ -688,7 +687,6 @@ def testbed_experiment_start(
         all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
     dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
     print("logically all stoped!")
-    dispatcher.all_finished = True
     dispatcher.sched_end(sched_ip, sched_port)
     print("Stop workers and scheduler")
     zerorpc.gevent.sleep(waiting_time)
@@ -751,7 +749,6 @@ def simulation_experiment_start(
         all_num=pipeline_sequence_all_num,
         time_speed_up=job_arrival_time_speed_up,
         is_history=False,
-        job_datablock_epsilon_max_ratio=job_datablock_epsilon_max_ratio,
         valid_max_epsilon_require=min_epsilon_capacity,
         job_require_select_block_min_num=job_require_select_block_min_num,
         job_require_select_block_max_num=job_require_select_block_max_num,
@@ -766,7 +763,6 @@ def simulation_experiment_start(
         all_num=all_history_num,
         time_speed_up=job_arrival_time_speed_up,
         is_history=True,
-        job_datablock_epsilon_max_ratio=job_datablock_epsilon_max_ratio,
         valid_max_epsilon_require=min_epsilon_capacity,
         job_require_select_block_min_num=job_require_select_block_min_num,
         job_require_select_block_max_num=job_require_select_block_max_num,
@@ -819,11 +815,12 @@ def simulation_experiment_start(
         dispatcher.sched_simulation_start(sched_ip, sched_port) # 同样直接启动一个线程, 完成一大堆队列操作即可
 
         # 主线程的最后一个操作!
-        while not dispatcher.all_finished:
+        all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
+        while not all_finished_label:
             zerorpc.gevent.sleep(global_sleep_time)
+            all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
         dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
         print("logically all stoped!")
-        dispatcher.all_finished = True
         dispatcher.sched_end(sched_ip, sched_port)
         if not args.without_finished_clear_all:
             dispatcher.sched_clear_all(sched_ip, sched_port)

@@ -120,11 +120,17 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         return selected_datablock_identifiers, calcu_compare_epsilon
     '''
 
-    def get_allocation_for_small(self, job_id, history_job_priority_weights, 
+    def get_allocation_for_small(self, job_id, 
+                                history_job_ids,
+                                history_job_priority_weights, 
                                 history_job_budget_consumes, 
                                 history_job_signficances, 
                                 history_job_target_datablock_selected_nums,
                                 history_job_arrival_times,
+                                history_job_test_dataset_names,
+                                history_job_sub_test_key_ids,
+                                history_job_train_dataset_names,
+                                history_job_model_names,
                                 sub_train_datasetidentifier_2_significance,
                                 sub_train_datasetidentifier_2_epsilon_remain, 
                                 sub_train_datasetidentifier_2_epsilon_capcity,
@@ -133,6 +139,10 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
                                 target_datablock_select_num, 
                                 target_arrival_time,
                                 job_priority_weight,
+                                job_test_dataset_name,
+                                job_sub_test_key_id,
+                                job_train_dataset_name,
+                                job_model_name,
                                 job_arrival_index, 
                                 all_job_sequence_num,
                                 all_or_nothing_flag, 
@@ -142,6 +152,8 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         selected_real_sched_epsilon_map = {}
         calcu_compare_epsilon = 0.0
         
+        current_all_job_ids = history_job_ids
+        current_all_job_ids.append(job_id)
         current_all_job_priority_weights = history_job_priority_weights
         current_all_job_priority_weights.append(job_priority_weight)
         current_all_job_budget_consumes = history_job_budget_consumes
@@ -153,9 +165,23 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         current_all_job_arrival_times = history_job_arrival_times
         current_all_job_arrival_times.append(target_arrival_time)
 
+        current_all_job_test_dataset_names = history_job_test_dataset_names
+        current_all_job_test_dataset_names.append(job_test_dataset_name)
+        current_all_job_sub_test_key_ids = history_job_sub_test_key_ids
+        current_all_job_sub_test_key_ids.append(job_sub_test_key_id)
+        current_all_job_train_dataset_names = history_job_train_dataset_names
+        current_all_job_train_dataset_names.append(job_train_dataset_name)
+        current_all_job_model_names = history_job_model_names
+        current_all_job_model_names.append(job_model_name)
+
         sign_matrix, temp_index_2_datablock_identifier = self.get_sign_matrix(
+            current_all_job_ids,
             current_all_job_priority_weights,
             current_all_job_signficances,
+            current_all_job_test_dataset_names,
+            current_all_job_sub_test_key_ids,
+            current_all_job_train_dataset_names,
+            current_all_job_model_names,
             sub_train_datasetidentifier_2_epsilon_capcity
         )
         
@@ -221,28 +247,47 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         job_priority_weight = state["job_id_2_job_priority_weight"][job_id]
         sub_train_datasetidentifier_2_significance = state["job_id_2_significance"][job_id]
         job_arrival_index = state["job_id_2_arrival_index"][job_id]
+        job_test_dataset_name = state["job_id_2_test_dataset_name"][job_id]
+        job_sub_test_key_id = state["job_id_2_sub_test_key_id"][job_id]
+        job_train_dataset_name = state["job_id_2_train_dataset_name"][job_id]
+        job_model_name = state["job_id_2_model_name"][job_id]
         
         all_job_sequence_num = self.job_request_all_num # TODO(xlc): 需要all_job_seq_num
+        offline_history_job_ids = self.offline_history_job_ids
         offline_history_job_priority_weights = self.offline_history_job_priority_weights
         offline_history_job_budget_consumes = self.offline_history_job_budget_consumes
         offline_history_job_signficance = self.offline_history_job_significance
         offline_history_job_target_datablock_selected_num = self.offline_history_job_target_selected_num
         offline_history_job_arrival_time = self.offline_history_job_arrival_time
+        offline_history_job_test_dataset_name = self.offline_history_job_test_dataset_name
+        offline_history_job_sub_test_key_id = self.offline_history_job_sub_test_key_id
+        offline_history_job_train_dataset_name = self.offline_history_job_train_dataset_name
+        offline_history_job_model_name = self.offline_history_job_model_name
 
+        online_history_job_ids = self.online_history_job_ids
         online_history_job_priority_weights = self.online_history_job_priority_weights
         online_history_job_budget_consumes = self.online_history_job_budget_consumes
         online_history_job_signficance = self.online_history_job_significance
         online_history_job_target_datablock_selected_num = self.online_history_job_target_selected_num
         online_history_job_arrival_time = self.online_history_job_arrival_time
+        online_history_job_test_dataset_name = self.online_history_job_test_dataset_name
+        online_history_job_sub_test_key_id = self.online_history_job_sub_test_key_id
+        online_history_job_train_dataset_name = self.online_history_job_train_dataset_name
+        online_history_job_model_name = self.online_history_job_model_name
 
         # assert target_datablock_select_num == 1
         
         if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < all_job_sequence_num:
+            sample_history_job_ids = offline_history_job_ids + online_history_job_ids
             sample_history_job_priority_weights = offline_history_job_priority_weights + online_history_job_priority_weights
             sample_history_job_budget_consumes = offline_history_job_budget_consumes + online_history_job_budget_consumes
             sample_history_job_signficances = offline_history_job_signficance + online_history_job_signficance
             sample_history_job_target_datablock_selected_nums = offline_history_job_target_datablock_selected_num + online_history_job_target_datablock_selected_num
             sample_history_job_arrival_times = offline_history_job_arrival_time + online_history_job_arrival_time
+            sample_history_job_test_dataset_names = offline_history_job_test_dataset_name + online_history_job_test_dataset_name
+            sample_history_job_sub_test_key_ids = offline_history_job_sub_test_key_id + online_history_job_sub_test_key_id
+            sample_history_job_train_dataset_names = offline_history_job_train_dataset_name + online_history_job_train_dataset_name
+            sample_history_job_model_names = offline_history_job_model_name + online_history_job_model_name
         else:
             select_num_from_offline_history = max(self.pipeline_sequence_all_num - len(online_history_job_priority_weights) - 1, 0)
             offline_sample_indexes = np.random.choice(range(len(offline_history_job_priority_weights)), select_num_from_offline_history, replace=False)
@@ -251,12 +296,16 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
                 online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.pipeline_sequence_all_num - 1, replace=False)
             else:
                 online_sample_indexes = range(len(online_history_job_priority_weights))
+            sample_history_job_ids = [offline_history_job_ids[i] for i in offline_sample_indexes] + [online_history_job_ids[i] for i in online_sample_indexes]
             sample_history_job_priority_weights = [offline_history_job_priority_weights[i] for i in offline_sample_indexes] + [online_history_job_priority_weights[i] for i in online_sample_indexes] 
             sample_history_job_budget_consumes = [offline_history_job_budget_consumes[i] for i in offline_sample_indexes] + [online_history_job_budget_consumes[i] for i in online_sample_indexes]
             sample_history_job_signficances = [offline_history_job_signficance[i] for i in offline_sample_indexes] + [online_history_job_signficance[i] for i in online_sample_indexes]
             sample_history_job_target_datablock_selected_nums = [offline_history_job_target_datablock_selected_num[i] for i in offline_sample_indexes] + [online_history_job_target_datablock_selected_num[i] for i in online_sample_indexes]
             sample_history_job_arrival_times = [offline_history_job_arrival_time[i] for i in offline_sample_indexes] + [online_history_job_arrival_time[i] for i in online_sample_indexes]
-
+            sample_history_job_test_dataset_names = [offline_history_job_test_dataset_name[i] for i in offline_sample_indexes] + [online_history_job_test_dataset_name[i] for i in online_sample_indexes]
+            sample_history_job_sub_test_key_ids = [offline_history_job_sub_test_key_id[i] for i in offline_sample_indexes] + [online_history_job_sub_test_key_id[i] for i in online_sample_indexes]
+            sample_history_job_train_dataset_names = [offline_history_job_train_dataset_name[i] for i in offline_sample_indexes] + [online_history_job_train_dataset_name[i] for i in online_sample_indexes]
+            sample_history_job_model_names = [offline_history_job_model_name[i] for i in offline_sample_indexes] + [online_history_job_model_name[i] for i in online_sample_indexes]
         if job_arrival_index < self.beta * all_job_sequence_num: # TODO(xlc): 无限任务的时候, beta只能设置为0
             self.logger.info("stop due to sample caused by job_arrival_index: {}; self.beta: {}; all_job_sequence_num: {}".format(
                 job_arrival_index, self.beta, all_job_sequence_num
@@ -267,11 +316,16 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         else:
             temp_selected_datablock_identifiers, temp_selected_real_sched_epsilon_map, \
                 calcu_compare_epsilon = self.get_allocation_for_small(job_id, 
+                                sample_history_job_ids,
                                 sample_history_job_priority_weights, 
                                 sample_history_job_budget_consumes, 
                                 sample_history_job_signficances, 
                                 sample_history_job_target_datablock_selected_nums,
                                 sample_history_job_arrival_times,
+                                sample_history_job_test_dataset_names,
+                                sample_history_job_sub_test_key_ids,
+                                sample_history_job_train_dataset_names,
+                                sample_history_job_model_names,
                                 sub_train_datasetidentifier_2_significance,
                                 sub_train_datasetidentifier_2_epsilon_remain, 
                                 sub_train_datasetidentifier_2_epsilon_capcity,
@@ -280,6 +334,10 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
                                 target_datablock_select_num, 
                                 target_arrival_time,
                                 job_priority_weight,
+                                job_test_dataset_name,
+                                job_sub_test_key_id,
+                                job_train_dataset_name,
+                                job_model_name,
                                 job_arrival_index,
                                 all_job_sequence_num,
                                 all_or_nothing_flag, 

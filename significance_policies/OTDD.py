@@ -115,21 +115,25 @@ class OTDDPolicy(SigPolicy):
             self.origin_OTDD_trace[train_dataset_name][sub_train_key_id] = {}
         if test_dataset_name not in self.origin_OTDD_trace[train_dataset_name][sub_train_key_id]:
             self.origin_OTDD_trace[train_dataset_name][sub_train_key_id][test_dataset_name] = {}
+        result_d = 0.0
         if sub_test_key_id not in self.origin_OTDD_trace[train_dataset_name][sub_train_key_id][test_dataset_name]:
-            device_index = 0
-            signficance_state = {
-                "train_dataset_name": train_dataset_name,
-                "sub_train_key_id": sub_train_key_id,
-                "test_dataset_name": test_dataset_name,
-                "sub_test_key_id": sub_test_key_id
-            }
-            distance_batch_size = self.distance_batch_size
-            calculate_batch_size = self.calculate_batch_size
-            sub_train_dataset_config_path = self.sub_train_dataset_config_path
-            test_dataset_config_path = self.test_dataset_config_path
-            result_d = cal_origin_OTDD(signficance_state, device_index, distance_batch_size, calculate_batch_size, sub_train_dataset_config_path, test_dataset_config_path)
-            self.set_origin_OTDD_trace_value(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id, result_d) 
-            self.max_OTDD = max(self.max_OTDD, result_d)
+            raise ValueError(f"origin_OTDD_trace has not train_dataset_name: {train_dataset_name}; \
+                            sub_train_key_id: {sub_train_key_id}; test_dataset_name: {test_dataset_name}; \
+                            sub_test_key_id: {sub_test_key_id}")
+            # device_index = 0
+            # signficance_state = {
+            #     "train_dataset_name": train_dataset_name,
+            #     "sub_train_key_id": sub_train_key_id,
+            #     "test_dataset_name": test_dataset_name,
+            #     "sub_test_key_id": sub_test_key_id
+            # }
+            # distance_batch_size = self.distance_batch_size
+            # calculate_batch_size = self.calculate_batch_size
+            # sub_train_dataset_config_path = self.sub_train_dataset_config_path
+            # test_dataset_config_path = self.test_dataset_config_path
+            # result_d = cal_origin_OTDD(signficance_state, device_index, distance_batch_size, calculate_batch_size, sub_train_dataset_config_path, test_dataset_config_path)
+            # self.set_origin_OTDD_trace_value(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id, result_d) 
+            # self.max_OTDD = max(self.max_OTDD, result_d)
         else:
             result_d = self.origin_OTDD_trace[train_dataset_name][sub_train_key_id][test_dataset_name][sub_test_key_id]
         return result_d
@@ -137,40 +141,34 @@ class OTDDPolicy(SigPolicy):
     
     def get_job_significance_result_for_all_datablocks(self, all_significance_state):
         begin = time.time()
-        origin_OTDDs = []
-        norm_OTDDs = []
+        significance_origin_Temps_map = {}
+        significance_norm_Temps_map = {}
+        for job_id in all_significance_state:
+            for datablock_identifier in all_significance_state[job_id]:
+                signficance_state = all_significance_state[job_id][datablock_identifier]
+                train_dataset_name = signficance_state["train_dataset_name"]
+                sub_train_key_id = signficance_state["sub_train_key_id"]
+                test_dataset_name = signficance_state["test_dataset_name"]
+                sub_test_key_id = signficance_state["sub_test_key_id"]
 
-        for index, signficance_state in enumerate(all_significance_state):
-            train_dataset_name = signficance_state["train_dataset_name"]
-            sub_train_key_id = signficance_state["sub_train_key_id"]
-            test_dataset_name = signficance_state["test_dataset_name"]
-            sub_test_key_id = signficance_state["sub_test_key_id"]
 
-            # 获取epsilon的剩余值
-            # remain_epsilons.append(sub_train_key_remain_epsilon)
-
-            # 获取原始的OTDD
-            origin_otdd_d = self.get_job_datablock_origin_OTDD_sync(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id)
-            origin_OTDDs.append(origin_otdd_d)
-            
+                # 获取原始的OTDD
+                origin_otdd_d = self.get_job_datablock_origin_OTDD_sync(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id)
+                significance_origin_Temps_map.setdefault(job_id, {})[datablock_identifier] = origin_otdd_d
         # 全局量
-        for origin_otdd in origin_OTDDs:
-            norm_otdd = 1.0 / origin_otdd # TODO(xlc): 因为在线场景中的区分度实在不高, 因此为了避免引入新的argue点, 还是选择了直接做除法
-            norm_OTDDs.append(norm_otdd)
+        for job_id in all_significance_state:
+            for datablock_identifier in significance_origin_Temps_map[job_id]:
+                significance_norm_Temps_map.setdefault(job_id, {})[datablock_identifier] = 1.0 / significance_origin_Temps_map[job_id][datablock_identifier]
             
         # 全局量 * (局部量 + UCB), 对量纲的影响是最小的
         # 不能把当前时刻的remain_epsilon传进来, 会导致历史任务的价值偏高, 当前任务的价值不断下降
         # 太久没选的任务是否要将探索价值提高呢? 如果在世界时间中, 当最后的任务价值不断提高, 也会导致历史任务的价值不断提高...
         # 实际上很大概率就是任务在第一次被failed后, 整个系统会将其拒之门外...
-        result = [
-            norm_OTDDs[index] for index in range(len(all_significance_state))
-        ]
-        
         end = time.time()
-        self.logger.debug("significance: {} [norm_OTDDs: {}], time: {}".format(
-            result, norm_OTDDs, end-begin
+        self.logger.debug("norm_OTDDs: {}, time: {}".format(
+            significance_norm_Temps_map, end-begin
         ))
-        return result
+        return significance_norm_Temps_map
     
     def get_job_datablock_significance_async(self, all_significance_state, cal_device_list):
         assert len(cal_device_list) > 0

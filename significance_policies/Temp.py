@@ -14,6 +14,7 @@ import os
 import numpy as np
 from tqdm import tqdm
 import multiprocessing
+from collections import defaultdict
 
 def accuracy(preds, labels):
     return (preds == labels).mean()
@@ -144,19 +145,23 @@ class TempPolicy(SigPolicy):
             self.origin_significance_trace[train_dataset_name][sub_train_key_id][test_dataset_name] = {}
         if sub_test_key_id not in self.origin_significance_trace[train_dataset_name][sub_train_key_id][test_dataset_name]:
             self.origin_significance_trace[train_dataset_name][sub_train_key_id][test_dataset_name][sub_test_key_id] = {}
+        result_d = 0.0
         if model_name not in self.origin_significance_trace[train_dataset_name][sub_train_key_id][test_dataset_name][sub_test_key_id]:
-            device_index = 0
-            device_index = 0
-            signficance_state = {
-                "train_dataset_name": train_dataset_name,
-                "sub_train_key_id": sub_train_key_id,
-                "test_dataset_name": test_dataset_name,
-                "sub_test_key_id": sub_test_key_id,
-                "model_name": model_name
-            }
-            result_d = cal_origin_Temp_loss(signficance_state, device_index, self.metric, self.sub_train_dataset_config_path, self.test_dataset_config_path)
-            self.set_origin_temp_loss_trace_value(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id, model_name, result_d)
-            self.max_OTDD = max(self.max_OTDD, result_d)
+            raise ValueError(f"origin_significance_trace has not train_dataset_name: {train_dataset_name}; \
+                            sub_train_key_id: {sub_train_key_id}; test_dataset_name: {test_dataset_name}; \
+                            sub_test_key_id: {sub_test_key_id}; model_name: {model_name}")
+            # device_index = 0
+            # device_index = 0
+            # signficance_state = {
+            #     "train_dataset_name": train_dataset_name,
+            #     "sub_train_key_id": sub_train_key_id,
+            #     "test_dataset_name": test_dataset_name,
+            #     "sub_test_key_id": sub_test_key_id,
+            #     "model_name": model_name
+            # }
+            # result_d = cal_origin_Temp_loss(signficance_state, device_index, self.metric, self.sub_train_dataset_config_path, self.test_dataset_config_path)
+            # self.set_origin_temp_loss_trace_value(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id, model_name, result_d)
+            # self.max_OTDD = max(self.max_OTDD, result_d)
         else:
             result_d = self.origin_significance_trace[train_dataset_name][sub_train_key_id][test_dataset_name][sub_test_key_id][model_name]
         return result_d
@@ -169,44 +174,38 @@ class TempPolicy(SigPolicy):
 
     def get_job_significance_result_for_all_datablocks(self, all_significance_state):
         begin = time.time()
-        origin_Temps = []
-        norm_Temps = []
+        significance_origin_Temps_map = {}
+        significance_norm_Temps_map = {}
+        for job_id in all_significance_state:
+            for datablock_identifier in all_significance_state[job_id]:
+                signficance_state = all_significance_state[job_id][datablock_identifier]
+                train_dataset_name = signficance_state["train_dataset_name"]
+                sub_train_key_id = signficance_state["sub_train_key_id"]
+                test_dataset_name = signficance_state["test_dataset_name"]
+                sub_test_key_id = signficance_state["sub_test_key_id"]
+                model_name = signficance_state["model_name"]
 
-        for index, signficance_state in enumerate(all_significance_state):
-            train_dataset_name = signficance_state["train_dataset_name"]
-            sub_train_key_id = signficance_state["sub_train_key_id"]
-            test_dataset_name = signficance_state["test_dataset_name"]
-            sub_test_key_id = signficance_state["sub_test_key_id"]
-            model_name = signficance_state["model_name"]
-
-            # 获取epsilon的剩余值
-            # remain_epsilons.append(sub_train_key_remain_epsilon)
-
-            # 获取原始的temp
-            origin_temp_d = self.get_job_datablock_origin_temp_loss_sync(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id, model_name)
-            origin_Temps.append(origin_temp_d)
+                # 获取原始的temp
+                origin_temp_d = self.get_job_datablock_origin_temp_loss_sync(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id, model_name)
+                significance_origin_Temps_map.setdefault(job_id, {})[datablock_identifier] = origin_temp_d
             
         # 全局量
-        for origin_temp in origin_Temps:
-            if self.metric == "Accuracy":
-                norm_temp = origin_temp
-            elif self.metric == "Loss":
-                norm_temp = 1.0 / origin_temp
-            norm_Temps.append(norm_temp)
-        
+        for job_id in all_significance_state:
+            for datablock_identifier in significance_origin_Temps_map[job_id]:
+                if self.metric == "Accuracy":
+                    significance_norm_Temps_map.setdefault(job_id, {})[datablock_identifier] = significance_origin_Temps_map[job_id][datablock_identifier]
+                elif self.metric == "Loss":
+                    significance_norm_Temps_map.setdefault(job_id, {})[datablock_identifier] = 1.0 / significance_origin_Temps_map[job_id][datablock_identifier]
+       
         # 全局量 * (局部量 + UCB), 对量纲的影响是最小的
         # 不能把当前时刻的remain_epsilon传进来, 会导致历史任务的价值偏高, 当前任务的价值不断下降
         # 太久没选的任务是否要将探索价值提高呢? 如果在世界时间中, 当最后的任务价值不断提高, 也会导致历史任务的价值不断提高...
         # 实际上很大概率就是任务在第一次被failed后, 整个系统会将其拒之门外...
-        result = [
-            norm_Temps[index] for index in range(len(all_significance_state))
-        ]
-        
         end = time.time()
-        self.logger.debug("significance: {} [norm_Temps: {}], time: {}".format(
-            result, norm_Temps, end-begin
+        self.logger.debug("norm_Temps: {}, time: {}".format(
+            significance_norm_Temps_map, end-begin
         ))
-        return result
+        return significance_norm_Temps_map
 
     def get_job_datablock_significance_async(self, all_significance_state, cal_device_list):
         assert len(cal_device_list) > 0

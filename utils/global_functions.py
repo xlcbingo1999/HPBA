@@ -76,6 +76,28 @@ def get_zerorpc_client(ip, port, timeout=500, heartbeat=None):
     finally:
         client.close()
 
+def dict_update(raw, new):
+    dict_update_iter(raw, new)
+    dict_add(raw, new)
+    return raw
+ 
+def dict_update_iter(raw, new):
+    for key in raw:
+        if key not in new.keys():
+            continue
+        if isinstance(raw[key], dict) and isinstance(new[key], dict):
+            dict_update(raw[key], new[key])
+        else:
+            raw[key] = new[key]
+ 
+def dict_add(raw, new):
+    update_dict = {}
+    for key in new:
+        if key not in raw.keys():
+            update_dict[key] = new[key]
+ 
+    raw.update(update_dict)
+
 class FAILED_RESULT_KEY(Enum):
     WORKER_NO_READY = 1
     JOB_FAILED = 2

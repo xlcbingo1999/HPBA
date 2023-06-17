@@ -8,11 +8,11 @@ nohup_flag = False
 nohup_target_dir_prefix = "/home/netlab/DL_lab/opacus_testbed/log_temp_store/"
 target_time_minute = 60
 
-current_ip_index = 3
-current_cmd_index = 1
+current_ip_index = 5
+current_cmd_index = 0
 
 # testbed
-worker_indexes = [2, 3]
+worker_indexes = [0, 1]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 # simulation
@@ -52,7 +52,7 @@ base_capacity = 5.0
 dataset_name = "EMNIST"
 dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
-assignment_policy = "HISwithOrderProVersionPolicy"
+assignment_policy = "IterativeHISwithOrderProVersionPolicy"
 his_betas = 0.0
 his_batch_size_for_one_epochs = 5
 his_infinity_flag = True
