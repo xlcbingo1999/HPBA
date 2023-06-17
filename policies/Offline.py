@@ -48,7 +48,7 @@ class OfflinePolicy(Policy):
                       job_arrival_time_list,
                       all_or_nothing_flag, 
                       enable_waiting_flag,
-                      solver=cp.ECOS_BB):
+                      solver=cp.ECOS):
         job_num, datablock_num = sign_matrix.shape[0], sign_matrix.shape[1]
         job_target_datablock_selected_num_list = np.array(job_target_datablock_selected_num_list)
         job_privacy_budget_consume_list = np.array(job_privacy_budget_consume_list)[np.newaxis, :]
