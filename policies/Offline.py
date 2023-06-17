@@ -173,8 +173,8 @@ class OfflinePolicy(Policy):
             datablock_privacy_budget_capacity_list,
             datablock_arrival_time_list, 
             current_all_job_target_datablock_selected_nums,
-            current_all_job_arrival_times,
             current_all_job_budget_consumes,
+            current_all_job_arrival_times,
             all_or_nothing_flag, 
             enable_waiting_flag
         )
