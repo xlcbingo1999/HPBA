@@ -153,8 +153,6 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
                                 job_sub_test_key_id,
                                 job_train_dataset_name,
                                 job_model_name,
-                                job_arrival_index, 
-                                job_request_all_num,
                                 all_or_nothing_flag, 
                                 enable_waiting_flag):
         
@@ -379,8 +377,6 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
                                 job_sub_test_key_id,
                                 job_train_dataset_name,
                                 job_model_name,
-                                job_arrival_index, 
-                                job_request_all_num,
                                 all_or_nothing_flag, 
                                 enable_waiting_flag)
    

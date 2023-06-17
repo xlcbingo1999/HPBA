@@ -149,8 +149,6 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
                                 job_sub_test_key_id,
                                 job_train_dataset_name,
                                 job_model_name,
-                                job_arrival_index, 
-                                all_job_sequence_num,
                                 all_or_nothing_flag, 
                                 enable_waiting_flag):
         
@@ -263,6 +261,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         job_model_name = state["job_id_2_model_name"][job_id]
         
         all_job_sequence_num = self.job_request_all_num # TODO(xlc): 需要all_job_seq_num
+        sample_history_and_current_job_request_all_num = self.sample_history_and_current_job_request_all_num
         offline_history_job_ids = self.offline_history_job_ids
         offline_history_job_priority_weights = self.offline_history_job_priority_weights
         offline_history_job_budget_consumes = self.offline_history_job_budget_consumes
@@ -287,7 +286,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
 
         # assert target_datablock_select_num == 1
         
-        if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < all_job_sequence_num:
+        if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < sample_history_and_current_job_request_all_num:
             sample_history_job_ids = offline_history_job_ids + online_history_job_ids
             sample_history_job_priority_weights = offline_history_job_priority_weights + online_history_job_priority_weights
             sample_history_job_budget_consumes = offline_history_job_budget_consumes + online_history_job_budget_consumes
@@ -299,10 +298,10 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
             sample_history_job_train_dataset_names = offline_history_job_train_dataset_name + online_history_job_train_dataset_name
             sample_history_job_model_names = offline_history_job_model_name + online_history_job_model_name
         else:
-            select_num_from_offline_history = max(self.pipeline_sequence_all_num - len(online_history_job_priority_weights) - 1, 0)
+            select_num_from_offline_history = max(sample_history_and_current_job_request_all_num - len(online_history_job_priority_weights) - 1, 0)
             offline_sample_indexes = np.random.choice(range(len(offline_history_job_priority_weights)), select_num_from_offline_history, replace=False)
             
-            if len(online_history_job_priority_weights) > self.pipeline_sequence_all_num - 1:
+            if len(online_history_job_priority_weights) > sample_history_and_current_job_request_all_num - 1:
                 online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.pipeline_sequence_all_num - 1, replace=False)
             else:
                 online_sample_indexes = range(len(online_history_job_priority_weights))
@@ -316,7 +315,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
             sample_history_job_sub_test_key_ids = [offline_history_job_sub_test_key_id[i] for i in offline_sample_indexes] + [online_history_job_sub_test_key_id[i] for i in online_sample_indexes]
             sample_history_job_train_dataset_names = [offline_history_job_train_dataset_name[i] for i in offline_sample_indexes] + [online_history_job_train_dataset_name[i] for i in online_sample_indexes]
             sample_history_job_model_names = [offline_history_job_model_name[i] for i in offline_sample_indexes] + [online_history_job_model_name[i] for i in online_sample_indexes]
-        if job_arrival_index < self.beta * all_job_sequence_num: # TODO(xlc): 无限任务的时候, beta只能设置为0
+        if (not self.is_infinity_flag) and job_arrival_index < self.beta * all_job_sequence_num: # TODO(xlc): 无限任务的时候, beta只能设置为0
             self.logger.info("stop due to sample caused by job_arrival_index: {}; self.beta: {}; all_job_sequence_num: {}".format(
                 job_arrival_index, self.beta, all_job_sequence_num
             ))
@@ -348,8 +347,6 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
                                 job_sub_test_key_id,
                                 job_train_dataset_name,
                                 job_model_name,
-                                job_arrival_index,
-                                all_job_sequence_num,
                                 all_or_nothing_flag, 
                                 enable_waiting_flag)
    

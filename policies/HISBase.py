@@ -48,6 +48,13 @@ class HISBasePolicy(Policy):
         self.online_history_job_model_name = []
 
     @property
+    def sample_history_and_current_job_request_all_num(self):
+        if self.is_infinity_flag:
+            return sys.maxsize
+        else:
+            return self.job_request_all_num
+
+    @property
     def is_greedy_flag(self):
         return self._greedy_flag
 
