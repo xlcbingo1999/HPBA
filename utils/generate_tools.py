@@ -82,7 +82,7 @@ def poisson_arrival_times(last_arrival_time, lambdas):
 
 def generate_alibaba_jobs(all_num, offline_num,
                 time_speed_up, is_history,
-                valid_max_epsilon_require, 
+                valid_max_epsilon_require, valid_min_epsilon_require,
                 job_require_select_block_min_num, job_require_select_block_max_num,
                 change_job_epsilon_max_times,
                 dispatcher_ip, dispatcher_port, enable_waiting_flag,
@@ -91,31 +91,53 @@ def generate_alibaba_jobs(all_num, offline_num,
     offline_time_default = 0.0
     online_time_iterval = 12.0 / time_speed_up # 1分钟1个块?
 
+    print("check valid_min_epsilon_require: {}".format(valid_min_epsilon_require))
+    print("check max_job_epsilon_require: {}".format(valid_max_epsilon_require))
+
     if len(jobtrace_reconstruct_path) > 0:
         if is_history:
             his_job_path = RESULT_PATH + "/{}/his_jobs.json".format(jobtrace_reconstruct_path)
             with open(his_job_path, "r+") as f:
-                jobs = json.load(f)
+                temp_jobs = json.load(f)
         else:
             test_job_path = RESULT_PATH + "/{}/test_jobs.json".format(jobtrace_reconstruct_path)
             with open(test_job_path, "r+") as f:
-                jobs = json.load(f)
-
-        jobs = jobs[0:all_num] if all_num < len(jobs) else jobs
-        current_decision_num = 0
+                temp_jobs = json.load(f)
         
-        print("change_job_epsilon_max_times: ", change_job_epsilon_max_times)
-        for job_detail_index, job_detail in enumerate(jobs):
-            jobs[job_detail_index] = change_dispatcher_ip_port(job_detail, dispatcher_ip, dispatcher_port)
-            if change_job_epsilon_max_times != 1.0:
-                jobs[job_detail_index] = change_epsilon(job_detail, job_detail["EPSILON"] * change_job_epsilon_max_times)
+        current_decision_num = 0
+        current_search_pointer_jobid = 0
+        while current_decision_num < all_num and current_search_pointer_jobid < len(temp_jobs):
+            job_detail = temp_jobs[current_search_pointer_jobid]
             
+            check_flag = True
+            if valid_min_epsilon_require is not None and job_detail["EPSILON"] * job_detail["SITON_RUN_EPOCH_NUM"] < valid_min_epsilon_require:
+                check_flag = False
+            if valid_max_epsilon_require is not None and job_detail["EPSILON"] * job_detail["SITON_RUN_EPOCH_NUM"] > valid_max_epsilon_require:
+                check_flag = False
+            if job_require_select_block_min_num is not None and job_detail["datablock_select_num"] < job_require_select_block_min_num:
+                check_flag = False
+            if job_require_select_block_max_num is not None and job_detail["datablock_select_num"] > job_require_select_block_max_num:
+                check_flag = False
+            if check_flag:
+                temp_jobs[current_search_pointer_jobid] = change_dispatcher_ip_port(job_detail, dispatcher_ip, dispatcher_port)
+                if change_job_epsilon_max_times != 1.0:
+                    temp_jobs[current_search_pointer_jobid] = change_epsilon(job_detail, job_detail["EPSILON"] * change_job_epsilon_max_times)
+                jobs.append(temp_jobs[current_search_pointer_jobid])
+                current_decision_num += 1
+            current_search_pointer_jobid += 1
     else:
         alibaba_dp_trace_path = ALIBABA_DP_TRACE_PATH + "/privacy_tasks_30_days_extend.csv"
         valid_sample_df = pd.read_csv(alibaba_dp_trace_path)
 
-        valid_sample_df = valid_sample_df[valid_sample_df["epsilon_per_epoch"] * valid_sample_df["siton_run_epoch_num"] < valid_max_epsilon_require]
-        print("check max_job_epsilon_require: {}".format(valid_max_epsilon_require))
+        if valid_min_epsilon_require is not None:
+            valid_sample_df = valid_sample_df[valid_sample_df["epsilon_per_epoch"] * valid_sample_df["siton_run_epoch_num"] >= valid_min_epsilon_require]
+            print("check valid_min_epsilon_require: {}".format(valid_min_epsilon_require))
+            print("check valid_sample_df: {}".format(len(valid_sample_df)))
+        if valid_max_epsilon_require is not None:
+            valid_sample_df = valid_sample_df[valid_sample_df["epsilon_per_epoch"] * valid_sample_df["siton_run_epoch_num"] <= valid_max_epsilon_require]
+            print("check valid_max_epsilon_require: {}".format(valid_max_epsilon_require))
+            print("check valid_sample_df: {}".format(len(valid_sample_df)))
+        
         print("check valid_sample_df: {}".format(len(valid_sample_df)))
         if job_require_select_block_min_num is not None:
             valid_sample_df = valid_sample_df[valid_sample_df["n_blocks"] >= job_require_select_block_min_num]

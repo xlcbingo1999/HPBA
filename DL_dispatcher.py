@@ -40,6 +40,8 @@ def get_df_config():
     parser.add_argument("--all_or_nothing_flag", action="store_true")
     parser.add_argument("--enable_waiting_flag", action="store_true")
     parser.add_argument("--need_save_jobtrace_flag", action="store_true")
+    parser.add_argument('--inf_job_dispatch_flag', action="store_true")
+    parser.add_argument('--need_stop_lower_bound_ratio', type=float, default=0.0)
     parser.add_argument("--seeds", type=int, nargs="+", default=[1234])
     parser.add_argument("--waiting_time", type=int, default=2)
 
@@ -48,6 +50,7 @@ def get_df_config():
     parser.add_argument("--job_arrival_time_speed_up", type=float, default=1.0)
     parser.add_argument("--change_job_epsilon_max_times", type=float, default=1.0) # 这个控制比率(离群值控制)
     parser.add_argument("--job_datablock_epsilon_max_ratio", type=float, default=0.1) # 这个直接从平均增大倍数(平均值控制)
+    parser.add_argument("--job_datablock_epsilon_min_ratio", type=float, default=0.01) # 这个直接从平均增大倍数(平均值控制)
     parser.add_argument("--job_require_select_block_min_num", type=float, default=5)
     parser.add_argument("--job_require_select_block_max_num", type=float, default=25)
     parser.add_argument("--config_max_operate_siton_run_num", type=int, default=1)
@@ -97,7 +100,8 @@ class Dispatcher(object):
         self.dispatcher_ip = dispatcher_ip
         self.dispatcher_port = dispatcher_port
 
-    def restart_dispatcher(self, jobs_list, history_jobs_list, datasets_map, current_test_all_dir, simulation, simulation_index, restart_trace):
+    def restart_dispatcher(self, jobs_list, history_jobs_list, datasets_map, 
+                            current_test_all_dir, simulation, simulation_index, restart_trace):
         self.current_test_all_dir = current_test_all_dir
         self.simulation = simulation
         self.simulation_index = simulation_index
@@ -120,6 +124,7 @@ class Dispatcher(object):
         self.history_jobs_detail = history_jobs_detail
 
         self.finished_labels = {job_id:False for job_id, _ in self.jobs_detail}
+        self.need_judge_finished_label_keys = [job_id for job_id, _ in self.jobs_detail]
         self.dispatch_jobs_count = 0
         
 
@@ -132,13 +137,24 @@ class Dispatcher(object):
 
         self.all_start_time = time.time()
         self.current_time = 0
-        self.all_finished = False
+
         self.job_result_list = []
+        self.all_finished = False
+
+        self.testbed_sched_report_resouce_end = False
         
-    def testbed_dispatch_jobs(self, pipeline_sequence_all_num, sched_ip, sched_port):
+    def set_testbed_sched_report_resouce_end(self):
+        self.testbed_sched_report_resouce_end = True
+
+    def set_need_judge_finished_label_keys(self, temp_need_judge_finished_label_keys):
+        self.need_judge_finished_label_keys = temp_need_judge_finished_label_keys
+
+    def testbed_dispatch_jobs(self, inf_job_dispatch_flag, sched_ip, sched_port):
         def thread_func_timely_dispatch_job(sched_ip, sched_port):
             try:
-                while not self.all_finished:
+                finished_dispatch_flag = False
+                temp_need_judge_finished_label_keys = []
+                while not finished_dispatch_flag: 
                     count = self.dispatch_jobs_count
                     dispatch_jobs_detail = {}
                     for index in range(len(self.jobs_detail)):
@@ -151,16 +167,24 @@ class Dispatcher(object):
                             self.jobs_detail[index][1]["submited"] = True
                             count += 1
                             dispatch_jobs_detail[job_id] = info
+                            temp_need_judge_finished_label_keys.append(job_id)
                     if count > self.dispatch_jobs_count:
                         self.dispatch_jobs_count = count
                         dispatch_jobs_detail = convert_types(dispatch_jobs_detail)
                         with get_zerorpc_client(sched_ip, sched_port) as client:
                             client.update_jobs(dispatch_jobs_detail) # 提交上去后, 任务即进入NO_SCHED状态, 之后就是调度器自身会启动一个不断循环的获取计算Siginificane策略和调度策略
-                            client.close()
                     if self.dispatch_jobs_count == len(self.jobs_detail):
-                        self.dispatcher_logger.info("Finished Job Dispatch!")
+                        with get_zerorpc_client(sched_ip, sched_port) as client:
+                            client.set_all_job_update_flag()
+                        self.dispatcher_logger.info("job max num reach Finished Job Dispatch!")
                         break
                     zerorpc.gevent.sleep(1)
+                    if self.all_finished:
+                        finished_dispatch_flag = True
+                    if inf_job_dispatch_flag and self.testbed_sched_report_resouce_end:
+                        finished_dispatch_flag = True
+                        self.set_need_judge_finished_label_keys(temp_need_judge_finished_label_keys)
+                        self.dispatcher_logger.info(f"sched_report_resouce_end Finished Job Dispatch! change need_judge_finished_label_keys: ({self.need_judge_finished_label_keys}))")
                 self.dispatcher_logger.info("Thread [thread_func_timely_dispatch_job] finished!")
             except Exception as e:
                 self.dispatcher_logger.error(f"Thread [thread_func_timely_dispatch_job] error => {str(e)}")
@@ -308,6 +332,8 @@ class Dispatcher(object):
                             client.update_dataset(subtrain_datasetidentifier_info)
                     if self.dispatch_datasets_count == self.all_datasets_count:
                         self.dispatcher_logger.info("Finished Dataset Dispatch!")
+                        with get_zerorpc_client(sched_ip, sched_port) as client:
+                            client.set_all_datablock_update_flag()
                         break
                     zerorpc.gevent.sleep(1)
                 self.dispatcher_logger.info("Thread [thread_func_timely_dispatch_dataset] finished!")
@@ -453,7 +479,7 @@ class Dispatcher(object):
                                 assignment_policy, significance_policy, 
                                 pipeline_sequence_all_num, job_request_all_num, config_max_operate_siton_run_num,
                                 dataset_name, dataset_config_name, max_gpu_fuzai,
-                                all_or_nothing_flag, enable_waiting_flag,
+                                all_or_nothing_flag, enable_waiting_flag, inf_job_dispatch_flag, need_stop_lower_bound_ratio,
                                 simulation, simulation_index):
         try:
             if assignment_policy == "PBGPolicy" or assignment_policy == "PBG":
@@ -511,6 +537,8 @@ class Dispatcher(object):
                     self.current_test_all_dir, 
                     all_or_nothing_flag, 
                     enable_waiting_flag,
+                    inf_job_dispatch_flag, 
+                    need_stop_lower_bound_ratio,
                     pipeline_sequence_all_num,
                     job_request_all_num,
                     config_max_operate_siton_run_num,
@@ -575,14 +603,18 @@ def testbed_experiment_start(
     offline_datablock_num, 
     all_or_nothing_flag, 
     enable_waiting_flag,
+    inf_job_dispatch_flag,
+    need_stop_lower_bound_ratio,
     job_datablock_epsilon_max_ratio, 
+    job_datablock_epsilon_min_ratio,
     job_require_select_block_min_num, 
     job_require_select_block_max_num,
     change_job_epsilon_max_times
 ):
     assert args.simulation_time == 1 and len(args.seeds) == 1
     simulation_flag = False
-    min_epsilon_capacity = base_capacity * job_datablock_epsilon_max_ratio
+    valid_max_epsilon_require = base_capacity * job_datablock_epsilon_max_ratio
+    valid_min_epsilon_require = base_capacity * job_datablock_epsilon_min_ratio
     offline_dispatch_job_dataset_once_time_flag = ("Offline" in args.assignment_policy) 
     
     offline_pipeline_sequence_all_num = 0
@@ -608,7 +640,8 @@ def testbed_experiment_start(
         offline_num=offline_pipeline_sequence_all_num,
         time_speed_up=job_arrival_time_speed_up,
         is_history=False,
-        valid_max_epsilon_require=min_epsilon_capacity,
+        valid_max_epsilon_require=valid_max_epsilon_require,
+        valid_min_epsilon_require=valid_min_epsilon_require,
         job_require_select_block_min_num=job_require_select_block_min_num,
         job_require_select_block_max_num=job_require_select_block_max_num,
         change_job_epsilon_max_times=change_job_epsilon_max_times,
@@ -623,7 +656,8 @@ def testbed_experiment_start(
         offline_num=offline_all_history_num, # 默认就是离线的
         time_speed_up=job_arrival_time_speed_up,
         is_history=True,
-        valid_max_epsilon_require=min_epsilon_capacity,
+        valid_max_epsilon_require=valid_max_epsilon_require,
+        valid_min_epsilon_require=valid_min_epsilon_require,
         job_require_select_block_min_num=job_require_select_block_min_num,
         job_require_select_block_max_num=job_require_select_block_max_num,
         change_job_epsilon_max_times=change_job_epsilon_max_times,
@@ -664,6 +698,8 @@ def testbed_experiment_start(
         max_gpu_fuzai=args.max_gpu_fuzai,
         all_or_nothing_flag=all_or_nothing_flag,
         enable_waiting_flag=enable_waiting_flag,
+        inf_job_dispatch_flag=inf_job_dispatch_flag,
+        need_stop_lower_bound_ratio=need_stop_lower_bound_ratio,
         simulation=False, simulation_index=0)
     dispatcher.sched_update_gpu_status_start(
         ip=sched_ip, port=sched_port, 
@@ -685,7 +721,7 @@ def testbed_experiment_start(
         history_job_p = dispatcher.testbed_dispatch_history_jobs(sched_ip, sched_port)
         processes.append(history_job_p)
     if not args.without_start_load_job:
-        job_p = dispatcher.testbed_dispatch_jobs(pipeline_sequence_all_num, sched_ip, sched_port)
+        job_p = dispatcher.testbed_dispatch_jobs(inf_job_dispatch_flag, sched_ip, sched_port)
         processes.append(job_p)
     dispatcher.operator_job_results_start()
 
@@ -699,10 +735,14 @@ def testbed_experiment_start(
     )
     
     # 主线程的最后一个操作!
-    all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
+    current_judge_key_job_ids = copy.deepcopy(dispatcher.need_judge_finished_label_keys)
+    current_job_finished_labels = [dispatcher.finished_labels[job_id] for job_id in current_judge_key_job_ids]
+    all_finished_label = reduce(lambda a, b: a and b, current_job_finished_labels)
     while not all_finished_label:
         zerorpc.gevent.sleep(global_sleep_time)
-        all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
+        current_judge_key_job_ids = copy.deepcopy(dispatcher.need_judge_finished_label_keys)
+        current_job_finished_labels = [dispatcher.finished_labels[job_id] for job_id in current_judge_key_job_ids]
+        all_finished_label = reduce(lambda a, b: a and b, current_job_finished_labels)
     dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
     print("logically all stoped!")
     dispatcher.sched_end(sched_ip, sched_port)
@@ -747,12 +787,16 @@ def simulation_experiment_start(
     simulation_time, 
     all_or_nothing_flag, 
     enable_waiting_flag,
+    inf_job_dispatch_flag,
+    need_stop_lower_bound_ratio,
     job_datablock_epsilon_max_ratio, 
+    job_datablock_epsilon_min_ratio,
     job_require_select_block_min_num, 
     job_require_select_block_max_num,
     change_job_epsilon_max_times
 ):
-    min_epsilon_capacity = base_capacity * job_datablock_epsilon_max_ratio
+    valid_max_epsilon_require = base_capacity * job_datablock_epsilon_max_ratio
+    valid_min_epsilon_require = base_capacity * job_datablock_epsilon_min_ratio
     datasets_list, time_2_datablock_num = generate_alibaba_dataset(
         num=all_datablock_num,
         offline_num=offline_datablock_num,
@@ -767,7 +811,8 @@ def simulation_experiment_start(
         all_num=pipeline_sequence_all_num,
         time_speed_up=job_arrival_time_speed_up,
         is_history=False,
-        valid_max_epsilon_require=min_epsilon_capacity,
+        valid_max_epsilon_require=valid_max_epsilon_require,
+        valid_min_epsilon_require=valid_min_epsilon_require,
         job_require_select_block_min_num=job_require_select_block_min_num,
         job_require_select_block_max_num=job_require_select_block_max_num,
         change_job_epsilon_max_times=change_job_epsilon_max_times,
@@ -781,7 +826,8 @@ def simulation_experiment_start(
         all_num=all_history_num,
         time_speed_up=job_arrival_time_speed_up,
         is_history=True,
-        valid_max_epsilon_require=min_epsilon_capacity,
+        valid_max_epsilon_require=valid_max_epsilon_require,
+        valid_min_epsilon_require=valid_min_epsilon_require,
         job_require_select_block_min_num=job_require_select_block_min_num,
         job_require_select_block_max_num=job_require_select_block_max_num,
         change_job_epsilon_max_times=change_job_epsilon_max_times,
@@ -800,13 +846,14 @@ def simulation_experiment_start(
     for simulation_index in range(simulation_time):
         print("start simulation_index: {}".format(simulation_index))
         dispatcher.restart_dispatcher(
-            jobs_list, 
-            history_jobs_list, 
-            datasets_list, 
-            current_test_all_dir, 
+            jobs_list=jobs_list, 
+            history_jobs_list=history_jobs_list, 
+            datasets_map=datasets_list, 
+            current_test_all_dir=current_test_all_dir, 
             simulation=True, 
             simulation_index=simulation_index,
-            restart_trace=restart_trace)
+            restart_trace=restart_trace
+        )
         
         dispatcher.sched_init_sched_register(
             sched_ip, sched_port, 
@@ -820,6 +867,8 @@ def simulation_experiment_start(
             max_gpu_fuzai=args.max_gpu_fuzai,
             all_or_nothing_flag=all_or_nothing_flag,
             enable_waiting_flag=enable_waiting_flag,
+            inf_job_dispatch_flag=inf_job_dispatch_flag, 
+            need_stop_lower_bound_ratio=need_stop_lower_bound_ratio,
             simulation=True,
             simulation_index=simulation_index
         )
@@ -833,10 +882,14 @@ def simulation_experiment_start(
         dispatcher.sched_simulation_start(sched_ip, sched_port) # 同样直接启动一个线程, 完成一大堆队列操作即可
 
         # 主线程的最后一个操作!
-        all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
+        current_judge_key_job_ids = copy.deepcopy(dispatcher.need_judge_finished_label_keys)
+        current_job_finished_labels = [dispatcher.finished_labels[job_id] for job_id in current_judge_key_job_ids]
+        all_finished_label = reduce(lambda a, b: a and b, current_job_finished_labels)
         while not all_finished_label:
             zerorpc.gevent.sleep(global_sleep_time)
-            all_finished_label = reduce(lambda a, b: a and b, dispatcher.finished_labels.values())
+            current_judge_key_job_ids = copy.deepcopy(dispatcher.need_judge_finished_label_keys)
+            current_job_finished_labels = [dispatcher.finished_labels[job_id] for job_id in current_judge_key_job_ids]
+            all_finished_label = reduce(lambda a, b: a and b, current_job_finished_labels)
         dispatcher.sched_report_status(sched_ip, sched_port, "all stop")
         print("logically all stoped!")
         dispatcher.sched_end(sched_ip, sched_port)
@@ -914,7 +967,10 @@ if __name__ == '__main__':
             simulation_time=args.simulation_time,
             all_or_nothing_flag=args.all_or_nothing_flag, 
             enable_waiting_flag=args.enable_waiting_flag,
+            inf_job_dispatch_flag=args.inf_job_dispatch_flag,
+            need_stop_lower_bound_ratio=args.need_stop_lower_bound_ratio,
             job_datablock_epsilon_max_ratio=args.job_datablock_epsilon_max_ratio, 
+            job_datablock_epsilon_min_ratio=args.job_datablock_epsilon_min_ratio,
             job_require_select_block_min_num=args.job_require_select_block_min_num, 
             job_require_select_block_max_num=args.job_require_select_block_max_num,
             change_job_epsilon_max_times=args.change_job_epsilon_max_times
@@ -950,7 +1006,10 @@ if __name__ == '__main__':
             offline_datablock_num=args.offline_datablock_num, 
             all_or_nothing_flag=args.all_or_nothing_flag, 
             enable_waiting_flag=args.enable_waiting_flag,
+            inf_job_dispatch_flag=args.inf_job_dispatch_flag,
+            need_stop_lower_bound_ratio=args.need_stop_lower_bound_ratio,
             job_datablock_epsilon_max_ratio=args.job_datablock_epsilon_max_ratio, 
+            job_datablock_epsilon_min_ratio=args.job_datablock_epsilon_min_ratio,
             job_require_select_block_min_num=args.job_require_select_block_min_num, 
             job_require_select_block_max_num=args.job_require_select_block_max_num,
             change_job_epsilon_max_times=args.change_job_epsilon_max_times

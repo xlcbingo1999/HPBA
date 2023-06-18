@@ -71,6 +71,12 @@ class Scheduler_server(object):
 
         self.all_or_nothing_flag = False
         self.enable_waiting_flag = False
+        self.inf_job_dispatch_flag = False
+        self.need_stop_lower_bound_ratio = 0.0
+
+        self.all_datablock_update_flag = False
+        self.all_job_update_flag = False
+        self.all_resouce_end_flag = False
 
         self.all_stop = False
         self.all_finished = True
@@ -86,8 +92,10 @@ class Scheduler_server(object):
         self.failed_job_to_dispatcher_list = []
         self.failed_job_to_dispatcher_thread = None
         
-        self.workerip_2_ports = {}
+        self.workerip_2_ports = {} # 似乎不能在clear_all删除
         self.gpuidentifier_2_jobinstances = {}
+        self.dispatchers = set()
+        self.dispatcher_2_job_id = {}
         
         self.sub_train_datasetidentifier_2_dataset_status = {} # 这里必须是一个可以伸缩的map
         self.sub_train_datasetidentifier_2_dataset_metadata = {}
@@ -173,7 +181,7 @@ class Scheduler_server(object):
 
     def initialize_sched_configs(self, simulation, simulation_index, 
                                 seed, current_test_all_dir, 
-                                all_or_nothing_flag, enable_waiting_flag, 
+                                all_or_nothing_flag, enable_waiting_flag, inf_job_dispatch_flag, need_stop_lower_bound_ratio,
                                 pipeline_sequence_all_num, job_request_all_num, 
                                 config_max_operate_siton_run_num,
                                 dataset_name, dataset_config_name, max_gpu_fuzai):
@@ -197,6 +205,8 @@ class Scheduler_server(object):
         # all_or_nothing / waiting
         self.all_or_nothing_flag = all_or_nothing_flag
         self.enable_waiting_flag = enable_waiting_flag
+        self.inf_job_dispatch_flag = inf_job_dispatch_flag
+        self.need_stop_lower_bound_ratio = need_stop_lower_bound_ratio
         self.pipeline_sequence_all_num = pipeline_sequence_all_num
         self.job_request_all_num = job_request_all_num
         self.config_max_operate_siton_run_num = config_max_operate_siton_run_num
@@ -237,6 +247,12 @@ class Scheduler_server(object):
 
         self.all_or_nothing_flag = False
         self.enable_waiting_flag = False
+        self.inf_job_dispatch_flag = False
+        self.need_stop_lower_bound_ratio = 0.0
+
+        self.all_datablock_update_flag = False
+        self.all_job_update_flag = False
+        self.all_resouce_end_flag = False
 
         self.all_stop = False
         self.all_finished = True
@@ -253,6 +269,8 @@ class Scheduler_server(object):
         self.failed_job_to_dispatcher_thread = None
 
         self.gpuidentifier_2_jobinstances = {}
+        self.dispatchers = set()
+        self.dispatcher_2_job_id = {}
         
         self.sub_train_datasetidentifier_2_dataset_status = {} # 这里必须是一个可以伸缩的map
         self.sub_train_datasetidentifier_2_dataset_metadata = {}
@@ -553,6 +571,11 @@ class Scheduler_server(object):
                 self.jobid_2_logging_file_path[id] = self.all_logger_path + "/{}.log".format(id)
                 self.jobid_2_summary_writer_key[id] = "{}".format(id)
 
+                dispatcher_ip = origin_info["dispatcher_ip"]
+                dispatcher_port = origin_info["dispatcher_port"]
+                self.dispatchers.add((dispatcher_ip, dispatcher_port))
+                self.dispatcher_2_job_id.setdefault((dispatcher_ip, dispatcher_port), []).append(id)
+
             self.sched_logger.info(f"success add new jobs with num[{len(jobs_detail_map)}]: {jobs_detail_map}")
         except Exception as e:
             self.sched_logger.error(f"update_jobs error => {str(e)}")
@@ -642,14 +665,17 @@ class Scheduler_server(object):
         def thread_func_sched_simulation(subtrain_datasetidentifier_info, all_history_jobs_detail, all_jobs_detail):
             try:
                 self.simulation_queue.put(SchedEvent(-0.1, EVENT_KEY.TEST_START, {}))
+                all_datablock_need_update_num = 0
                 for dataset_name in subtrain_datasetidentifier_info:
                     for sub_train_dataset_identifier in subtrain_datasetidentifier_info[dataset_name]:
                         need_submit_time = subtrain_datasetidentifier_info[dataset_name][sub_train_dataset_identifier]["time"]
                         event_info = {dataset_name: {sub_train_dataset_identifier: subtrain_datasetidentifier_info[dataset_name][sub_train_dataset_identifier]}}
                         self.simulation_queue.put(SchedEvent(need_submit_time, EVENT_KEY.DATABLOCK_ADD, event_info))
+                        all_datablock_need_update_num += 1
                 
                 self.simulation_queue.put(SchedEvent(-1, EVENT_KEY.HISTORY_JOB_SUBMIT, all_history_jobs_detail))
                 
+                all_job_need_update_num = 0
                 for index in range(len(all_jobs_detail)):
                     job_id, info = all_jobs_detail[index]
                     
@@ -660,12 +686,16 @@ class Scheduler_server(object):
                     self.jobid_2_status[job_id] = JOB_STATUS_KEY.SIMULATION_NO_SUMBIT
                     self.status_2_jobid[JOB_STATUS_KEY.SIMULATION_NO_SUMBIT].append(job_id)
                     self.simulation_queue.put(SchedEvent(need_submit_time, EVENT_KEY.JOB_SUBMIT, dispatch_jobs_detail))
+                    all_job_need_update_num += 1
                 
                 next_event = self.simulation_queue.get()
                 next_time = next_event.priority 
                 self.simulation_global_time = next_time
                 waiting_for_end = False
-                dispatchers = set()
+
+                current_update_datablock_num = 0
+                current_update_job_num = 0
+                
                 while True:
                     if self.all_finished:
                         self.sched_logger.info("all_finished")
@@ -673,9 +703,19 @@ class Scheduler_server(object):
                     if not waiting_for_end:
                         self.sched_logger.info("simulation_global_time[{}] next_event: {}".format(self.simulation_global_time, next_event))
                         if next_event.event_key == EVENT_KEY.JOB_SUBMIT:
+                            if self.inf_job_dispatch_flag and self.all_resouce_end_flag:
+                                for dispatcher_id, dispatcher_port in self.dispatchers:
+                                    with get_zerorpc_client(dispatcher_id, dispatcher_port) as client:
+                                        client.set_need_judge_finished_label_keys(self.dispatcher_2_job_id[(dispatcher_id, dispatcher_port)])
+                                self.sched_logger.info(f"current_update_job_num({current_update_job_num}) > all_job_need_update_num({all_job_need_update_num})")
+                                continue
+                            if current_update_job_num >= all_job_need_update_num:
+                                self.set_all_job_update_flag()
+                                self.sched_logger.info(f"current_update_job_num({current_update_job_num}) > all_job_need_update_num({all_job_need_update_num})")
+                                continue
                             self.update_jobs(next_event.metadata)
+                            current_update_job_num += 1
                             job_id, info = list(next_event.metadata.items())[0]
-                            dispatchers.add((info["dispatcher_ip"], info["dispatcher_port"]))
                             self.simulation_queue.put(SchedEvent(self.simulation_global_time, EVENT_KEY.JOB_SIGCAL_SCHED_RUNNING, {}))
                         if next_event.event_key == EVENT_KEY.JOB_SIGCAL_SCHED_RUNNING:
                             self.calculate_significance_for_nosched_jobs()
@@ -686,7 +726,12 @@ class Scheduler_server(object):
                         elif next_event.event_key == EVENT_KEY.HISTORY_JOB_SUBMIT:
                             self.update_history_jobs(next_event.metadata)
                         elif next_event.event_key == EVENT_KEY.DATABLOCK_ADD:
+                            if current_update_datablock_num >= all_datablock_need_update_num:
+                                self.set_all_datablock_update_flag()
+                                self.sched_logger.warning(f"current_update_datablock_num({current_update_datablock_num}) > all_datablock_need_update_num({all_datablock_need_update_num})")
+                                continue
                             self.update_dataset(next_event.metadata)
+                            current_update_datablock_num += 1
                             need_instant_recoming_jobs = self.status_2_jobid[JOB_STATUS_KEY.WAITING]
                             for job_id in need_instant_recoming_jobs:
                                 self.jobid_2_need_instantly_recoming[job_id] = True
@@ -1331,7 +1376,7 @@ class Scheduler_server(object):
                 for identifier in selected_datablock_identifiers:
                     consume_epsilon = selected_real_sched_epsilon_map[(temp_job_id, identifier)] 
                     self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] -= consume_epsilon
-                    if self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] <= 0.0:
+                    if self.sub_train_datasetidentifier_2_epsilon_remain[dataset_name][identifier] <= self.sub_train_datasetidentifier_2_epsilon_capacity[dataset_name][identifier] * self.need_stop_lower_bound_ratio:
                         self.sub_train_datasetidentifier_2_dataset_status[dataset_name][identifier] = DATASET_STATUS_KEY.EXHAUST
                         if self.simulation:
                             self.sub_train_datasetidentifier_2_exhausted_time[dataset_name][identifier] = self.simulation_global_time
@@ -1349,7 +1394,6 @@ class Scheduler_server(object):
                     self.jobid_2_sub_train_key_ids[temp_job_id] = []
                 self.jobid_2_sub_train_key_ids[temp_job_id].append(selected_datablock_identifiers)
                 
-        
         self.sched_logger.info("final true success Jobs selected datablock identifiers: {}".format(success_sched_job_ids))
         self.push_success_scheduling_result_to_policy(success_datasetidentifier_2_consume_epsilon)
 
@@ -1383,8 +1427,32 @@ class Scheduler_server(object):
 
         self.sched_logger.debug(f"waiting job[{len(self.status_2_jobid[JOB_STATUS_KEY.WAITING])}]: {self.status_2_jobid[JOB_STATUS_KEY.WAITING]}")
         self.sched_logger.debug(f"sub_train_datasetidentifier_2_epsilon_remain: {self.sub_train_datasetidentifier_2_epsilon_remain}")
-        # if not self.simulation:
-            # self.report_status("after sched_dataset_for_done_significance_cal_jobs")
+        
+        # 处理最后的数据块!
+        if self.inf_job_dispatch_flag and self.all_datablock_update_flag and (not self.all_resouce_end_flag):
+            need_all_finished = True
+            for dataset_name in self.sub_train_datasetidentifier_2_dataset_status:
+                for identifier in self.sub_train_datasetidentifier_2_dataset_status[dataset_name]:
+                    if self.sub_train_datasetidentifier_2_dataset_status[dataset_name][identifier] != DATASET_STATUS_KEY.EXHAUST:
+                        need_all_finished = False
+                        break
+                if not need_all_finished:
+                    break
+            if need_all_finished:
+                self.all_resouce_end_flag = True
+                self.sched_logger.info(f"==================== FINISHED job dispatcher ====================")
+                if not self.simulation:
+                    for dispatcher_id, dispatcher_port in self.dispatchers:
+                        with get_zerorpc_client(dispatcher_id, dispatcher_port) as client:
+                            client.set_testbed_sched_report_resouce_end()
+
+    def set_all_datablock_update_flag(self):
+        self.sched_logger.info(f"all datablock have been updated!!")
+        self.all_datablock_update_flag = True
+
+    def set_all_job_update_flag(self):
+        self.sched_logger.info(f"all job have been updated!!")
+        self.all_job_update_flag = True
 
     def placement_dispatch_for_allsched_jobs(self):
         success_do_flag = True
