@@ -28,12 +28,12 @@ def write_to_df(df, index,
     # df.loc[index, "Mean Significance (Success)"] = f"{np.mean(success_final_significance_arr)}({min(success_final_significance_arr)}~{max(success_final_significance_arr)})"
     df.loc[index, "Test Jobs Num"] = f"{np.mean(all_test_jobs_num_arr)}({min(all_test_jobs_num_arr)}~{max(all_test_jobs_num_arr)})"
 
-    df.loc[index, "Train Loss"] = f"{np.mean(all_train_loss_arr)}({min(all_train_loss_arr)}~{max(all_train_loss_arr)})"
-    df.loc[index, "Train Accuracy"] = f"{np.mean(all_train_accuracy_arr)}({min(all_train_accuracy_arr)}~{max(all_train_accuracy_arr)})"
-    df.loc[index, "Test Loss"] = f"{np.mean(all_test_loss_arr)}({min(all_test_loss_arr)}~{max(all_test_loss_arr)})"
-    df.loc[index, "Test Accuracy"] = f"{np.mean(all_test_accuracy_arr)}({min(all_test_accuracy_arr)}~{max(all_test_accuracy_arr)})"
+    df.loc[index, "Train Loss All"] = f"{np.mean(all_train_loss_arr)}({min(all_train_loss_arr)}~{max(all_train_loss_arr)})"
+    df.loc[index, "Train Accuracy All"] = f"{np.mean(all_train_accuracy_arr)}({min(all_train_accuracy_arr)}~{max(all_train_accuracy_arr)})"
+    df.loc[index, "Test Loss All"] = f"{np.mean(all_test_loss_arr)}({min(all_test_loss_arr)}~{max(all_test_loss_arr)})"
+    df.loc[index, "Test Accuracy All"] = f"{np.mean(all_test_accuracy_arr)}({min(all_test_accuracy_arr)}~{max(all_test_accuracy_arr)})"
 
-    df.loc[index, "Mean Significance (ALL)"] = f"{np.mean(all_final_significance_arr)}({min(all_final_significance_arr)}~{max(all_final_significance_arr)})"
+    df.loc[index, "Mean Significance All"] = f"{np.mean(all_final_significance_arr)}({min(all_final_significance_arr)}~{max(all_final_significance_arr)})"
     df.loc[index, "Target Datablock Num"] = f"{np.mean(all_target_datablock_num_arr)}({min(all_target_datablock_num_arr)}~{max(all_target_datablock_num_arr)})"
     df.loc[index, "Success Datablock Num"] = f"{np.mean(all_success_datablock_num_arr)}({min(all_success_datablock_num_arr)}~{max(all_success_datablock_num_arr)})"
     df.loc[index, "Failed Datablock Num"] = f"{np.mean(all_failed_datablock_num_arr)}({min(all_failed_datablock_num_arr)}~{max(all_failed_datablock_num_arr)})"
@@ -52,12 +52,12 @@ def update_df_real(df):
         "Failed num", 
         "Test Jobs Num",
 
-        "Train Loss",
-        "Train Accuracy",
-        "Test Loss",
-        "Test Accuracy",
+        "Train Loss All",
+        "Train Accuracy All",
+        "Test Loss All",
+        "Test Accuracy All",
 
-        "Mean Significance (ALL)", 
+        "Mean Significance All", 
         "Target Datablock Num",
         "Success Datablock Num",
         "Failed Datablock Num",
@@ -139,7 +139,7 @@ def update_df_real(df):
 
 if __name__ == "__main__":
     root_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
-    file_names = ["testbed_fig_2"] # temp_get_result, fig_5, fig_1, fig_2, fig_6, testbed_fig_1
+    file_names = ["testbed_fig_3"] # temp_get_result, fig_5, fig_1, fig_2, fig_6, testbed_fig_1, testbed_fig_2
     for file_name in file_names:
         target_path = os.path.join(root_dir, f"{file_name}.csv")
         result_path = os.path.join(root_dir, f"{file_name}_right.csv")

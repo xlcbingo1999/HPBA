@@ -168,12 +168,12 @@ def read_DL_dispatcher_result_func(trace_save_all_file_dir):
         failed_num_arr.append(len(result_df[result_df["success_flag"] == 0]))
         all_test_jobs_num_arr.append(all_test_job_num)
         
-        all_train_loss_arr.append(np.sum(list(result_df["train_loss"]))/all_test_job_num)
-        all_train_accuracy_arr.append(np.sum(list(result_df["train_acc"]))/all_test_job_num)
+        all_train_loss_arr.append(np.sum(list(result_df["train_loss"])))
+        all_train_accuracy_arr.append(np.sum(list(result_df["train_acc"])))
         test_loss = np.sum(list(result_df["test_loss"]))
-        all_test_loss_arr.append(test_loss/all_test_job_num)
+        all_test_loss_arr.append(test_loss)
         test_acc = np.sum(list(result_df["test_acc"]))
-        all_test_accuracy_arr.append(test_acc/all_test_job_num)
+        all_test_accuracy_arr.append(test_acc)
         sig = np.sum(list(result_df["significance"]))
         all_final_significance_arr.append(sig)
         
