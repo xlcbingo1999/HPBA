@@ -1208,7 +1208,7 @@ class Scheduler_server(object):
         #         }
         #     }
         # }
-        self.sched_logger.debug(cal_result_log)
+        # self.sched_logger.debug(cal_result_log)
         significance_result_map = self.significance_policy.get_job_significance_result_for_all_datablocks(all_significance_state)
         return significance_result_map
 

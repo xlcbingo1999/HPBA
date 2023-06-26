@@ -5,6 +5,7 @@ import os
 import itertools
 import math
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 from matplotlib.backends.backend_pdf import PdfPages
 from textwrap import fill
 from utils.plot_operator import add_df_with_min_max, get_mark_color_hatch_marker, get_result_avg_min_max_for_y_label_name
@@ -62,11 +63,15 @@ def draw_plot_worker(fill_between_flag, results, results_min, results_max,
     ncol = params["ncol"]
     marker_size = params["marker_size"]
     same_distance = params["same_distance"]
-    figsize = params["figsize"]
+    figsize = params["figsize"] if "figsize" in params else None
+    max_x_label_show_list = params["max_x_label_show_list"] if "max_x_label_show_list" in params else None
     
     colors, _, markers = get_mark_color_hatch_marker()
 
-    fig = plt.figure(figsize=figsize)
+    if figsize is not None:
+        fig = plt.figure(figsize=figsize)
+    else:
+        fig = plt.figure()
     plt.grid(linestyle="--", axis='y', alpha=0.5)  # 设置背景网格线为虚线
     ax = plt.gca()
     ax.spines['top'].set_visible(False)  # 去掉上边框
@@ -109,9 +114,10 @@ def draw_plot_worker(fill_between_flag, results, results_min, results_max,
     plt.ylabel(fill(y_label_name, max_one_line_length), fontsize=font_size, fontweight='bold')
     if np.mean(results) < 1e-2 or np.mean(results) > 1e2:
         plt.ticklabel_format(style='sci',scilimits=(0,0),axis='y')
-
     # plt.xlim(0.9, 6.1)  # 设置x轴的范围
     # plt.ylim(1.5, 16)
+    if max_x_label_show_list is not None:
+        ax.xaxis.set_major_locator(ticker.FixedLocator(max_x_label_show_list)) 
 
     plt.legend()          #显示各曲线的图例
     leg = plt.gca().get_legend()
@@ -601,17 +607,15 @@ def draw_cr():
             return (2 - lamb - (1 + h_n_ratio) * math.log(1 + 1/h_n_ratio)) / (1 - lamb)
 
     
-    hs = [i * 5 for i in range(1, 100)]
-    n = 100
-    env_x_groups = [h/n for h in hs] # h/s
-    env_policy_groups = [i / 100 for i in range(0, 100, 10)] # lambda
+    env_x_groups = [i * 5 / 100 for i in range(0, 100, 10) if i > 0] # h/s
+    env_policy_groups = [i / 100 for i in range(0, 100, 20) if i > 0] # lambda
     
     args_product_list = [d for d in itertools.product(env_policy_groups, env_x_groups)]
     results = []
     for lamb in env_policy_groups:
         temp_result = []
         for h_n_ratio in env_x_groups:
-            res = get_cr_v2(lamb, h_n_ratio)
+            res = max(0.0, get_cr_v2(lamb, h_n_ratio)) 
             temp_result.append(res)
         results.append(temp_result)
 
@@ -625,17 +629,18 @@ def draw_cr():
         "bbox_to_anchor": (0.5,1.35),
         "label_spacing": 0.05,
         "column_spacing": 0.2,
-        "ncol": 3,
+        "ncol": 2,
         "center_ratio": 2.5,
         "bar_width_ratio": 2,
         "marker_size": 10,
         "same_distance": True,
-        "figsize": (8, 6),
+        # "figsize": (8, 6),
+        # "max_x_label_show_list": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5],
     }
     y_label_name = "Competition Ratio"
     env_x_label = r"$\frac{h}{n}$"
     def get_policy_map_func(origin_policy):
-        return r"\lambda = {}".format(origin_policy)
+        return r"$\lambda = {}$".format(origin_policy)
     current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
     target_pic_name = "cr"
     draw_plot_worker(False, results, None, None,

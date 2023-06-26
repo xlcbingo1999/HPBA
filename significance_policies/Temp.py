@@ -167,8 +167,8 @@ class TempPolicy(SigPolicy):
         return result_d
 
     def write_to_origin_temp_loss_trace(self):
-        self.logger.debug("==== write_to_origin_temp_loss_trace [origin_significance_trace] ====")
-        self.logger.info(self.origin_significance_trace)
+        # self.logger.debug("==== write_to_origin_temp_loss_trace [origin_significance_trace] ====")
+        # self.logger.info(self.origin_significance_trace)
         with open(self.significance_trace_path, "w+") as f:
             json.dump(self.origin_significance_trace, f)
 
@@ -202,9 +202,9 @@ class TempPolicy(SigPolicy):
         # 太久没选的任务是否要将探索价值提高呢? 如果在世界时间中, 当最后的任务价值不断提高, 也会导致历史任务的价值不断提高...
         # 实际上很大概率就是任务在第一次被failed后, 整个系统会将其拒之门外...
         end = time.time()
-        self.logger.debug("norm_Temps: {}, time: {}".format(
-            significance_norm_Temps_map, end-begin
-        ))
+        # self.logger.debug("norm_Temps: {}, time: {}".format(
+        #     significance_norm_Temps_map, end-begin
+        # ))
         return significance_norm_Temps_map
 
     def get_job_datablock_significance_async(self, all_significance_state, cal_device_list):
@@ -236,9 +236,9 @@ class TempPolicy(SigPolicy):
                 self.set_origin_temp_loss_trace_value(train_dataset_name, sub_train_key_id, test_dataset_name, sub_test_key_id, model_name, origin_temp_loss)    
                 self.max_temp_loss = max(self.max_temp_loss, origin_temp_loss)
                 origin_temp_losses.append(origin_temp_loss)
-                self.logger.debug("result distance => [{}-{}-{}-{}]: {}".format(
-                    train_dataset_name, test_dataset_name, sub_train_key_id, sub_test_key_id, origin_temp_loss
-                ))
+                # self.logger.debug("result distance => [{}-{}-{}-{}]: {}".format(
+                #     train_dataset_name, test_dataset_name, sub_train_key_id, sub_test_key_id, origin_temp_loss
+                # ))
             
             self.write_to_origin_temp_loss_trace()
 
@@ -255,7 +255,7 @@ class TempPolicy(SigPolicy):
         ]
         
         end = time.time()
-        self.logger.debug("significance: {} [norm_temp_losses: {}], time: {}".format(
-            result, norm_temp_losses, end-begin
-        ))
+        # self.logger.debug("significance: {} [norm_temp_losses: {}], time: {}".format(
+        #     result, norm_temp_losses, end-begin
+        # ))
         return result

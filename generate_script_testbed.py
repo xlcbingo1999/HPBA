@@ -8,13 +8,13 @@ import json
 nohup_flag = False
 debug_flag = False
 nohup_target_dir_prefix = "/home/netlab/DL_lab/opacus_testbed/log_temp_store/"
-target_time_minute = 90
+target_time_minute = 180
 
-current_ip_index = 3
-current_cmd_index = 0
+current_ip_index = 5
+current_cmd_index = 1
 
 # testbed
-worker_indexes = [0, 1]
+worker_indexes = [2, 3]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 # simulation
@@ -28,12 +28,11 @@ history_jobtrace_reconstruct_path = "schedule-review-testbed-06-18-12-28-24"
 need_save_jobtrace_flag = False
 
 # 全局设置
-
 max_gpu_fuzai = 10000000 if simulation_flag else 5 
 all_or_nothing_flag = False
 enable_waiting_flag = False
 inf_job_dispatch_flag = True
-need_stop_lower_bound_ratio = 0.04
+need_stop_lower_bound_ratio = 0.04 # 检测结束, 在base_capacity为5.0时默认设置为0.04
 seeds = [1234, 2345, 3456, 6789, 7890] if simulation_flag else [1234]
 seeds = [str(seed) for seed in seeds]
 seed_str = " ".join(seeds)
@@ -44,21 +43,23 @@ pipeline_sequence_all_num = 10000
 all_history_num = 0 # 在INF场景中这个东西太多似乎不太好
 job_arrival_time_speed_up = 4.0 # 控制到达速率
 job_datablock_epsilon_max_ratio = 0.2 # 控制最大的比率(离群值控制)
-job_datablock_epsilon_min_ratio = 0.04 # 控制最小的比率(离群值控制, 同时用于检测什么时候可以结束)
-change_job_epsilon_max_times = 1.0 # 这个直接从平均增大倍数(平均值控制), 非轻易不要动这个值, 不能保证任务的请求量在(job_datablock_epsilon_min_ratio, job_datablock_epsilon_max_ratio)之间
+job_datablock_epsilon_min_ratio = 0.04 # 控制最小的比率(离群值控制)
+change_job_epsilon_max_times = 1.0 # 这个直接从平均增大倍数(平均值控制),
+                                   # 逻辑1: 先保证任务的请求量在(job_datablock_epsilon_min_ratio, job_datablock_epsilon_max_ratio)之间
+                                   # 逻辑2: 然后再直接将任务的请求量做倍数放大或缩小
 job_require_select_block_min_num = 4
 job_require_select_block_max_num = 4
 config_max_operate_siton_run_num = 1
 
 # block
-all_datablock_num = 3
-offline_datablock_num = 1
+all_datablock_num = 40
+offline_datablock_num = 20
 datablock_arrival_time_speed_up = 4.0 # 控制到达速率
 base_capacity = 5.0
 dataset_name = "EMNIST"
 dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
-assignment_policy = "PBGPolicy"
+assignment_policy = "OfflinePolicy"
 his_betas = 0.0
 his_batch_size_for_one_epochs = 5
 his_infinity_flag = True

@@ -3,49 +3,54 @@
 # 如果把时间进行压缩, 则应该修改到达速率
 # [4x] => 3 s; 30 s
 import os
+import json
 
 nohup_flag = False
+debug_flag = False
 nohup_target_dir_prefix = "/home/netlab/DL_lab/opacus_testbed/log_temp_store/"
-target_time_minute = 60
+target_time_minute = 180
 
 current_ip_index = 5
-current_cmd_index = 1
+current_cmd_index = 0
 
 # testbed
-worker_indexes = [2, 3]
+worker_indexes = [0, 1]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 # simulation
 simulation_flag = True
-simulation_time = 5
+simulation_time = 1
 
 # 数据集
-test_jobtrace_reconstruct_path = "schedule-review-simulation-06-15-23-13-27"
-dataset_reconstruct_path = "schedule-review-simulation-06-15-23-13-27"
-history_jobtrace_reconstruct_path = "schedule-review-simulation-06-15-23-13-27"
-need_save_jobtrace_flag = False
+test_jobtrace_reconstruct_path = ""
+dataset_reconstruct_path = ""
+history_jobtrace_reconstruct_path = ""
+need_save_jobtrace_flag = True
 
 # 全局设置
-max_gpu_fuzai = 1000000000 if simulation_flag else 5 
+max_gpu_fuzai = 10000000 if simulation_flag else 5 
 all_or_nothing_flag = False
 enable_waiting_flag = False
+inf_job_dispatch_flag = True
+need_stop_lower_bound_ratio = 0.1
 seeds = [1234, 2345, 3456, 6789, 7890] if simulation_flag else [1234]
 seeds = [str(seed) for seed in seeds]
 seed_str = " ".join(seeds)
 waiting_time = 2 if simulation_flag else 10
 
 # 任务
-pipeline_sequence_all_num = 4000
-all_history_num = 4000
+pipeline_sequence_all_num = 500
+all_history_num = 0
 job_arrival_time_speed_up = 4.0 # 控制到达速率
-job_datablock_epsilon_max_ratio = 0.2 # 这个控制比率(离群值控制)
-change_job_epsilon_max_times = 1.0 # 这个直接从平均增大倍数(平均值控制)
+job_datablock_epsilon_max_ratio = 0.2 # 控制最大的比率(离群值控制)
+job_datablock_epsilon_min_ratio = 0.04 # 控制最小的比率(离群值控制, 同时用于检测什么时候可以结束)
+change_job_epsilon_max_times = 1.0 # 这个直接从平均增大倍数(平均值控制), 非轻易不要动这个值, 不能保证任务的请求量在(job_datablock_epsilon_min_ratio, job_datablock_epsilon_max_ratio)之间
 job_require_select_block_min_num = 4
 job_require_select_block_max_num = 4
 config_max_operate_siton_run_num = 1
 
 # block
-all_datablock_num = 100
+all_datablock_num = 60
 offline_datablock_num = 20
 datablock_arrival_time_speed_up = 4.0 # 控制到达速率
 base_capacity = 5.0
@@ -81,6 +86,10 @@ if nohup_flag:
     nohup_worker_dir = os.path.join(nohup_target_dir_prefix, f"worker_{target_time_minute}_{assignment_policy}_{pipeline_sequence_all_num}.log")
     print(f"at now +{target_time_minute} minute")
     print(f"nohup {normal_worker_cmd} > {nohup_worker_dir} 2>&1 &")
+elif debug_flag:
+    cmd_sub_str_arr = normal_worker_cmd.split(" ")
+    cmd_sub_str_arr = [s for s in cmd_sub_str_arr if len(s) > 0][2:]
+    print(json.dumps(cmd_sub_str_arr))
 else:
     print(normal_worker_cmd)
 print("======= =======")
@@ -97,6 +106,11 @@ if nohup_flag:
     nohup_sched_dir = os.path.join(nohup_target_dir_prefix, f"sched_{target_time_minute}_{assignment_policy}_{pipeline_sequence_all_num}.log")
     print(f"at now +{target_time_minute+2} minute")
     print(f"nohup {normal_sched_cmd} > {nohup_sched_dir} 2>&1 &")
+elif debug_flag:
+    cmd_sub_str_arr = normal_sched_cmd.split(" ")
+    cmd_sub_str_arr = [s for s in cmd_sub_str_arr if len(s) > 0][2:]
+    
+    print(json.dumps(cmd_sub_str_arr))
 else:
     print(normal_sched_cmd)
 print("======= =======")
@@ -137,10 +151,14 @@ dispatcher_cmds.append(f"--seed {seed_str}")
 dispatcher_cmds.append(f"--waiting_time {waiting_time}")
 
 # 任务
+if inf_job_dispatch_flag:
+    dispatcher_cmds.append(f"--inf_job_dispatch_flag")
+    dispatcher_cmds.append(f"--need_stop_lower_bound_ratio {need_stop_lower_bound_ratio}")
 dispatcher_cmds.append(f"--pipeline_sequence_all_num {pipeline_sequence_all_num}")
 dispatcher_cmds.append(f"--all_history_num {all_history_num}")
 dispatcher_cmds.append(f"--job_arrival_time_speed_up {job_arrival_time_speed_up}")
 dispatcher_cmds.append(f"--job_datablock_epsilon_max_ratio {job_datablock_epsilon_max_ratio}") # 这个控制比率
+dispatcher_cmds.append(f"--job_datablock_epsilon_min_ratio {job_datablock_epsilon_min_ratio}") # 这个控制比率
 dispatcher_cmds.append(f"--change_job_epsilon_max_times {change_job_epsilon_max_times}") # 这个直接从平均增大倍数
 dispatcher_cmds.append(f"--job_require_select_block_min_num {job_require_select_block_min_num}")
 dispatcher_cmds.append(f"--job_require_select_block_max_num {job_require_select_block_max_num}")
@@ -182,6 +200,10 @@ if nohup_flag:
     nohup_dispatcher_dir = os.path.join(nohup_target_dir_prefix, f"dispatcher_{target_time_minute}_{assignment_policy}_{pipeline_sequence_all_num}.log")
     print(f"at now +{target_time_minute+4} minute")
     print(f"nohup {normal_dispatcher_cmd} > {nohup_dispatcher_dir} 2>&1 &")
+elif debug_flag:
+    cmd_sub_str_arr = normal_dispatcher_cmd.split(" ")
+    cmd_sub_str_arr = [s for s in cmd_sub_str_arr if len(s) > 0][2:]
+    print(json.dumps(cmd_sub_str_arr))
 else:
     print(normal_dispatcher_cmd)
 print("======= =======")

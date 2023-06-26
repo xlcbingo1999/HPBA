@@ -797,6 +797,17 @@ def simulation_experiment_start(
 ):
     valid_max_epsilon_require = base_capacity * job_datablock_epsilon_max_ratio
     valid_min_epsilon_require = base_capacity * job_datablock_epsilon_min_ratio
+
+    offline_dispatch_job_dataset_once_time_flag = ("Offline" in args.assignment_policy) 
+    
+    offline_pipeline_sequence_all_num = 0
+    offline_all_history_num = all_history_num
+    if offline_dispatch_job_dataset_once_time_flag:
+        print(f"offline_dispatch_job_dataset_once_time_flag: {offline_dispatch_job_dataset_once_time_flag} => change offline num")
+        offline_datablock_num = all_datablock_num
+        offline_pipeline_sequence_all_num = pipeline_sequence_all_num
+        offline_all_history_num = all_history_num
+
     datasets_list, time_2_datablock_num = generate_alibaba_dataset(
         num=all_datablock_num,
         offline_num=offline_datablock_num,
@@ -809,6 +820,7 @@ def simulation_experiment_start(
     )
     jobs_list = generate_alibaba_jobs(
         all_num=pipeline_sequence_all_num,
+        offline_num=offline_pipeline_sequence_all_num,
         time_speed_up=job_arrival_time_speed_up,
         is_history=False,
         valid_max_epsilon_require=valid_max_epsilon_require,
@@ -824,6 +836,7 @@ def simulation_experiment_start(
     )
     history_jobs_list = generate_alibaba_jobs(
         all_num=all_history_num,
+        offline_num=offline_all_history_num, # 默认就是离线的
         time_speed_up=job_arrival_time_speed_up,
         is_history=True,
         valid_max_epsilon_require=valid_max_epsilon_require,
