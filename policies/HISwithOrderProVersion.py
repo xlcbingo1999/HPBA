@@ -3,9 +3,9 @@ import copy
 import random
 import numpy as np
 import math
-from scipy.optimize import linear_sum_assignment
 import cvxpy as cp
 import json
+import sys
 
 class HISwithOrderProVersionPolicy(HISBasePolicy):
     def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, 
@@ -289,10 +289,14 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         # assert target_datablock_select_num == 1
         
         if self.adaptive_n_flag:
-            all_history_job_budget_consumes = []
-            all_history_job_target_datablock_selected_nums = []
+            all_history_job_budget_consumes = offline_history_job_budget_consumes + online_history_job_budget_consumes
+            all_history_job_target_datablock_selected_nums = offline_history_job_target_datablock_selected_num + online_history_job_target_datablock_selected_num
             _, all_blocks_require_mean = self.get_mean_require(all_history_job_budget_consumes, all_history_job_target_datablock_selected_nums)
-            max_need_operator_job_num = np.sum(sub_train_datasetidentifier_2_epsilon_capcity) / all_blocks_require_mean
+            if all_blocks_require_mean > 0.0:
+                max_need_operator_job_num = int(sum(sub_train_datasetidentifier_2_epsilon_capcity.values()) / all_blocks_require_mean)
+            else:
+                max_need_operator_job_num = sys.maxsize
+            self.logger.debug(f"max_need_operator_job_num: {max_need_operator_job_num}")
             if max_need_operator_job_num >= len(offline_history_job_ids) + len(online_history_job_ids):
                 # not sample
                 offline_sample_indexes = range(len(offline_history_job_ids))
@@ -315,7 +319,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
                     online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.pipeline_sequence_all_num - 1, replace=False)
                 else:
                     online_sample_indexes = range(len(online_history_job_priority_weights))
-        
+        self.logger.debug(f"offline_sample_indexes: {offline_sample_indexes}; online_sample_indexes: {online_sample_indexes}")
         sample_history_job_ids = [offline_history_job_ids[i] for i in offline_sample_indexes] + [online_history_job_ids[i] for i in online_sample_indexes]
         sample_history_job_priority_weights = [offline_history_job_priority_weights[i] for i in offline_sample_indexes] + [online_history_job_priority_weights[i] for i in online_sample_indexes] 
         sample_history_job_budget_consumes = [offline_history_job_budget_consumes[i] for i in offline_sample_indexes] + [online_history_job_budget_consumes[i] for i in online_sample_indexes]
