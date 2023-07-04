@@ -9,7 +9,7 @@ import json
 
 class HISwithOrderProVersionPolicy(HISBasePolicy):
     def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, 
-                infinity_flag, 
+                infinity_flag, adaptive_n_flag,
                 greedy_flag, greedy_threshold,
                 seed, logger):
         super().__init__(beta, pipeline_sequence_all_num, job_request_all_num, 
@@ -21,6 +21,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         # self.gamma = gamma
         # self.delta = delta
         # self.only_small = only_small
+        self.adaptive_n_flag = adaptive_n_flag
         self.logger = logger
         self.waiting_queue_capacity = 1
         self.only_one = True
@@ -30,6 +31,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
         self.logger.info("policy args: beta: {}".format(self.beta))
+        self.logger.info("policy args: adaptive_n_flag: {}".format(self.adaptive_n_flag))
         self.logger.info("policy args: job_request_all_num: {}".format(self.job_request_all_num))
         # self.logger.info("policy args: delta: {}".format(self.delta))
         # self.logger.info("policy args: only_small: {}".format(self.only_small))
@@ -286,35 +288,44 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
 
         # assert target_datablock_select_num == 1
         
-        if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < sample_history_and_current_job_request_all_num:
-            sample_history_job_ids = offline_history_job_ids + online_history_job_ids
-            sample_history_job_priority_weights = offline_history_job_priority_weights + online_history_job_priority_weights
-            sample_history_job_budget_consumes = offline_history_job_budget_consumes + online_history_job_budget_consumes
-            sample_history_job_signficances = offline_history_job_signficance + online_history_job_signficance
-            sample_history_job_target_datablock_selected_nums = offline_history_job_target_datablock_selected_num + online_history_job_target_datablock_selected_num
-            sample_history_job_arrival_times = offline_history_job_arrival_time + online_history_job_arrival_time
-            sample_history_job_test_dataset_names = offline_history_job_test_dataset_name + online_history_job_test_dataset_name
-            sample_history_job_sub_test_key_ids = offline_history_job_sub_test_key_id + online_history_job_sub_test_key_id
-            sample_history_job_train_dataset_names = offline_history_job_train_dataset_name + online_history_job_train_dataset_name
-            sample_history_job_model_names = offline_history_job_model_name + online_history_job_model_name
-        else:
-            select_num_from_offline_history = max(sample_history_and_current_job_request_all_num - len(online_history_job_priority_weights) - 1, 0)
-            offline_sample_indexes = np.random.choice(range(len(offline_history_job_priority_weights)), select_num_from_offline_history, replace=False)
-            
-            if len(online_history_job_priority_weights) > sample_history_and_current_job_request_all_num - 1:
-                online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.pipeline_sequence_all_num - 1, replace=False)
+        if self.adaptive_n_flag:
+            all_history_job_budget_consumes = []
+            all_history_job_target_datablock_selected_nums = []
+            _, all_blocks_require_mean = self.get_mean_require(all_history_job_budget_consumes, all_history_job_target_datablock_selected_nums)
+            max_need_operator_job_num = np.sum(sub_train_datasetidentifier_2_epsilon_capcity) / all_blocks_require_mean
+            if max_need_operator_job_num >= len(offline_history_job_ids) + len(online_history_job_ids):
+                # not sample
+                offline_sample_indexes = range(len(offline_history_job_ids))
+                online_sample_indexes = range(len(online_history_job_ids))
+            elif max_need_operator_job_num >= len(online_history_job_ids):
+                offline_sample_indexes = np.random.choice(range(len(offline_history_job_ids)), max_need_operator_job_num-len(online_history_job_ids), replace=False)
+                online_sample_indexes = range(len(online_history_job_ids))
             else:
-                online_sample_indexes = range(len(online_history_job_priority_weights))
-            sample_history_job_ids = [offline_history_job_ids[i] for i in offline_sample_indexes] + [online_history_job_ids[i] for i in online_sample_indexes]
-            sample_history_job_priority_weights = [offline_history_job_priority_weights[i] for i in offline_sample_indexes] + [online_history_job_priority_weights[i] for i in online_sample_indexes] 
-            sample_history_job_budget_consumes = [offline_history_job_budget_consumes[i] for i in offline_sample_indexes] + [online_history_job_budget_consumes[i] for i in online_sample_indexes]
-            sample_history_job_signficances = [offline_history_job_signficance[i] for i in offline_sample_indexes] + [online_history_job_signficance[i] for i in online_sample_indexes]
-            sample_history_job_target_datablock_selected_nums = [offline_history_job_target_datablock_selected_num[i] for i in offline_sample_indexes] + [online_history_job_target_datablock_selected_num[i] for i in online_sample_indexes]
-            sample_history_job_arrival_times = [offline_history_job_arrival_time[i] for i in offline_sample_indexes] + [online_history_job_arrival_time[i] for i in online_sample_indexes]
-            sample_history_job_test_dataset_names = [offline_history_job_test_dataset_name[i] for i in offline_sample_indexes] + [online_history_job_test_dataset_name[i] for i in online_sample_indexes]
-            sample_history_job_sub_test_key_ids = [offline_history_job_sub_test_key_id[i] for i in offline_sample_indexes] + [online_history_job_sub_test_key_id[i] for i in online_sample_indexes]
-            sample_history_job_train_dataset_names = [offline_history_job_train_dataset_name[i] for i in offline_sample_indexes] + [online_history_job_train_dataset_name[i] for i in online_sample_indexes]
-            sample_history_job_model_names = [offline_history_job_model_name[i] for i in offline_sample_indexes] + [online_history_job_model_name[i] for i in online_sample_indexes]
+                offline_sample_indexes = []
+                online_sample_indexes = np.random.choice(range(len(online_history_job_ids)), max_need_operator_job_num, replace=False)
+        else:
+            if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < sample_history_and_current_job_request_all_num:
+                offline_sample_indexes = range(len(offline_history_job_ids))
+                online_sample_indexes = range(len(online_history_job_ids))
+            else:
+                select_num_from_offline_history = max(sample_history_and_current_job_request_all_num - len(online_history_job_priority_weights) - 1, 0)
+                offline_sample_indexes = np.random.choice(range(len(offline_history_job_priority_weights)), select_num_from_offline_history, replace=False)
+                
+                if len(online_history_job_priority_weights) > sample_history_and_current_job_request_all_num - 1:
+                    online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.pipeline_sequence_all_num - 1, replace=False)
+                else:
+                    online_sample_indexes = range(len(online_history_job_priority_weights))
+        
+        sample_history_job_ids = [offline_history_job_ids[i] for i in offline_sample_indexes] + [online_history_job_ids[i] for i in online_sample_indexes]
+        sample_history_job_priority_weights = [offline_history_job_priority_weights[i] for i in offline_sample_indexes] + [online_history_job_priority_weights[i] for i in online_sample_indexes] 
+        sample_history_job_budget_consumes = [offline_history_job_budget_consumes[i] for i in offline_sample_indexes] + [online_history_job_budget_consumes[i] for i in online_sample_indexes]
+        sample_history_job_signficances = [offline_history_job_signficance[i] for i in offline_sample_indexes] + [online_history_job_signficance[i] for i in online_sample_indexes]
+        sample_history_job_target_datablock_selected_nums = [offline_history_job_target_datablock_selected_num[i] for i in offline_sample_indexes] + [online_history_job_target_datablock_selected_num[i] for i in online_sample_indexes]
+        sample_history_job_arrival_times = [offline_history_job_arrival_time[i] for i in offline_sample_indexes] + [online_history_job_arrival_time[i] for i in online_sample_indexes]
+        sample_history_job_test_dataset_names = [offline_history_job_test_dataset_name[i] for i in offline_sample_indexes] + [online_history_job_test_dataset_name[i] for i in online_sample_indexes]
+        sample_history_job_sub_test_key_ids = [offline_history_job_sub_test_key_id[i] for i in offline_sample_indexes] + [online_history_job_sub_test_key_id[i] for i in online_sample_indexes]
+        sample_history_job_train_dataset_names = [offline_history_job_train_dataset_name[i] for i in offline_sample_indexes] + [online_history_job_train_dataset_name[i] for i in online_sample_indexes]
+        sample_history_job_model_names = [offline_history_job_model_name[i] for i in offline_sample_indexes] + [online_history_job_model_name[i] for i in online_sample_indexes]
         if (not self.is_infinity_flag) and job_arrival_index < self.beta * all_job_sequence_num: # TODO(xlc): 无限任务的时候, beta只能设置为0
             self.logger.info("stop due to sample caused by job_arrival_index: {}; self.beta: {}; all_job_sequence_num: {}".format(
                 job_arrival_index, self.beta, all_job_sequence_num

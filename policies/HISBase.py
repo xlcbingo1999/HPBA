@@ -167,18 +167,21 @@ class HISBasePolicy(Policy):
     def update_online_history_job_significance_to_assignment_policy(self, online_history_job_significance):
         self.online_history_job_significance = online_history_job_significance
 
-    def get_his_single_job_require_epsilon(self, current_all_job_budget_consumes, current_all_job_target_datablock_selected_nums, batch_size_for_one_epoch):
+    def get_mean_require(self, current_all_job_budget_consumes, current_all_job_target_datablock_selected_nums):
         current_all_job_budget_consumes_np = np.array(current_all_job_budget_consumes)
         current_all_job_target_datablock_selected_nums_np = np.array(current_all_job_target_datablock_selected_nums)
         one_block_require_mean = np.sum(current_all_job_budget_consumes_np) / len(current_all_job_budget_consumes)
         all_blocks_require_mean = np.sum(current_all_job_budget_consumes_np * current_all_job_target_datablock_selected_nums_np) / len(current_all_job_budget_consumes)
+        return one_block_require_mean, all_blocks_require_mean
+
+    def get_his_single_job_require_epsilon(self, current_all_job_budget_consumes, current_all_job_target_datablock_selected_nums, batch_size_for_one_epoch):
+        one_block_require_mean, all_blocks_require_mean = self.get_mean_require(current_all_job_budget_consumes, current_all_job_target_datablock_selected_nums)
         need_siton_block_num_mean = int(batch_size_for_one_epoch * all_blocks_require_mean / one_block_require_mean)
         
         self.logger.debug(f"one_block_require_mean: {one_block_require_mean}")
         self.logger.debug(f"all_blocks_require_mean: {all_blocks_require_mean}")
         self.logger.debug(f"need_siton_block_num_mean: {need_siton_block_num_mean}")
         return one_block_require_mean, all_blocks_require_mean, need_siton_block_num_mean
-        
 
     def get_his_right_capacity_for_single_job(self, current_all_job_budget_consumes,
                                                 target_epsilon_require,

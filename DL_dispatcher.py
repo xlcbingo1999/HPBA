@@ -66,6 +66,7 @@ def get_df_config():
     parser.add_argument('--his_betas', type=float, default=0.0)
     parser.add_argument('--his_batch_size_for_one_epochs', type=int, default=25)
     parser.add_argument('--his_infinity_flag', action="store_true")
+    parser.add_argument('--his_adaptive_n_flag', action="store_true")
     parser.add_argument('--his_greedy_flag', action="store_true")
     parser.add_argument('--his_greedy_threshold', type=float, default=0.2)
     parser.add_argument('--pbg_comparison_cost_epsilons', type=float, default=0.0)
@@ -502,9 +503,10 @@ class Dispatcher(object):
                 or assignment_policy == "HISwithOrderProVersionBestEffortPolicy" or assignment_policy == "HISwithOrderProVersionBestEffort":
                 beta_list = args.his_betas
                 infinity_flag = args.his_infinity_flag
+                adaptive_n_flag = args.his_adaptive_n_flag
                 greedy_flag = args.his_greedy_flag
                 greedy_threshold = args.his_greedy_threshold
-                assignment_args = (beta_list, pipeline_sequence_all_num, job_request_all_num, infinity_flag, greedy_flag, greedy_threshold)
+                assignment_args = (beta_list, pipeline_sequence_all_num, job_request_all_num, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold)
             elif assignment_policy == "IterativeHISPolicy" or assignment_policy == "IterativeHIS" \
                 or assignment_policy == "IterativeHISwithOrderProVersionPolicy" or assignment_policy == "IterativeHISwithOrderProVersion" \
                 or assignment_policy == "IterativeHISwithOrderRemainVersionPolicy" or assignment_policy == "IterativeHISwithOrderRemainVersion" \

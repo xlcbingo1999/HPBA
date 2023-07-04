@@ -68,10 +68,8 @@ def get_result_avg_min_max_for_y_label_name(df_with_key, out_loop_groups, in_loo
     results = [[0.0 for _ in range(len(in_loop_groups))] for _ in range(len(out_loop_groups))] 
     results_min = [[0.0 for _ in range(len(in_loop_groups))] for _ in range(len(out_loop_groups))] 
     results_max = [[0.0 for _ in range(len(in_loop_groups))] for _ in range(len(out_loop_groups))] 
-
     for out_index, out_key in enumerate(out_loop_groups):
         for in_index, in_key in enumerate(in_loop_groups):
-            test_job_num = int(df_with_key.loc[(out_key, in_key), "Online job num"])
             if y_label_name == "Number of Allocated Jobs":
                 success_key_prefix = "Success num"
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"]
@@ -84,6 +82,7 @@ def get_result_avg_min_max_for_y_label_name(df_with_key, out_loop_groups, in_loo
                 results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{failed_key_prefix} max"]
             elif y_label_name == "Ratio of Allocated Jobs":
                 success_key_prefix = "Success num"
+                test_job_num = int(df_with_key.loc[(out_key, in_key), "Test Jobs Num"])
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"] / test_job_num
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} min"] / test_job_num
                 results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} max"] / test_job_num
@@ -93,30 +92,38 @@ def get_result_avg_min_max_for_y_label_name(df_with_key, out_loop_groups, in_loo
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"] / df_with_key.loc[(out_key, in_key), f"{target_key_prefix} avg"]
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} min"] / df_with_key.loc[(out_key, in_key), f"{target_key_prefix} avg"]
                 results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} max"] / df_with_key.loc[(out_key, in_key), f"{target_key_prefix} avg"]
-            elif y_label_name == "Average Significance of all jobs":
-                avg_sig_all_job_key_prefix = "Mean Significance (ALL)"
+            elif y_label_name == "Significance of all queries":
+                avg_sig_all_job_key_prefix = "Mean Significance All"
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} avg"]
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} min"]
                 results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} max"]
-            elif y_label_name == "Average Significance of allocated jobs":
-                avg_sig_success_job_key_prefix = "Mean Significance (Success)"
-                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} avg"]
-                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} min"]
-                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} max"]
-            elif y_label_name == "Significance of all jobs":
-                avg_sig_all_job_key_prefix = "Mean Significance (ALL)"
-                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} avg"] * test_job_num
-                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} min"] * test_job_num
-                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} max"] * test_job_num
-            elif y_label_name == "Significance of allocated jobs":
-                avg_sig_success_job_key_prefix = "Mean Significance (Success)"
+            elif y_label_name == "Significance of allocated queries":
+                avg_sig_success_job_key_prefix = "Mean Significance Success"
                 success_key_prefix = "Success num"
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} avg"] * df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"]
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} min"] * df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"]
                 results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_success_job_key_prefix} max"] * df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"]
-            elif (y_label_name == "Train Loss" or y_label_name == "Train Accuracy" or 
-                y_label_name == "Test Loss" or y_label_name == "Test Accuracy" or
-                y_label_name == "Epsilon_Real_All_Block" or y_label_name == "Significance_Epsilon_Ratio" or 
+            elif y_label_name == "Sum of Delta Train Accuracy":
+                train_acc_prefix = "Train Accuracy All"
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_acc_prefix} avg"]
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_acc_prefix} min"]
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_acc_prefix} max"]
+            elif y_label_name == "Sum of Delta Train Loss":
+                train_loss_prefix = "Train Loss All"
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_loss_prefix} avg"]
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_loss_prefix} min"]
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_loss_prefix} max"]
+            elif y_label_name == "Sum of Delta Test Accuracy":
+                test_acc_prefix = "Test Accuracy All"
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{test_acc_prefix} avg"]
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{test_acc_prefix} min"]
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{test_acc_prefix} max"]
+            elif y_label_name == "Sum of Delta Test Loss":
+                test_loss_prefix = "Test Loss All"
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{test_loss_prefix} avg"]
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{test_loss_prefix} min"]
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{test_loss_prefix} max"]
+            elif (y_label_name == "Epsilon_Real_All_Block" or y_label_name == "Significance_Epsilon_Ratio" or 
                 y_label_name == "Test_Loss_Epsilon_Ratio" or y_label_name == "Test_Accuracy_Epsilon_Ratio") :
                 train_accuracy_prefix = y_label_name
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_accuracy_prefix} avg"]

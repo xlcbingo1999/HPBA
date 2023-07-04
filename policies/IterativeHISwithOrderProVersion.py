@@ -317,16 +317,8 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
                 self.logger.info("update datablock_identifier_2_remain_epsilon: {}".format(self.datablock_identifier_2_remain_epsilon))
 
         if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < self.batch_size_for_one_epoch:
-            sample_history_job_ids = offline_history_job_ids + online_history_job_ids
-            sample_history_job_priority_weights = offline_history_job_priority_weights + online_history_job_priority_weights
-            sample_history_job_budget_consumes = offline_history_job_budget_consumes + online_history_job_budget_consumes
-            sample_history_job_signficances = offline_history_job_signficance + online_history_job_signficance
-            sample_history_job_target_datablock_selected_nums = offline_history_job_target_datablock_selected_num + online_history_job_target_datablock_selected_num
-            sample_history_job_arrival_times = offline_history_job_arrival_time + online_history_job_arrival_time
-            sample_history_job_test_dataset_names = offline_history_job_test_dataset_name + online_history_job_test_dataset_name
-            sample_history_job_sub_test_key_ids = offline_history_job_sub_test_key_id + online_history_job_sub_test_key_id
-            sample_history_job_train_dataset_names = offline_history_job_train_dataset_name + online_history_job_train_dataset_name
-            sample_history_job_model_names = offline_history_job_model_name + online_history_job_model_name
+            offline_sample_indexes = range(len(offline_history_job_ids))
+            online_sample_indexes = range(len(online_history_job_ids))
         else:
             select_num_from_offline_history = max(self.batch_size_for_one_epoch - len(online_history_job_priority_weights) - 1, 0)
             offline_sample_indexes = np.random.choice(range(len(offline_history_job_priority_weights)), select_num_from_offline_history, replace=False)
@@ -335,16 +327,17 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
                 online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.batch_size_for_one_epoch - 1, replace=False)
             else:
                 online_sample_indexes = range(len(online_history_job_priority_weights))
-            sample_history_job_ids = [offline_history_job_ids[i] for i in offline_sample_indexes] + [online_history_job_ids[i] for i in online_sample_indexes]
-            sample_history_job_priority_weights = [offline_history_job_priority_weights[i] for i in offline_sample_indexes] + [online_history_job_priority_weights[i] for i in online_sample_indexes] 
-            sample_history_job_budget_consumes = [offline_history_job_budget_consumes[i] for i in offline_sample_indexes] + [online_history_job_budget_consumes[i] for i in online_sample_indexes]
-            sample_history_job_signficances = [offline_history_job_signficance[i] for i in offline_sample_indexes] + [online_history_job_signficance[i] for i in online_sample_indexes]
-            sample_history_job_target_datablock_selected_nums = [offline_history_job_target_datablock_selected_num[i] for i in offline_sample_indexes] + [online_history_job_target_datablock_selected_num[i] for i in online_sample_indexes]
-            sample_history_job_arrival_times = [offline_history_job_arrival_time[i] for i in offline_sample_indexes] + [online_history_job_arrival_time[i] for i in online_sample_indexes]
-            sample_history_job_test_dataset_names = [offline_history_job_test_dataset_name[i] for i in offline_sample_indexes] + [online_history_job_test_dataset_name[i] for i in online_sample_indexes]
-            sample_history_job_sub_test_key_ids = [offline_history_job_sub_test_key_id[i] for i in offline_sample_indexes] + [online_history_job_sub_test_key_id[i] for i in online_sample_indexes]
-            sample_history_job_train_dataset_names = [offline_history_job_train_dataset_name[i] for i in offline_sample_indexes] + [online_history_job_train_dataset_name[i] for i in online_sample_indexes]
-            sample_history_job_model_names = [offline_history_job_model_name[i] for i in offline_sample_indexes] + [online_history_job_model_name[i] for i in online_sample_indexes]
+        
+        sample_history_job_ids = [offline_history_job_ids[i] for i in offline_sample_indexes] + [online_history_job_ids[i] for i in online_sample_indexes]
+        sample_history_job_priority_weights = [offline_history_job_priority_weights[i] for i in offline_sample_indexes] + [online_history_job_priority_weights[i] for i in online_sample_indexes] 
+        sample_history_job_budget_consumes = [offline_history_job_budget_consumes[i] for i in offline_sample_indexes] + [online_history_job_budget_consumes[i] for i in online_sample_indexes]
+        sample_history_job_signficances = [offline_history_job_signficance[i] for i in offline_sample_indexes] + [online_history_job_signficance[i] for i in online_sample_indexes]
+        sample_history_job_target_datablock_selected_nums = [offline_history_job_target_datablock_selected_num[i] for i in offline_sample_indexes] + [online_history_job_target_datablock_selected_num[i] for i in online_sample_indexes]
+        sample_history_job_arrival_times = [offline_history_job_arrival_time[i] for i in offline_sample_indexes] + [online_history_job_arrival_time[i] for i in online_sample_indexes]
+        sample_history_job_test_dataset_names = [offline_history_job_test_dataset_name[i] for i in offline_sample_indexes] + [online_history_job_test_dataset_name[i] for i in online_sample_indexes]
+        sample_history_job_sub_test_key_ids = [offline_history_job_sub_test_key_id[i] for i in offline_sample_indexes] + [online_history_job_sub_test_key_id[i] for i in online_sample_indexes]
+        sample_history_job_train_dataset_names = [offline_history_job_train_dataset_name[i] for i in offline_sample_indexes] + [online_history_job_train_dataset_name[i] for i in online_sample_indexes]
+        sample_history_job_model_names = [offline_history_job_model_name[i] for i in offline_sample_indexes] + [online_history_job_model_name[i] for i in online_sample_indexes]
         if job_arrival_index % self.batch_size_for_one_epoch < self.beta * self.batch_size_for_one_epoch:
             self.logger.info("stop due to sample caused by job_arrival_index: {}; self.beta: {}; job_request_all_num: {}".format(
                 job_arrival_index, self.beta, job_request_all_num

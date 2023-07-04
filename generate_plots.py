@@ -14,7 +14,8 @@ from utils.plot_operator import add_df_with_min_max, get_mark_color_hatch_marker
 plt.rcParams['axes.unicode_minus'] = False  # 显示负号
 
 def from_y_label_name_2_add_columns_keys_2_need_max_map(y_label_name_arr):
-    add_columns_keys_2_need_max_map = {}
+    add_columns_keys_2_need_max_map = {} 
+    # "Significance of all queries", "Sum of Delta Accuracy"
     for y_label_name in y_label_name_arr:
         if y_label_name == "Number of Allocated Jobs":
             add_columns_keys_2_need_max_map["Success num"] = True
@@ -25,19 +26,19 @@ def from_y_label_name_2_add_columns_keys_2_need_max_map(y_label_name_arr):
         elif y_label_name == "Ratio of Allocated Datablocks":
             add_columns_keys_2_need_max_map["Success Datablock Num"] = True
             add_columns_keys_2_need_max_map["Target Datablock Num"] = True
-        elif y_label_name == "Average Significance of all jobs":
-            add_columns_keys_2_need_max_map["Mean Significance (ALL)"] = True
-        elif y_label_name == "Average Significance of allocated jobs":
-            add_columns_keys_2_need_max_map["Mean Significance (Success)"] = True
-        elif y_label_name == "Significance of all jobs":
-            add_columns_keys_2_need_max_map["Mean Significance (ALL)"] = True
-        elif y_label_name == "Significance of allocated jobs":
-            add_columns_keys_2_need_max_map["Mean Significance (Success)"] = True
+        elif y_label_name == "Significance of all queries":
+            add_columns_keys_2_need_max_map["Mean Significance All"] = True
+        elif y_label_name == "Significance of allocated queries":
+            add_columns_keys_2_need_max_map["Mean Significance Success"] = True
             add_columns_keys_2_need_max_map["Success num"] = True
-        elif (y_label_name == "Train Accuracy" or y_label_name == "Test Accuracy") :
-            add_columns_keys_2_need_max_map[y_label_name] = True
-        elif (y_label_name == "Train Loss" or y_label_name == "Test Loss"):
-            add_columns_keys_2_need_max_map[y_label_name] = False
+        elif y_label_name == "Sum of Delta Train Accuracy":
+            add_columns_keys_2_need_max_map["Train Accuracy All"] = True
+        elif y_label_name == "Sum of Delta Test Accuracy":
+            add_columns_keys_2_need_max_map["Test Accuracy All"] = True
+        elif y_label_name == "Sum of Delta Train Loss":
+            add_columns_keys_2_need_max_map["Train Loss All"] = False
+        elif y_label_name == "Sum of Delta Test Loss":
+            add_columns_keys_2_need_max_map["Test Loss All"] = False
         elif y_label_name == "Epsilon_Real_All_Block":
             add_columns_keys_2_need_max_map[y_label_name] = False
         elif (y_label_name == "Epsilon_Real_All_Block"
@@ -140,6 +141,85 @@ def draw_plot_worker(fill_between_flag, results, results_min, results_max,
     pp.savefig(fig)
     pp.close()
 
+def draw_bar_worker(results, env_policy_groups, env_x_groups, 
+                    y_label_name, env_x_label, get_policy_map_func,
+                    params,
+                    current_dir, target_pic_name):
+    max_one_line_length = params["max_one_line_length"]
+    font_size = params["font_size"]
+    center_ratio = params["center_ratio"]
+    bar_width = params["bar_width"]
+    bar_width_ratio = params["bar_width_ratio"]
+    bbox_to_anchor = params["bbox_to_anchor"]
+    labels_pacing = params["label_spacing"]
+    column_spacing = params["column_spacing"]
+    ncol = params["ncol"]
+    figsize = params["figsize"] if "figsize" in params else None
+
+    colors, hatchs, _ = get_mark_color_hatch_marker()
+
+    if figsize is not None:
+        fig = plt.figure(figsize=figsize)
+    else:
+        fig = plt.figure()
+    plt.grid(linestyle="--", axis='y', alpha=0.5)  # 设置背景网格线为虚线
+    ax = plt.gca()
+    ax.spines['top'].set_visible(False)  # 去掉上边框
+    ax.spines['right'].set_visible(False)  # 去掉右边框
+
+    henzuobiao_indexes = np.arange(len(env_x_groups)) * bar_width_ratio
+
+    for policy_index, policy in enumerate(env_policy_groups):
+        print(f"policy_index: {policy_index}: policy: {policy}")
+        print(f"results[group_index]: {results[policy_index]}")
+        plt.bar(
+            henzuobiao_indexes + policy_index * bar_width, 
+            results[policy_index], 
+            bar_width, 
+            color=colors[policy_index], 
+            label=get_policy_map_func(policy),
+            hatch=hatchs[policy_index],
+            edgecolor="black", 
+        )
+
+    group_labels = list(str(hen) for hen in env_x_groups)  # x轴刻度的标识
+    plt.xticks(
+        henzuobiao_indexes + center_ratio * bar_width, 
+        group_labels, 
+        fontsize=font_size, 
+        fontweight='bold'
+    )
+    plt.yticks(fontsize=font_size, fontweight='bold')
+    plt.xlabel(env_x_label, fontsize=font_size, fontweight='bold')
+    plt.ylabel(fill(y_label_name, max_one_line_length), fontsize=font_size, fontweight='bold')
+    if np.mean(results) < 1e-2 or np.mean(results) > 1e2:
+        plt.ticklabel_format(style='sci',scilimits=(0,0),axis='y')
+
+    # plt.xlim(0.9, 6.1)  # 设置x轴的范围
+    # plt.ylim(1.5, 16)
+
+    plt.legend()          #显示各曲线的图例
+    leg = plt.gca().get_legend()
+    ltext = leg.get_texts()
+    plt.setp(ltext, fontsize=font_size, fontweight='bold')  # 设置图例字体的大小和粗细
+    # plt.legend(loc=4, bbox_to_anchor=(0.98,1.0),borderaxespad = 0.)
+    legend_properties = {
+        'weight':'bold',
+        'size': font_size-2
+    }
+    plt.legend(bbox_to_anchor=bbox_to_anchor, labelspacing=labels_pacing, columnspacing=column_spacing, loc='upper center', ncol=ncol, prop=legend_properties, frameon=False)
+
+    # plt.subplots_adjust(left=0.1, right=0.88)
+
+    plt.tight_layout()
+    result_path_prefix = os.path.join(current_dir, f"{target_pic_name}_{y_label_name}")
+    plt.savefig(result_path_prefix + '.png', format='png')  # 建议保存为svg格式,再用inkscape转为矢量图emf后插入word中
+    plt.show()
+    pp = PdfPages(result_path_prefix + '.pdf')
+    pp.savefig(fig)
+    pp.close()
+
+
 def get_result_and_draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
                 y_label_name_arr, env_x_label, params, fill_between_flag, get_policy_map_func):
     current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
@@ -167,7 +247,7 @@ def get_result_and_draw_group_plot(target_pic_name, keys_str, env_policy_groups,
                         current_dir, target_pic_name)
         
 
-def draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups,
+def get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups,
                 y_label_name_arr, env_x_label, params, get_policy_map_func):
     current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
     path = os.path.join(current_dir, f"{target_pic_name}.csv")
@@ -182,79 +262,112 @@ def draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups,
     print("---- df.info ----")
     df_with_key.info()
 
-    max_one_line_length = params["max_one_line_length"]
-    font_size = params["font_size"]
-    center_ratio = params["center_ratio"]
-    bar_width = params["bar_width"]
-    bar_width_ratio = params["bar_width_ratio"]
-    bbox_to_anchor = params["bbox_to_anchor"]
-    labels_pacing = params["label_spacing"]
-    column_spacing = params["column_spacing"]
-    ncol = params["ncol"]
-    colors, hatchs, _ = get_mark_color_hatch_marker()
     for y_label_name in y_label_name_arr:
         results, results_min, results_max = get_result_avg_min_max_for_y_label_name(
             df_with_key, env_policy_groups, env_x_groups, y_label_name
         )
+        draw_bar_worker(results, env_policy_groups, env_x_groups, 
+                        y_label_name, env_x_label, get_policy_map_func, 
+                        params,
+                        current_dir, target_pic_name)
+    
+def draw_cr():
+    def get_cr_v2(lamb, h_n_ratio):
+        if (1 - lamb) <= 0:
+            return -1000000
+        else:
+            return (2 - lamb - (1 + h_n_ratio) * math.log(1 + 1/h_n_ratio)) / (1 - lamb)
 
-        fig = plt.figure(figsize=(10, 5))
-        plt.grid(linestyle="--", axis='y', alpha=0.5)  # 设置背景网格线为虚线
-        ax = plt.gca()
-        ax.spines['top'].set_visible(False)  # 去掉上边框
-        ax.spines['right'].set_visible(False)  # 去掉右边框
+    
+    env_x_groups = [i * 5 / 100 for i in range(0, 100, 10) if i > 0] # h/s
+    env_policy_groups = [i / 100 for i in range(0, 100, 20) if i > 0] # lambda
+    
+    args_product_list = [d for d in itertools.product(env_policy_groups, env_x_groups)]
+    results = []
+    for lamb in env_policy_groups:
+        temp_result = []
+        for h_n_ratio in env_x_groups:
+            res = max(0.0, get_cr_v2(lamb, h_n_ratio)) 
+            temp_result.append(res)
+        results.append(temp_result)
 
-        henzuobiao_indexes = np.arange(len(env_x_groups)) * bar_width_ratio
+    
+    params = {
+        "font_size": 20,
+        "line_width": 1.5,
+        "bar_width": 0.23,
+        "fill_between_alpha": 0.5,
+        "max_one_line_length": 20,
+        "bbox_to_anchor": (0.5,1.35),
+        "label_spacing": 0.05,
+        "column_spacing": 0.2,
+        "ncol": 2,
+        "center_ratio": 2.5,
+        "bar_width_ratio": 2,
+        "marker_size": 10,
+        "same_distance": True,
+        # "figsize": (8, 6),
+        # "max_x_label_show_list": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5],
+    }
+    y_label_name = "Competition Ratio"
+    env_x_label = r"$\frac{h}{n}$"
+    def get_policy_map_func(origin_policy):
+        return r"$\lambda = {}$".format(origin_policy)
+    current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
+    target_pic_name = "cr"
+    draw_plot_worker(False, results, None, None,
+                    env_policy_groups, env_x_groups, 
+                    y_label_name, env_x_label, get_policy_map_func, 
+                    params,
+                    current_dir, target_pic_name)
+    
+def draw_Q1():
+    target_pic_name = "testbed_Q1"
+    keys_str = ["policy", "Datablock num"]
+    env_x_groups = [40, 60, 80] # Datablock num
+    env_policy_groups = [
+        "HIS",
+        "SAHIS", 
+        "PBG", 
+        "Sage",
+        "BestFit",
+        "Offline"
+    ]
+    def get_Q1_policy_map(origin_policy):
+        # 优化后不需要调整了
+        return origin_policy
+    env_x_label = r"Number of Datablocks"
+    params = {
+        "font_size": 18,
+        "line_width": 1.5,
+        "bar_width": 0.23,
+        "fill_between_alpha": 0.5,
+        "max_one_line_length": 30,
+        "bbox_to_anchor": (0.5,1.35),
+        "label_spacing": 0.05,
+        "column_spacing": 0.2,
+        "ncol": 3,
+        "center_ratio": 2.5,
+        "bar_width_ratio": 2,
+    }
+    y_label_name_arr = [
+        "Significance of all queries", 
+        "Sum of Delta Test Accuracy",
+    ]
+    get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
+                    y_label_name_arr, env_x_label, params, get_Q1_policy_map)
 
-        for policy_index, policy in enumerate(env_policy_groups):
-            print(f"policy_index: {policy_index}: policy: {policy}")
-            print(f"results[group_index]: {results[policy_index]}")
-            plt.bar(
-                henzuobiao_indexes + policy_index * bar_width, 
-                results[policy_index], 
-                bar_width, 
-                color=colors[policy_index], 
-                label=get_policy_map_func(policy),
-                hatch=hatchs[policy_index],
-                edgecolor="black", 
-            )
+if __name__ == "__main__":
+    # draw_fig_1()
+    # draw_fig_2()
+    # draw_fig_6()
+    # draw_fig_5()
+    # draw_testbed_fig_2()
+    # draw_cr()
+    draw_Q1()
 
-        group_labels = list(str(hen) for hen in env_x_groups)  # x轴刻度的标识
-        plt.xticks(
-            henzuobiao_indexes + center_ratio * bar_width, 
-            group_labels, 
-            fontsize=font_size, 
-            fontweight='bold'
-        )
-        plt.yticks(fontsize=font_size, fontweight='bold')
-        plt.xlabel(env_x_label, fontsize=font_size, fontweight='bold')
-        plt.ylabel(fill(y_label_name, max_one_line_length), fontsize=font_size, fontweight='bold')
-        if np.mean(results) < 1e-2 or np.mean(results) > 1e2:
-            plt.ticklabel_format(style='sci',scilimits=(0,0),axis='y')
 
-        # plt.xlim(0.9, 6.1)  # 设置x轴的范围
-        # plt.ylim(1.5, 16)
-
-        plt.legend()          #显示各曲线的图例
-        leg = plt.gca().get_legend()
-        ltext = leg.get_texts()
-        plt.setp(ltext, fontsize=font_size, fontweight='bold')  # 设置图例字体的大小和粗细
-        # plt.legend(loc=4, bbox_to_anchor=(0.98,1.0),borderaxespad = 0.)
-        legend_properties = {
-            'weight':'bold',
-            'size': font_size-2
-        }
-        plt.legend(bbox_to_anchor=bbox_to_anchor, labelspacing=labels_pacing, columnspacing=column_spacing, loc='upper center', ncol=ncol, prop=legend_properties, frameon=False)
-
-        # plt.subplots_adjust(left=0.1, right=0.88)
-
-        plt.tight_layout()
-        result_path_prefix = os.path.join(current_dir, f"{target_pic_name}_{y_label_name}")
-        plt.savefig(result_path_prefix + '.png', format='png')  # 建议保存为svg格式,再用inkscape转为矢量图emf后插入word中
-        plt.show()
-        pp = PdfPages(result_path_prefix + '.pdf')
-        pp.savefig(fig)
-        pp.close()
-
+'''
 def draw_fig_1():
     target_pic_name = "fig_1_right"
     keys_str = ["policy", "Online job num"]
@@ -599,71 +712,4 @@ def draw_testbed_fig_2():
     draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
                     y_label_name_arr, env_x_label, params, get_testbed_fig_2_policy_map)
 
-def draw_cr():
-    def get_cr_v2(lamb, h_n_ratio):
-        if (1 - lamb) <= 0:
-            return -1000000
-        else:
-            return (2 - lamb - (1 + h_n_ratio) * math.log(1 + 1/h_n_ratio)) / (1 - lamb)
-
-    
-    env_x_groups = [i * 5 / 100 for i in range(0, 100, 10) if i > 0] # h/s
-    env_policy_groups = [i / 100 for i in range(0, 100, 20) if i > 0] # lambda
-    
-    args_product_list = [d for d in itertools.product(env_policy_groups, env_x_groups)]
-    results = []
-    for lamb in env_policy_groups:
-        temp_result = []
-        for h_n_ratio in env_x_groups:
-            res = max(0.0, get_cr_v2(lamb, h_n_ratio)) 
-            temp_result.append(res)
-        results.append(temp_result)
-
-    
-    params = {
-        "font_size": 20,
-        "line_width": 1.5,
-        "bar_width": 0.23,
-        "fill_between_alpha": 0.5,
-        "max_one_line_length": 20,
-        "bbox_to_anchor": (0.5,1.35),
-        "label_spacing": 0.05,
-        "column_spacing": 0.2,
-        "ncol": 2,
-        "center_ratio": 2.5,
-        "bar_width_ratio": 2,
-        "marker_size": 10,
-        "same_distance": True,
-        # "figsize": (8, 6),
-        # "max_x_label_show_list": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5],
-    }
-    y_label_name = "Competition Ratio"
-    env_x_label = r"$\frac{h}{n}$"
-    def get_policy_map_func(origin_policy):
-        return r"$\lambda = {}$".format(origin_policy)
-    current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
-    target_pic_name = "cr"
-    draw_plot_worker(False, results, None, None,
-                    env_policy_groups, env_x_groups, 
-                    y_label_name, env_x_label, get_policy_map_func, 
-                    params,
-                    current_dir, target_pic_name)
-    
-
-if __name__ == "__main__":
-    # draw_fig_1()
-    # draw_fig_2()
-    # draw_fig_6()
-    # draw_fig_5()
-    # draw_testbed_fig_2()
-    draw_cr()
-    
-    # "Number of Allocated Jobs", 
-    # "Ratio of Allocated Jobs", 
-    # "Significance of all jobs", 
-    # "Significance of allocated jobs",
-    # "Average Significance of all jobs",
-    # "Average Significance of allocated jobs",
-    # "Success Datablock Num",
-    # "Failed Datablock Num",
-    # "Target Datablock Num"
+'''

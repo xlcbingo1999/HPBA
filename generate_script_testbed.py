@@ -8,10 +8,10 @@ import json
 nohup_flag = False
 debug_flag = False
 nohup_target_dir_prefix = "/home/netlab/DL_lab/opacus_testbed/log_temp_store/"
-target_time_minute = 180
+target_time_minute = 240
 
 current_ip_index = 5
-current_cmd_index = 1
+current_cmd_index = 0
 
 # testbed
 worker_indexes = [2, 3]
@@ -39,12 +39,13 @@ seed_str = " ".join(seeds)
 waiting_time = 2 if simulation_flag else 10
 
 # 任务
-pipeline_sequence_all_num = 10000
+pipeline_sequence_all_num = 500
 all_history_num = 0 # 在INF场景中这个东西太多似乎不太好
 job_arrival_time_speed_up = 4.0 # 控制到达速率
 job_datablock_epsilon_max_ratio = 0.2 # 控制最大的比率(离群值控制)
 job_datablock_epsilon_min_ratio = 0.04 # 控制最小的比率(离群值控制)
-change_job_epsilon_max_times = 1.0 # 这个直接从平均增大倍数(平均值控制),
+job_datablock_lambda = 0.2
+change_job_epsilon_max_times = 1.0 * (job_datablock_lambda / job_datablock_epsilon_max_ratio) # 这个直接从平均增大倍数(平均值控制),
                                    # 逻辑1: 先保证任务的请求量在(job_datablock_epsilon_min_ratio, job_datablock_epsilon_max_ratio)之间
                                    # 逻辑2: 然后再直接将任务的请求量做倍数放大或缩小
 job_require_select_block_min_num = 4
@@ -52,18 +53,19 @@ job_require_select_block_max_num = 4
 config_max_operate_siton_run_num = 1
 
 # block
-all_datablock_num = 40
+all_datablock_num = 60
 offline_datablock_num = 20
 datablock_arrival_time_speed_up = 4.0 # 控制到达速率
 base_capacity = 5.0
 dataset_name = "EMNIST"
 dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
-assignment_policy = "OfflinePolicy"
+assignment_policy = "HISwithOrderProVersionPolicy"
 his_betas = 0.0
 his_batch_size_for_one_epochs = 5
 his_infinity_flag = True
-his_greedy_flag = True
+his_adaptive_n_flag = True
+his_greedy_flag = False
 his_greedy_threshold = 0.2
 pbg_comparison_cost_epsilons = 0.0
 pbg_comparison_z_thresholds = 0.9
@@ -188,6 +190,8 @@ if "HIS" in assignment_policy:
     dispatcher_cmds.append(f"--his_batch_size_for_one_epochs {his_batch_size_for_one_epochs}")
     if his_infinity_flag:
         dispatcher_cmds.append(f"--his_infinity_flag")
+    if his_adaptive_n_flag:
+        dispatcher_cmds.append(f"--his_adaptive_n_flag")
     if his_greedy_flag:
         dispatcher_cmds.append(f"--his_greedy_flag")
         dispatcher_cmds.append(f"--his_greedy_threshold {his_greedy_threshold}")
