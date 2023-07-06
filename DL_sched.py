@@ -143,6 +143,7 @@ class Scheduler_server(object):
         self.jobid_2_sub_test_key_id = {}
         self.jobid_2_arrival_index = {}
         self.jobid_2_typeid = {}
+        self.jobid_2_decision_duration = {}
         self.min_significance_epsilon_ratio = float('inf')
         self.max_significance_epsilon_ratio = -float('inf')
         # self.jobid_2_recoming_min_time = {}
@@ -321,6 +322,7 @@ class Scheduler_server(object):
 
         self.jobid_2_arrival_index = {} # TODO-OK(xlc): multi 每次作为一个子任务都要提交一个新的arrival_index
         self.jobid_2_typeid = {}
+        self.jobid_2_decision_duration = {}
         # self.jobid_2_recoming_min_time = {}
         # self.recoming_time_interval = 5
 
@@ -556,6 +558,7 @@ class Scheduler_server(object):
                 self.jobid_2_arrival_index[id].append(self.global_job_arrival_index) 
                 self.global_job_arrival_index += 1
                 self.jobid_2_typeid[id] = origin_info["job_type"]
+                self.jobid_2_decision_duration[id] = 0.0
                 
 
                 self.jobid_2_siton_run_epoch_num[id] = origin_info["SITON_RUN_EPOCH_NUM"]
@@ -911,9 +914,14 @@ class Scheduler_server(object):
             job_id_2_test_dataset_name, job_id_2_sub_test_key_id,
             job_id_2_train_dataset_name, job_id_2_model_name
         )
+        decision_begin_time = time.time()
         job_2_selected_datablock_identifiers, sched_fail_job_ids, \
             selected_real_sched_epsilon_map, calcu_compare_epsilon, job_2_instant_recoming_flag = \
             self.assignment_policy.get_allocation(state, self.all_or_nothing_flag, self.enable_waiting_flag)
+        decision_duration = time.time() - decision_begin_time
+        operator_job_num = len(job_id_2_target_epsilon_require)
+        for job_id in job_id_2_target_epsilon_require:
+            self.jobid_2_decision_duration[job_id] = (decision_duration / operator_job_num) # 这里必须是重新赋值, 不然会多计算一些次数
         # not_selected_datablock_identifiers = [tu[0] for tu in sub_train_sort[target_datablock_select_num:]]
         return job_2_selected_datablock_identifiers, sched_fail_job_ids, selected_real_sched_epsilon_map, calcu_compare_epsilon, job_2_instant_recoming_flag
 
@@ -925,6 +933,7 @@ class Scheduler_server(object):
         dispatcher_ip = origin_info["dispatcher_ip"]
         dispatcher_port = origin_info["dispatcher_port"]
         results = self.jobid_2_results[job_id]
+        decision_duration = self.jobid_2_decision_duration[job_id]
         
         if success_finished_flag:
             self.finished_job_to_dispatcher_list.append({
@@ -932,6 +941,7 @@ class Scheduler_server(object):
                 "dispatcher_ip": dispatcher_ip,
                 "dispatcher_port": dispatcher_port,
                 "results": results,
+                "decision_duration": decision_duration,
                 "origin_info": origin_info,
             })
         else:
@@ -940,6 +950,7 @@ class Scheduler_server(object):
                 "dispatcher_ip": dispatcher_ip,
                 "dispatcher_port": dispatcher_port,
                 "results": results,
+                "decision_duration": decision_duration,
                 "origin_info": origin_info,
             })
 
@@ -952,11 +963,12 @@ class Scheduler_server(object):
                     dispatcher_ip = details["dispatcher_ip"]
                     dispatcher_port = details["dispatcher_port"]
                     results = details["results"]
+                    decision_duration = details["decision_duration"]
                     origin_info = details["origin_info"]
                     self.sched_logger.debug(f"send_job_info_callback {job_id}")
                 
                     with get_zerorpc_client(dispatcher_ip, dispatcher_port) as client:
-                        client.send_job_info_callback(job_id, results, origin_info, True)
+                        client.send_job_info_callback(job_id, results, decision_duration, origin_info, True)
                     
                 while len(self.failed_job_to_dispatcher_list) > 0:
                     details = self.failed_job_to_dispatcher_list.pop(0)
@@ -964,10 +976,11 @@ class Scheduler_server(object):
                     dispatcher_ip = details["dispatcher_ip"]
                     dispatcher_port = details["dispatcher_port"]
                     results = details["results"]
+                    decision_duration = details["decision_duration"]
                     origin_info = details["origin_info"]
                     self.sched_logger.debug(f"send_job_info_callback {job_id}")
                     with get_zerorpc_client(dispatcher_ip, dispatcher_port) as client:
-                        client.send_job_info_callback(job_id, results, origin_info, False)
+                        client.send_job_info_callback(job_id, results, decision_duration, origin_info, False)
                 if not self.simulation:
                     time.sleep(sleep_time)
             self.sched_logger.info("Thread [thread_func_send_job_info_to_dispatcher] finished!")

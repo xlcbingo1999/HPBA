@@ -216,8 +216,8 @@ class Dispatcher(object):
             try:
                 while not self.all_finished:
                     while len(self.job_result_list) > 0:
-                        time, job_id, results, origin_info, success_finished_flag = self.job_result_list.pop(0)
-                        self.show_job_results(time, job_id, results, origin_info, success_finished_flag)
+                        time, job_id, results, decision_duration, origin_info, success_finished_flag = self.job_result_list.pop(0)
+                        self.show_job_results(time, job_id, results, decision_duration, origin_info, success_finished_flag)
                     zerorpc.gevent.sleep(sleep_time)
                 self.dispatcher_logger.info(f"Thread [thread_func_timely_operator_job_result] finished")
             except Exception as e:
@@ -228,7 +228,7 @@ class Dispatcher(object):
         self.dispatcher_logger.info(f"Thread [thread_func_timely_operator_job_result] start")
         return p
 
-    def show_job_results(self, time, job_id, results, origin_info, success_finished_flag):
+    def show_job_results(self, time, job_id, results, decision_duration, origin_info, success_finished_flag):
         self.dispatcher_logger.info("job [{}] last result: {}".format(job_id, results))
         if len(results) <= 0:
             all_train_loss = 0.0
@@ -267,6 +267,11 @@ class Dispatcher(object):
         self.dispatcher_logger.info(f"{job_id} test_loss: {all_test_loss}")
         self.dispatcher_logger.info(f"{job_id} test_accuracy: {all_test_accuracy}")
         self.dispatcher_logger.info(f"{job_id} final_significance: {all_final_significance}")
+        self.dispatcher_logger.info(f"{job_id} success_finished_flag: {success_finished_flag}")
+        self.dispatcher_logger.info(f"{job_id} target_datablock_num: {target_datablock_num}")
+        self.dispatcher_logger.info(f"{job_id} success_datablock_num: {success_datablock_num}")
+        self.dispatcher_logger.info(f"{job_id} epsilon_real_all_block: {epsilon_real_all_block}")
+        self.dispatcher_logger.info(f"{job_id} decision_duration: {decision_duration}")
 
         # 在这里要保存每个时刻的记录, 会有资源写入竞争的bug, 最好是写一个队列出来逐步保存!
         xlsx_save_path = "{}/{}/time_temp_log_{}.csv".format(RESULT_PATH, self.current_test_all_dir, self.simulation_index)
@@ -285,6 +290,7 @@ class Dispatcher(object):
             "success_datablock_num": [success_datablock_num],
 
             "epsilon_real_all_block": [epsilon_real_all_block],
+            "decision_duration": [decision_duration],
         }
         columns = list(new_data.keys())
         new_df_row = pd.DataFrame(new_data, columns=columns)
@@ -296,13 +302,13 @@ class Dispatcher(object):
         df.to_csv(xlsx_save_path, index=False)
         self.dispatcher_logger.debug(f"{job_id} time_log save to csv!")
 
-    def send_job_info_callback(self, job_id, results, origin_info, success_finished_flag):
+    def send_job_info_callback(self, job_id, results, decision_duration, origin_info, success_finished_flag):
         if success_finished_flag:
             self.dispatcher_logger.info("[finished job end job_id: {}] current_time: {}".format(job_id, self.current_time))
         else:
             self.dispatcher_logger.info("[failed job end job_id: {}] current_time: {}".format(job_id, self.current_time))
         self.finished_labels[job_id] = True
-        self.job_result_list.append((self.current_time, job_id, results, origin_info, success_finished_flag))
+        self.job_result_list.append((self.current_time, job_id, results, decision_duration, origin_info, success_finished_flag))
 
     def testbed_sched_update_dataset(self, sched_ip, sched_port):
         def thread_func_timely_dispatch_dataset(sched_ip, sched_port):

@@ -72,7 +72,8 @@ def final_log_result(current_test_all_dir, all_result_file_name):
         all_test_loss_arr, all_test_accuracy_arr, all_final_significance_arr, \
         all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr, \
         all_epsilon_real_all_block_arr, all_significance_2_epsilon_real_blocks_arr, \
-        all_test_acc_2_epsilon_real_blocks_arr, all_test_loss_2_epsilon_real_blocks_arr = read_DL_dispatcher_result_func(trace_save_all_file_dir)
+        all_test_acc_2_epsilon_real_blocks_arr, all_test_loss_2_epsilon_real_blocks_arr, \
+        all_decision_duration_arr = read_DL_dispatcher_result_func(trace_save_all_file_dir)
 
     with open(all_result_path, "w+") as f:
         print_console_file("final_used_num: {}".format(final_used_num), fileHandler=f)
@@ -125,13 +126,17 @@ def final_log_result(current_test_all_dir, all_result_file_name):
             print_console_file("[test_acc_2_epsilon_real_blocks_info] {}({}~{}) === test_acc_2_epsilon_real_blocks_mean: {} ; test_acc_2_epsilon_real_blocks_min: {} ; test_acc_2_epsilon_real_blocks_max: {}".format(
                 np.mean(all_test_acc_2_epsilon_real_blocks_arr), min(all_test_acc_2_epsilon_real_blocks_arr), max(all_test_acc_2_epsilon_real_blocks_arr), np.mean(all_test_acc_2_epsilon_real_blocks_arr), min(all_test_acc_2_epsilon_real_blocks_arr), max(all_test_acc_2_epsilon_real_blocks_arr)
             ), fileHandler=f)
+            print_console_file("[decision_duration_info] {}({}~{}) === decision_duration_mean: {} ; decision_duration_min: {} ; decision_duration_max: {}".format(
+                np.mean(all_decision_duration_arr), min(all_decision_duration_arr), max(all_decision_duration_arr), np.mean(all_decision_duration_arr), min(all_decision_duration_arr), max(all_decision_duration_arr)
+            ), fileHandler=f)
             
     print(f"============================ {current_test_all_dir} [success:{final_used_num}] ====================================")
     return final_used_num, success_num_arr, failed_num_arr, all_test_jobs_num_arr, all_train_loss_arr, all_train_accuracy_arr, \
         all_test_loss_arr, all_test_accuracy_arr, all_final_significance_arr, \
         all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr, \
         all_epsilon_real_all_block_arr, all_significance_2_epsilon_real_blocks_arr, \
-        all_test_loss_2_epsilon_real_blocks_arr, all_test_acc_2_epsilon_real_blocks_arr
+        all_test_loss_2_epsilon_real_blocks_arr, all_test_acc_2_epsilon_real_blocks_arr, \
+        all_decision_duration_arr
 
 def read_DL_dispatcher_result_func(trace_save_all_file_dir):
     final_used_num = 0
@@ -159,6 +164,8 @@ def read_DL_dispatcher_result_func(trace_save_all_file_dir):
     all_significance_2_epsilon_real_blocks_arr = []
     all_test_acc_2_epsilon_real_blocks_arr = []
     all_test_loss_2_epsilon_real_blocks_arr = []
+
+    all_decision_duration_arr = []
 
     for file_path in all_need_iter_paths:
         result_df = pd.read_csv(file_path)
@@ -188,13 +195,17 @@ def read_DL_dispatcher_result_func(trace_save_all_file_dir):
         all_significance_2_epsilon_real_blocks_arr.append(sig/epsilon_real)
         all_test_acc_2_epsilon_real_blocks_arr.append(test_acc/epsilon_real)
         all_test_loss_2_epsilon_real_blocks_arr.append(test_loss/epsilon_real)
+
+        decision_duration = np.mean(list(result_df["decision_duration"]))
+        all_decision_duration_arr.append(decision_duration)
         
     return final_used_num, success_num_arr, failed_num_arr, all_test_jobs_num_arr, \
             all_train_loss_arr, all_train_accuracy_arr, \
             all_test_loss_arr, all_test_accuracy_arr, all_final_significance_arr, \
             all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr, \
             all_epsilon_real_all_block_arr, all_significance_2_epsilon_real_blocks_arr, \
-            all_test_acc_2_epsilon_real_blocks_arr, all_test_loss_2_epsilon_real_blocks_arr
+            all_test_acc_2_epsilon_real_blocks_arr, all_test_loss_2_epsilon_real_blocks_arr, \
+            all_decision_duration_arr
 
         
 

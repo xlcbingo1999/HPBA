@@ -22,6 +22,7 @@ def write_to_df(df, index,
                 all_significance_2_epsilon_real_blocks_arr,
                 all_test_loss_2_epsilon_real_blocks_arr,
                 all_test_acc_2_epsilon_real_blocks_arr,
+                all_decision_duration_arr,
                 run_time):
     df.loc[index, "Success num"] = f"{np.mean(success_num_arr)}({min(success_num_arr)}~{max(success_num_arr)})"
     df.loc[index, "Failed num"] = f"{np.mean(failed_num_arr)}({min(failed_num_arr)}~{max(failed_num_arr)})"
@@ -43,6 +44,7 @@ def write_to_df(df, index,
     df.loc[index, "Test_Loss_Epsilon_Ratio"] = f"{np.mean(all_test_loss_2_epsilon_real_blocks_arr)}({min(all_test_loss_2_epsilon_real_blocks_arr)}~{max(all_test_loss_2_epsilon_real_blocks_arr)})"
     df.loc[index, "Test_Accuracy_Epsilon_Ratio"] = f"{np.mean(all_test_acc_2_epsilon_real_blocks_arr)}({min(all_test_acc_2_epsilon_real_blocks_arr)}~{max(all_test_acc_2_epsilon_real_blocks_arr)})"
 
+    df.loc[index, "Decision_Duration"] = f"{np.mean(all_decision_duration_arr)}({min(all_decision_duration_arr)}~{max(all_decision_duration_arr)})"
     df.loc[index, "Run Time"] = int(run_time)
     return df
 
@@ -113,7 +115,8 @@ def update_df_real(df):
                     all_test_loss_arr, all_test_accuracy_arr, all_final_significance_arr, \
                     all_target_datablock_num_arr, all_success_datablock_num_arr, all_failed_datablock_num_arr, \
                     all_epsilon_real_all_block_arr, all_significance_2_epsilon_real_blocks_arr, \
-                    all_test_loss_2_epsilon_real_blocks_arr, all_test_acc_2_epsilon_real_blocks_arr = final_log_result(log_trace_path, "all_result.log")
+                    all_test_loss_2_epsilon_real_blocks_arr, all_test_acc_2_epsilon_real_blocks_arr, \
+                    all_decision_duration_arr = final_log_result(log_trace_path, "all_result.log")
                 if final_used_num > 0:
                     df = write_to_df(df, index, 
                                     success_num_arr, 
@@ -131,6 +134,7 @@ def update_df_real(df):
                                     all_significance_2_epsilon_real_blocks_arr,
                                     all_test_loss_2_epsilon_real_blocks_arr,
                                     all_test_acc_2_epsilon_real_blocks_arr,
+                                    all_decision_duration_arr,
                                     final_used_num)
                     print(f"write success!")
             else:
