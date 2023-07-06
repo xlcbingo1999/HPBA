@@ -68,6 +68,7 @@ def update_df_real(df):
         "Test_Accuracy_Epsilon_Ratio",
         "Significance_Epsilon_Ratio",
         "Test_Loss_Epsilon_Ratio",
+        "Decision_Duration",
     ]
     mulu_column_key = "log目录"
     mulu_column_key_format_len = 41
