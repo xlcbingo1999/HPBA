@@ -427,6 +427,14 @@ class Dispatcher(object):
             new_xlsx_save_path = "{}/{}/time_log_{}.csv".format(RESULT_PATH, self.current_test_all_dir, self.simulation_index)
             os.rename(xlsx_save_path, new_xlsx_save_path)
 
+            rm_list = []
+            for _, _, files in os.walk(os.path.join(RESULT_PATH, self.current_test_all_dir)):
+                for file in files:
+                    if os.path.splitext(file)[1] == ".pt":
+                        rm_list.append(os.path.basename(file))
+            for rm_f in rm_list:
+                os.remove(os.path.join(RESULT_PATH, self.current_test_all_dir, rm_f)) 
+
             current_success_num = all_result_map["current_success_num"]
             current_failed_num = all_result_map["current_failed_num"]
             current_no_submit_num = all_result_map["current_no_submit_num"]
