@@ -16,7 +16,7 @@ class QueueItem(object):
         self.significance = significance
 
 class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
-    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, 
+    def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all,
                 batch_size_for_one_epoch, infinity_flag, 
                 greedy_flag, greedy_threshold,
                 seed, logger):

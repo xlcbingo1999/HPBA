@@ -26,14 +26,14 @@ def from_y_label_name_2_add_columns_keys_2_need_max_map(y_label_name_arr):
         elif y_label_name == "Ratio of Allocated Datablocks":
             add_columns_keys_2_need_max_map["Success Datablock Num"] = True
             add_columns_keys_2_need_max_map["Target Datablock Num"] = True
-        elif y_label_name == "Significance of all queries":
+        elif y_label_name == "Significance of all queries" or y_label_name == "Total values of all queries":
             add_columns_keys_2_need_max_map["Mean Significance All"] = True
         elif y_label_name == "Significance of allocated queries":
             add_columns_keys_2_need_max_map["Mean Significance Success"] = True
             add_columns_keys_2_need_max_map["Success num"] = True
         elif y_label_name == "Sum of Delta Train Accuracy":
             add_columns_keys_2_need_max_map["Train Accuracy All"] = True
-        elif y_label_name == "Sum of Delta Test Accuracy":
+        elif y_label_name == "Sum of Delta Test Accuracy"  or y_label_name == "Total accuracy improvement of all queries":
             add_columns_keys_2_need_max_map["Test Accuracy All"] = True
         elif y_label_name == "Sum of Delta Train Loss":
             add_columns_keys_2_need_max_map["Train Loss All"] = False
@@ -111,7 +111,7 @@ def draw_plot_worker(fill_between_flag, results, results_min, results_max,
         fontweight='bold'
     )
     plt.yticks(fontsize=font_size, fontweight='bold')
-    plt.xlabel(env_x_label, fontsize=font_size, fontweight='bold')
+    plt.xlabel(fill(env_x_label, max_one_line_length), fontsize=font_size, fontweight='bold')
     plt.ylabel(fill(y_label_name, max_one_line_length), fontsize=font_size, fontweight='bold')
     if np.mean(results) < 1e-2 or np.mean(results) > 1e2:
         plt.ticklabel_format(style='sci',scilimits=(0,0),axis='y')
@@ -190,7 +190,7 @@ def draw_bar_worker(results, env_policy_groups, env_x_groups,
         fontweight='bold'
     )
     plt.yticks(fontsize=font_size, fontweight='bold')
-    plt.xlabel(env_x_label, fontsize=font_size, fontweight='bold')
+    plt.xlabel(fill(env_x_label, max_one_line_length), fontsize=font_size, fontweight='bold')
     plt.ylabel(fill(y_label_name, max_one_line_length), fontsize=font_size, fontweight='bold')
     if np.mean(results) < 1e-2 or np.mean(results) > 1e2:
         plt.ticklabel_format(style='sci',scilimits=(0,0),axis='y')
@@ -293,11 +293,11 @@ def draw_cr():
 
     
     params = {
-        "font_size": 20,
+        "font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
-        "max_one_line_length": 20,
+        "max_one_line_length": 30,
         "bbox_to_anchor": (0.5,1.35),
         "label_spacing": 0.05,
         "column_spacing": 0.2,
@@ -324,21 +324,35 @@ def draw_cr():
 def draw_Q1():
     target_pic_name = "testbed_Q1"
     keys_str = ["policy", "Datablock num"]
-    env_x_groups = [40, 60, 80] # Datablock num
+    env_x_groups = [20, 40, 60, 80, 100] # Datablock num
     env_policy_groups = [
-        "HIS",
-        "SAHIS", 
-        "PBG", 
-        "Sage",
-        "BestFit",
-        "Offline"
+        "HISwithOrderProVersionPolicy(baoshou_inf)",
+        "IterativeHISwithOrderProVersionPolicy(baoshou_inf)", 
+        "PBGPolicy", 
+        "SagewithRemainPolicy",
+        "BestFitwithRemainPolicy",
+        "OfflinePolicy"
     ]
     def get_Q1_policy_map(origin_policy):
-        # 优化后不需要调整了
-        return origin_policy
+        result_policy = ""
+        if origin_policy == "OfflinePolicy":
+            result_policy = "Offline"
+        elif "IterativeHISwithOrderProVersionPolicy" in origin_policy:
+            result_policy = "SAHIS"
+        elif "HISwithOrderProVersionPolicy" in origin_policy:
+            result_policy = "HIS"        
+        elif origin_policy == "PBGPolicy":
+            result_policy = "PBG"
+        elif origin_policy == "PBGMixPolicy": 
+            result_policy = "PBGMix"
+        elif origin_policy == "SagewithRemainPolicy":
+            result_policy = "Sage"
+        elif origin_policy == "BestFitwithRemainPolicy":
+            result_policy = "BestFit"
+        return result_policy
     env_x_label = r"Number of Datablocks"
     params = {
-        "font_size": 18,
+        "font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
@@ -351,8 +365,145 @@ def draw_Q1():
         "bar_width_ratio": 2,
     }
     y_label_name_arr = [
-        "Significance of all queries", 
-        "Sum of Delta Test Accuracy",
+        "Total values of all queries", 
+        "Total accuracy improvement of all queries",
+    ]
+    get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
+                    y_label_name_arr, env_x_label, params, get_Q1_policy_map)
+
+def draw_Q2():
+    target_pic_name = "testbed_Q2"
+    keys_str = ["policy", "Datablock num"]
+    env_x_groups = [20, 40, 60, 80, 100] # Datablock num 0, 50, 100, 150, 250, 300
+    env_policy_groups = [
+        "HISwithOrderProVersionPolicy(0)",  # 0.0
+        "HISwithOrderProVersionPolicy(400)", # 0.4
+        "HISwithOrderProVersionPolicy(800)", # 0.8
+        "HISwithOrderProVersionPolicy(1200)", # 1.2
+        "HISwithOrderProVersionPolicy(1600)", # 1.6
+        "HISwithOrderProVersionPolicy(2000)", # 2.0
+        "OfflinePolicy",
+    ]
+    def get_Q2_policy_map(origin_policy):
+        result_policy = ""
+        if "HISwithOrderProVersionPolicy" in origin_policy:
+            result_policy = "HIS"
+            match = re.match(r"HISwithOrderProVersionPolicy\((?P<history_num>\d+)\)", origin_policy)
+            if match:
+                result_policy = result_policy + "({})".format(match.group("history_num"))
+        elif "OfflinePolicy" in origin_policy:
+            result_policy = "Offline"
+        return result_policy
+    env_x_label = r"Number of Datablocks"
+    params = {
+        "font_size": 15,
+        "line_width": 1.5,
+        "bar_width": 0.23,
+        "fill_between_alpha": 0.5,
+        "max_one_line_length": 30,
+        "bbox_to_anchor": (0.5,1.35),
+        "label_spacing": 0.05,
+        "column_spacing": 0.2,
+        "ncol": 3,
+        "center_ratio": 2.5,
+        "bar_width_ratio": 2,
+    }
+    y_label_name_arr = [
+        "Total values of all queries", 
+        "Total accuracy improvement of all queries",
+    ]
+    get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
+                    y_label_name_arr, env_x_label, params, get_Q2_policy_map)
+
+def draw_Q3():
+    target_pic_name = "testbed_Q3"
+    keys_str = ["policy", "Datablock num"]
+    env_x_groups = [20, 40, 60, 80, 100] # Datablock num 1, 10, 50, 100, 150, 200
+    env_policy_groups = [
+        "IterativeHISwithOrderProVersionPolicy(1)", 
+        "IterativeHISwithOrderProVersionPolicy(10)", 
+        "IterativeHISwithOrderProVersionPolicy(50)", 
+        "IterativeHISwithOrderProVersionPolicy(100)", 
+        "IterativeHISwithOrderProVersionPolicy(150)", 
+        "IterativeHISwithOrderProVersionPolicy(200)", 
+        "OfflinePolicy",
+    ]
+    
+    def get_Q3_policy_map(origin_policy):
+        result_policy = ""
+        if "IterativeHISwithOrderProVersionPolicy" in origin_policy:
+            result_policy = "SAHIS"
+            match = re.match(r"IterativeHISwithOrderProVersionPolicy\((?P<batch_size>\d+)\)", origin_policy)
+            if match:
+                result_policy = result_policy + "({})".format(match.group("batch_size"))
+        return result_policy
+    env_x_label = r"Number of Datablocks"
+    params = {
+        "font_size": 15,
+        "line_width": 1.5,
+        "bar_width": 0.23,
+        "fill_between_alpha": 0.5,
+        "max_one_line_length": 30,
+        "bbox_to_anchor": (0.5,1.35),
+        "label_spacing": 0.05,
+        "column_spacing": 0.2,
+        "ncol": 3,
+        "center_ratio": 2.5,
+        "bar_width_ratio": 2,
+    }
+    y_label_name_arr = [
+        "Total values of all queries", 
+        "Total accuracy improvement of all queries",
+    ]
+    get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
+                    y_label_name_arr, env_x_label, params, get_Q3_policy_map)
+
+def draw_Q4():
+    target_pic_name = "testbed_Q4"
+    keys_str = ["policy", "lambda"]
+    env_x_groups = [0.05, 0.1, 0.2, 0.4, 0.6, 0.8] # Datablock num
+    env_policy_groups = [
+        "HISwithOrderProVersionPolicy(baoshou_inf)",
+        "IterativeHISwithOrderProVersionPolicy(baoshou_inf)", 
+        "PBGPolicy", 
+        "SagewithRemainPolicy",
+        "BestFitwithRemainPolicy",
+        "OfflinePolicy"
+    ]
+    def get_Q1_policy_map(origin_policy):
+        result_policy = ""
+        if origin_policy == "OfflinePolicy":
+            result_policy = "Offline"
+        elif "IterativeHISwithOrderProVersionPolicy" in origin_policy:
+            result_policy = "SAHIS"
+        elif "HISwithOrderProVersionPolicy" in origin_policy:
+            result_policy = "HIS"        
+        elif origin_policy == "PBGPolicy":
+            result_policy = "PBG"
+        elif origin_policy == "PBGMixPolicy": 
+            result_policy = "PBGMix"
+        elif origin_policy == "SagewithRemainPolicy":
+            result_policy = "Sage"
+        elif origin_policy == "BestFitwithRemainPolicy":
+            result_policy = "BestFit"
+        return result_policy
+    env_x_label = r"Ratio $\lambda$" # $\frac{r_{i}}{\epsilon_{d}^{G}}$
+    params = {
+        "font_size": 15,
+        "line_width": 1.5,
+        "bar_width": 0.23,
+        "fill_between_alpha": 0.5,
+        "max_one_line_length": 30,
+        "bbox_to_anchor": (0.5,1.35),
+        "label_spacing": 0.05,
+        "column_spacing": 0.2,
+        "ncol": 3,
+        "center_ratio": 2.5,
+        "bar_width_ratio": 2,
+    }
+    y_label_name_arr = [
+        "Total values of all queries", 
+        "Total accuracy improvement of all queries",
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
                     y_label_name_arr, env_x_label, params, get_Q1_policy_map)
@@ -365,6 +516,9 @@ if __name__ == "__main__":
     # draw_testbed_fig_2()
     # draw_cr()
     draw_Q1()
+    draw_Q4()
+    draw_Q3()
+    draw_Q2()
 
 
 '''
@@ -415,7 +569,7 @@ def draw_fig_1():
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
-        "max_one_line_length": 20,
+        "max_one_line_length": 30,
         "bbox_to_anchor": (0.5,1.35),
         "label_spacing": 0.05,
         "column_spacing": 0.2,
@@ -473,7 +627,7 @@ def draw_fig_2():
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
-        "max_one_line_length": 20,
+        "max_one_line_length": 30,
         "bbox_to_anchor": (0.5,1.35),
         "label_spacing": 0.05,
         "column_spacing": 0.2,
@@ -528,7 +682,7 @@ def draw_fig_6():
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
-        "max_one_line_length": 20,
+        "max_one_line_length": 30,
         "bbox_to_anchor": (0.5,1.35),
         "label_spacing": 0.05,
         "column_spacing": 0.2,
@@ -583,7 +737,7 @@ def draw_fig_5():
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
-        "max_one_line_length": 20,
+        "max_one_line_length": 30,
         "bbox_to_anchor": (0.5,1.35),
         "label_spacing": 0.05,
         "column_spacing": 0.2,
@@ -635,7 +789,7 @@ def draw_testbed_fig_1():
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
-        "max_one_line_length": 20,
+        "max_one_line_length": 30,
         "bbox_to_anchor": (0.5,1.35),
         "label_spacing": 0.05,
         "column_spacing": 0.2,
@@ -691,7 +845,7 @@ def draw_testbed_fig_2():
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
-        "max_one_line_length": 20,
+        "max_one_line_length": 30,
         "bbox_to_anchor": (0.5,1.35),
         "label_spacing": 0.05,
         "column_spacing": 0.2,

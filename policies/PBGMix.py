@@ -8,7 +8,7 @@ import math
 import json
 
 class PBGMixPolicy(Policy):
-    def __init__(self, pipeline_sequence_all_num, job_request_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, seed, logger):
+    def __init__(self, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, seed, logger):
         super().__init__(pipeline_sequence_all_num, job_request_all_num)
         self._name = 'PBGMixPolicy'
         self.comparison_cost_epsilon = comparison_cost_epsilon

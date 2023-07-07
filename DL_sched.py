@@ -659,6 +659,8 @@ class Scheduler_server(object):
                     offline_history_job_arrival_time,
                     offline_history_job_model_name
                 )
+            if self.assignment_policy.name == "HISwithOrderProVersionPolicy":
+                self.assignment_policy.adaptive_calculate_adaptive_h()
             self.finished_update_init_history_jobs = True
         except Exception as e:
             self.sched_logger.error(f"update_history_jobs error => {str(e)}")
@@ -1674,26 +1676,26 @@ class Scheduler_server(object):
         
     def sched_update_assignment_policy(self, assignment_policy, assignment_args):
         if assignment_policy == "PBGPolicy" or assignment_policy == "PBG":
-            pipeline_sequence_all_num, job_request_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U = assignment_args
-            policy_item = PBGPolicy(pipeline_sequence_all_num, job_request_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, self.seed, self.sched_logger)
+            pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, comparison_cost_epsilon, comparison_z_threshold, L, U = assignment_args
+            policy_item = PBGPolicy(pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, comparison_cost_epsilon, comparison_z_threshold, L, U, self.seed, self.sched_logger)
         elif assignment_policy == "PBGMixPolicy" or assignment_policy == "PBGMix":
-            pipeline_sequence_all_num, job_request_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta = assignment_args
-            policy_item = PBGMixPolicy(pipeline_sequence_all_num, job_request_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, self.seed, self.sched_logger)
+            pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta = assignment_args
+            policy_item = PBGMixPolicy(pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, self.seed, self.sched_logger)
         elif assignment_policy == "HISwithOrderProVersionPolicy" or assignment_policy == "HISwithOrderProVersion":
-            beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold = assignment_args
-            policy_item = HISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold, self.seed, self.sched_logger)
+            beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold = assignment_args
+            policy_item = HISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISwithOrderProVersionPolicy" or assignment_policy == "IterativeHISwithOrderProVersion":
-            beta, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch, infinity_flag, greedy_flag, greedy_threshold = assignment_args
-            policy_item = IterativeHISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch, infinity_flag, greedy_flag, greedy_threshold, self.seed, self.sched_logger)
+            beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, batch_size_for_one_epoch, infinity_flag, greedy_flag, greedy_threshold = assignment_args
+            policy_item = IterativeHISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, batch_size_for_one_epoch, infinity_flag, greedy_flag, greedy_threshold, self.seed, self.sched_logger)
         elif assignment_policy == "SagewithRemainPolicy" or assignment_policy == "SagewithRemain":
-            pipeline_sequence_all_num, job_request_all_num = assignment_args
-            policy_item = SagewithRemainPolicy(pipeline_sequence_all_num, job_request_all_num, self.seed, self.sched_logger)
+            pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all = assignment_args
+            policy_item = SagewithRemainPolicy(pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, self.seed, self.sched_logger)
         elif assignment_policy == "BestFitwithRemainPolicy" or assignment_policy == "BestFitwithRemain":
-            pipeline_sequence_all_num, job_request_all_num = assignment_args
-            policy_item = BestFitwithRemainPolicy(pipeline_sequence_all_num, job_request_all_num, self.seed, self.sched_logger)
+            pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all = assignment_args
+            policy_item = BestFitwithRemainPolicy(pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, self.seed, self.sched_logger)
         elif assignment_policy == "OfflinePolicy" or assignment_policy == "Offline":
-            pipeline_sequence_all_num, job_request_all_num = assignment_args
-            policy_item = OfflinePolicy(pipeline_sequence_all_num, job_request_all_num, self.seed, self.sched_logger)
+            pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all = assignment_args
+            policy_item = OfflinePolicy(pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, self.seed, self.sched_logger)
         
         policy_item.register_backward_cal_significance_func(self.get_job_datablock_significance_sync)
         self.assignment_policy = policy_item

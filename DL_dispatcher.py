@@ -492,7 +492,8 @@ class Dispatcher(object):
 
     def sched_init_sched_register(self, ip, port, args, seed, 
                                 assignment_policy, significance_policy, 
-                                pipeline_sequence_all_num, job_request_all_num, config_max_operate_siton_run_num,
+                                pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all,
+                                config_max_operate_siton_run_num,
                                 dataset_name, dataset_config_name, max_gpu_fuzai,
                                 all_or_nothing_flag, enable_waiting_flag, inf_job_dispatch_flag, need_stop_lower_bound_ratio,
                                 simulation, simulation_index):
@@ -502,14 +503,14 @@ class Dispatcher(object):
                 comparison_z_threshold_list = args.pbg_comparison_z_thresholds
                 L_list = args.pbg_Ls
                 U_list = args.pbg_Us
-                assignment_args = (pipeline_sequence_all_num, job_request_all_num, comparison_cost_epsilon_list, comparison_z_threshold_list, L_list, U_list)
+                assignment_args = (pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, comparison_cost_epsilon_list, comparison_z_threshold_list, L_list, U_list)
             elif assignment_policy == "PBGMixPolicy" or assignment_policy == "PBGMix":
                 comparison_cost_epsilon_list = args.pbg_comparison_cost_epsilons
                 comparison_z_threshold_list = args.pbg_comparison_z_thresholds
                 L_list = args.pbg_Ls
                 U_list = args.pbg_Us
                 gitta_list = args.pbg_gittas
-                assignment_args = (pipeline_sequence_all_num, job_request_all_num, comparison_cost_epsilon_list, comparison_z_threshold_list, L_list, U_list, gitta_list)
+                assignment_args = (pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, comparison_cost_epsilon_list, comparison_z_threshold_list, L_list, U_list, gitta_list)
             elif assignment_policy == "HISPolicy" or assignment_policy == "HIS" \
                 or assignment_policy == "HISwithCPolicy" or assignment_policy == "HISwithC" \
                 or assignment_policy == "HISwithOrderRemainVersionPolicy" or assignment_policy == "HISwithOrderRemainVersion" \
@@ -520,7 +521,7 @@ class Dispatcher(object):
                 adaptive_n_flag = args.his_adaptive_n_flag
                 greedy_flag = args.his_greedy_flag
                 greedy_threshold = args.his_greedy_threshold
-                assignment_args = (beta_list, pipeline_sequence_all_num, job_request_all_num, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold)
+                assignment_args = (beta_list, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold)
             elif assignment_policy == "IterativeHISPolicy" or assignment_policy == "IterativeHIS" \
                 or assignment_policy == "IterativeHISwithOrderProVersionPolicy" or assignment_policy == "IterativeHISwithOrderProVersion" \
                 or assignment_policy == "IterativeHISwithOrderRemainVersionPolicy" or assignment_policy == "IterativeHISwithOrderRemainVersion" \
@@ -530,12 +531,12 @@ class Dispatcher(object):
                 infinity_flag = args.his_infinity_flag
                 greedy_flag = args.his_greedy_flag
                 greedy_threshold = args.his_greedy_threshold
-                assignment_args = (beta_list, pipeline_sequence_all_num, job_request_all_num, batch_size_for_one_epoch_list, infinity_flag, greedy_flag, greedy_threshold)
+                assignment_args = (beta_list, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, batch_size_for_one_epoch_list, infinity_flag, greedy_flag, greedy_threshold)
             elif assignment_policy == "OfflinePolicy" or assignment_policy == "Offline" \
                 or assignment_policy == "OfflineBestEffortPolicy" or assignment_policy == "OfflineBestEffort" \
                 or assignment_policy == "SagewithRemainPolicy" or assignment_policy == "SagewithRemain" \
                 or assignment_policy == "BestFitwithRemainPolicy" or assignment_policy == "BestFitwithRemain":
-                assignment_args = (pipeline_sequence_all_num, job_request_all_num)
+                assignment_args = (pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all)
             else:
                 raise ValueError(f"assignment_policy: {assignment_policy} is abandoned!")
                 assignment_args = None
@@ -686,6 +687,13 @@ def testbed_experiment_start(
     pipeline_sequence_all_num = len(jobs_list)
     job_request_all_num = sys.maxsize if enable_waiting_flag else pipeline_sequence_all_num
 
+    datablocks_privacy_budget_all = 0.0
+    for _, datablocks in datasets_list.items():
+        for _, datablock_info in datablocks.items():
+            epsilon_capacity_per_datablock = datablock_info["epsilon_capacity"]
+            datablocks_privacy_budget_all += epsilon_capacity_per_datablock
+    print(f"datablocks_privacy_budget_all: {datablocks_privacy_budget_all}")
+
     processes = []
     dispatcher = Dispatcher(dispatcher_ip, dispatcher_port)
     dispatcher.restart_dispatcher(
@@ -708,6 +716,7 @@ def testbed_experiment_start(
         significance_policy=args.significance_policy, 
         pipeline_sequence_all_num=pipeline_sequence_all_num, 
         job_request_all_num=job_request_all_num,
+        datablocks_privacy_budget_all=datablocks_privacy_budget_all,
         config_max_operate_siton_run_num=args.config_max_operate_siton_run_num,
         dataset_name=dataset_name, 
         dataset_config_name=dataset_config_name,
@@ -868,6 +877,14 @@ def simulation_experiment_start(
     )
     pipeline_sequence_all_num = len(jobs_list)
     job_request_all_num = sys.maxsize if enable_waiting_flag else pipeline_sequence_all_num
+
+    datablocks_privacy_budget_all = 0.0
+    for _, datablocks in datasets_list.items():
+        for _, datablock_info in datablocks.items():
+            epsilon_capacity_per_datablock = datablock_info["epsilon_capacity"]
+            datablocks_privacy_budget_all += epsilon_capacity_per_datablock
+    print(f"datablocks_privacy_budget_all: {datablocks_privacy_budget_all}")
+
     processes = []
     dispatcher = Dispatcher(dispatcher_ip, dispatcher_port)
     remote_server_p = scheduler_listener_func(dispatcher)
@@ -885,12 +902,13 @@ def simulation_experiment_start(
         )
         
         dispatcher.sched_init_sched_register(
-            sched_ip, sched_port, 
-            args, args.seeds[simulation_index], 
-            args.assignment_policy, args.significance_policy, 
-            pipeline_sequence_all_num, 
-            job_request_all_num,
-            args.config_max_operate_siton_run_num,
+            ip=sched_ip, port=sched_port, 
+            args=args, seed=args.seeds[simulation_index], 
+            assignment_policy=args.assignment_policy, significance_policy=args.significance_policy, 
+            pipeline_sequence_all_num=pipeline_sequence_all_num, 
+            job_request_all_num=job_request_all_num,
+            datablocks_privacy_budget_all=datablocks_privacy_budget_all,
+            config_max_operate_siton_run_num=args.config_max_operate_siton_run_num,
             dataset_name=dataset_name, 
             dataset_config_name=dataset_config_name,
             max_gpu_fuzai=args.max_gpu_fuzai,

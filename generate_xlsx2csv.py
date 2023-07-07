@@ -6,7 +6,10 @@ import os
 file_name = 'testbed_fig_3' # temp_get_result, 20230510_privacy_new, testbed_fig_1
 
 sheet_name_2_result_file_name = {
-    # "Sheet1": "testbed_Q1"
+    # "Sheet1": "testbed_Q1",
+    # "Sheet1": "testbed_Q2",
+    # "Sheet1": "testbed_Q3",
+    # "Sheet1": "testbed_Q4",
     "Sheet1": "testbed_fig_3",
     # "Sheet1": "testbed_fig_2",
     # "fig2_max_min_ratio": "fig_2",
@@ -26,6 +29,7 @@ for sheet_name, result_file_name in sheet_name_2_result_file_name.items():
 
     # 读取 Excel 文件中的数据
     data_frame = pd.read_excel(input_excel_file, sheet_name=sheet_name)
+    data_frame.info()
 
     # 去除所有格式
     data_frame = data_frame.applymap(str)

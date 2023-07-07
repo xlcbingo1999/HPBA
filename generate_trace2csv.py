@@ -93,7 +93,7 @@ def update_df_real(df):
         if pd.isnull(run_time_item) or run_time_item_str.isspace():
             row_update_flag = True
             print(f"row [{index}] need to update!")
-        elif is_number(run_time_item_str) and float(run_time_item_str) < float(row["Target Run Time"]):
+        elif is_number(run_time_item_str):
             row_update_flag = True
             print(f"row [{index}] need to update!")
         for key_index, key in enumerate(need_search_columns_keys):

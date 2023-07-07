@@ -6,7 +6,7 @@ import math
 import json
 
 class PBGPolicy(Policy):
-    def __init__(self, pipeline_sequence_all_num, job_request_all_num, comparison_cost_epsilon, comparison_z_threshold, L, U, seed, logger):
+    def __init__(self, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, comparison_cost_epsilon, comparison_z_threshold, L, U, seed, logger):
         super().__init__(pipeline_sequence_all_num, job_request_all_num)
         self._name = 'PBGPolicy'
         self.comparison_cost_epsilon = comparison_cost_epsilon

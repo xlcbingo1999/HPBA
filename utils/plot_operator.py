@@ -6,8 +6,12 @@ from matplotlib.backends.backend_pdf import PdfPages
 from utils.data_operator import is_number
 
 def get_mark_color_hatch_marker():
-    colors = ["#3b6291", "#943c39", "#779043", "#624c7c", "#388498", "#bf7334", "#3f6899", "#9c403d",
-            "#7d9847", "#675083", "#3b8ba1", "#c97937"]
+    colors =["#cc33cc", "#3f84cc", "#bf7334",  "#9c403d", "#a08fd5",  "#779043", "#624c7c", "#3f6899",]
+
+    # colors = ["#FF3333", "#3333FF", "#006600", "#33CC33", "#CC33CC", "#994C00", "#990000"]
+    # colors = ["#F29089", "#3F7A63", "#EC8C32", "#AAB6E0", 
+            # "#F5E866", "#A08FD5", "#3f6899", "#9c403d",
+            # "#7d9847", "#675083", "#3b8ba1", "#c97937"]
     hatchs = ['-', 'x', '/', '*', '\\\\', '+', 'o', '.']
     markers = ['x', 'o', 'v', '^', '<', '>', 's', 'P', 'X', 'D']
     return colors, hatchs, markers
@@ -92,7 +96,7 @@ def get_result_avg_min_max_for_y_label_name(df_with_key, out_loop_groups, in_loo
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"] / df_with_key.loc[(out_key, in_key), f"{target_key_prefix} avg"]
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} min"] / df_with_key.loc[(out_key, in_key), f"{target_key_prefix} avg"]
                 results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} max"] / df_with_key.loc[(out_key, in_key), f"{target_key_prefix} avg"]
-            elif y_label_name == "Significance of all queries":
+            elif y_label_name == "Significance of all queries" or y_label_name == "Total values of all queries":
                 avg_sig_all_job_key_prefix = "Mean Significance All"
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} avg"]
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} min"]
@@ -113,7 +117,7 @@ def get_result_avg_min_max_for_y_label_name(df_with_key, out_loop_groups, in_loo
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_loss_prefix} avg"]
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_loss_prefix} min"]
                 results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_loss_prefix} max"]
-            elif y_label_name == "Sum of Delta Test Accuracy":
+            elif y_label_name == "Sum of Delta Test Accuracy" or y_label_name == "Total accuracy improvement of all queries":
                 test_acc_prefix = "Test Accuracy All"
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{test_acc_prefix} avg"]
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{test_acc_prefix} min"]
