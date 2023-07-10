@@ -113,8 +113,14 @@ def draw_plot_worker(fill_between_flag, results, results_min, results_max,
         fontweight='bold'
     )
     plt.yticks(fontsize=font_size, fontweight='bold')
-    plt.xlabel(fill(env_x_label, max_one_line_length), fontsize=font_size, fontweight='bold')
-    plt.ylabel(fill(y_label_name, max_one_line_length), fontsize=font_size, fontweight='bold')
+    if len(env_x_label) > max_one_line_length:
+        plt.xlabel(fill(env_x_label, max_one_line_length), fontsize=font_size-2, fontweight='bold')
+    else:
+        plt.xlabel(env_x_label, fontsize=font_size, fontweight='bold')
+    if len(y_label_name) > max_one_line_length:
+        plt.ylabel(fill(y_label_name, max_one_line_length), fontsize=font_size-2, fontweight='bold')
+    else:
+        plt.ylabel(y_label_name, fontsize=font_size, fontweight='bold')
     if np.mean(results) < 1e-2 or np.mean(results) > 1e2:
         plt.ticklabel_format(style='sci',scilimits=(0,0),axis='y')
     # plt.xlim(0.9, 6.1)  # 设置x轴的范围
@@ -192,8 +198,14 @@ def draw_bar_worker(results, env_policy_groups, env_x_groups,
         fontweight='bold'
     )
     plt.yticks(fontsize=font_size, fontweight='bold')
-    plt.xlabel(fill(env_x_label, max_one_line_length), fontsize=font_size, fontweight='bold')
-    plt.ylabel(fill(y_label_name, max_one_line_length), fontsize=font_size, fontweight='bold')
+    if len(env_x_label) > max_one_line_length:
+        plt.xlabel(fill(env_x_label, max_one_line_length), fontsize=font_size-2, fontweight='bold')
+    else:
+        plt.xlabel(env_x_label, fontsize=font_size, fontweight='bold')
+    if len(y_label_name) > max_one_line_length:
+        plt.ylabel(fill(y_label_name, max_one_line_length), fontsize=font_size-2, fontweight='bold')
+    else:
+        plt.ylabel(y_label_name, fontsize=font_size, fontweight='bold')
     if np.mean(results) < 1e-3 or np.mean(results) > 1e3:
         plt.ticklabel_format(style='sci',scilimits=(0,0),axis='y')
 
@@ -354,14 +366,14 @@ def draw_Q1():
         return result_policy
     env_x_label = r"Number of Datablocks"
     params = {
-        "font_size": 15,
+        "font_size": 14,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
-        "max_one_line_length": 30,
-        "bbox_to_anchor": (0.5,1.35),
+        "max_one_line_length": 28,
+        "bbox_to_anchor": (0.45,1.25),
         "label_spacing": 0.05,
-        "column_spacing": 0.2,
+        "column_spacing": 0.1,
         "ncol": 3,
         "center_ratio": 2.5,
         "bar_width_ratio": 2,
@@ -397,7 +409,7 @@ def draw_Q2():
         # "HISwithOrderProVersionPolicy(400)", # 2.0
         "HISwithOrderProVersionPolicy(800)", # 2.0
         # "HISwithOrderProVersionPolicy(1200)", # 2.0
-        "HISwithOrderProVersionPolicy(1600)", # 2.0
+        # "HISwithOrderProVersionPolicy(1600)", # 2.0
         # "HISwithOrderProVersionPolicy(2000)", # 2.0
         "OfflinePolicy",
     ]
@@ -407,20 +419,20 @@ def draw_Q2():
             result_policy = "HIS"
             match = re.match(r"HISwithOrderProVersionPolicy\((?P<history_num>\d+)\)", origin_policy)
             if match:
-                result_policy = result_policy + "({})".format(match.group("history_num"))
+                result_policy = result_policy + r"($|\mathcal{H}|$=" + "{})".format(match.group("history_num"))
         elif "OfflinePolicy" in origin_policy:
             result_policy = "Offline"
         return result_policy
     env_x_label = r"Number of Datablocks"
     params = {
-        "font_size": 15,
+        "font_size": 14,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
-        "max_one_line_length": 30,
-        "bbox_to_anchor": (0.5,1.35),
+        "max_one_line_length": 28,
+        "bbox_to_anchor": (0.45,1.25),
         "label_spacing": 0.05,
-        "column_spacing": 0.2,
+        "column_spacing": 0.1,
         "ncol": 3,
         "center_ratio": 2.5,
         "bar_width_ratio": 2,
@@ -460,20 +472,20 @@ def draw_Q3():
             result_policy = "SAHIS"
             match = re.match(r"IterativeHISwithOrderProVersionPolicy\((?P<batch_size>\d+)\)", origin_policy)
             if match:
-                result_policy = result_policy + "({})".format(match.group("batch_size"))
+                result_policy = result_policy + r"($n_{0}$=" + "{})".format(match.group("batch_size"))
         elif "OfflinePolicy" in origin_policy:
             result_policy = "Offline"
         return result_policy
     env_x_label = r"Number of Datablocks"
     params = {
-        "font_size": 15,
+        "font_size": 14,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
-        "max_one_line_length": 30,
-        "bbox_to_anchor": (0.5,1.35),
+        "max_one_line_length": 28,
+        "bbox_to_anchor": (0.45,1.25),
         "label_spacing": 0.05,
-        "column_spacing": 0.2,
+        "column_spacing": 0.1,
         "ncol": 3,
         "center_ratio": 2.5,
         "bar_width_ratio": 2,
@@ -524,14 +536,14 @@ def draw_Q4():
         return result_policy
     env_x_label = r"Ratio $\lambda$" # $\frac{r_{i}}{\epsilon_{d}^{G}}$
     params = {
-        "font_size": 15,
+        "font_size": 14,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
-        "max_one_line_length": 30,
-        "bbox_to_anchor": (0.5,1.35),
+        "max_one_line_length": 28,
+        "bbox_to_anchor": (0.45,1.25),
         "label_spacing": 0.05,
-        "column_spacing": 0.2,
+        "column_spacing": 0.1,
         "ncol": 3,
         "center_ratio": 2.5,
         "bar_width_ratio": 2,
@@ -552,6 +564,58 @@ def draw_Q4():
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
                     time_draw_y_label_name_arr, env_x_label, params, get_Q4_policy_map)
 
+def draw_Q5():
+    target_pic_name = "testbed_Q5"
+    keys_str = ["policy", "Datablock num"]
+    env_x_groups = [20, 40, 60, 80, 100] # Datablock num 0, 50, 100, 150, 250, 300
+    env_policy_groups = [
+        "IterativeHISwithOrderProVersionPolicy(0)",  # 0.0
+        "IterativeHISwithOrderProVersionPolicy(25)", # 0.4
+        "IterativeHISwithOrderProVersionPolicy(50)", # 0.4
+        "IterativeHISwithOrderProVersionPolicy(100)", # 0.8
+        "IterativeHISwithOrderProVersionPolicy(200)", # 1.6
+        "IterativeHISwithOrderProVersionPolicy(800)", # 2.0
+
+        "OfflinePolicy",
+    ]
+    def get_Q5_policy_map(origin_policy):
+        result_policy = ""
+        if "IterativeHISwithOrderProVersionPolicy" in origin_policy:
+            result_policy = "SAHIS"
+            match = re.match(r"IterativeHISwithOrderProVersionPolicy\((?P<history_num>\d+)\)", origin_policy)
+            if match:
+                result_policy = result_policy + r"($|\mathcal{H}|$=" + "{})".format(match.group("history_num"))
+        elif "OfflinePolicy" in origin_policy:
+            result_policy = "Offline"
+        return result_policy
+    env_x_label = r"Number of Datablocks"
+    params = {
+        "font_size": 14,
+        "line_width": 1.5,
+        "bar_width": 0.23,
+        "fill_between_alpha": 0.5,
+        "max_one_line_length": 28,
+        "bbox_to_anchor": (0.45,1.25),
+        "label_spacing": 0.05,
+        "column_spacing": 0.1,
+        "ncol": 3,
+        "center_ratio": 2.5,
+        "bar_width_ratio": 2,
+    }
+    y_label_name_arr = [
+        "Total values of all queries", 
+        "Total accuracy improvement of all queries",
+    ]
+    get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
+                    y_label_name_arr, env_x_label, params, get_Q5_policy_map)
+
+    env_policy_groups.remove("OfflinePolicy")
+    time_draw_y_label_name_arr = [
+        "Time Consume per round (s)"
+    ]
+    get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
+                    time_draw_y_label_name_arr, env_x_label, params, get_Q5_policy_map)
+
 if __name__ == "__main__":
     # draw_fig_1()
     # draw_fig_2()
@@ -560,6 +624,7 @@ if __name__ == "__main__":
     # draw_testbed_fig_2()
     # draw_cr()
     # draw_Q1()
-    draw_Q2()
-    # draw_Q3()
+    # draw_Q2()
+    draw_Q3()
     # draw_Q4()
+    # draw_Q5()
