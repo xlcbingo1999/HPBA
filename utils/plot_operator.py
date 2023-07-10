@@ -6,14 +6,20 @@ from matplotlib.backends.backend_pdf import PdfPages
 from utils.data_operator import is_number
 
 def get_mark_color_hatch_marker():
-    colors =["#cc33cc", "#3f84cc", "#bf7334",  "#9c403d", "#a08fd5",  "#779043", "#624c7c", "#3f6899",]
+    colors =["#cc33cc", "#3f84cc", "#bf7334",  "#9c403d", 
+            "#a08fd5",  "#779043", "#624c7c", "#3f6899",
+            "#7d9847", "#675083", "#3b8ba1", "#c97937",
+            "#3333FF"]
 
     # colors = ["#FF3333", "#3333FF", "#006600", "#33CC33", "#CC33CC", "#994C00", "#990000"]
     # colors = ["#F29089", "#3F7A63", "#EC8C32", "#AAB6E0", 
             # "#F5E866", "#A08FD5", "#3f6899", "#9c403d",
             # "#7d9847", "#675083", "#3b8ba1", "#c97937"]
-    hatchs = ['-', 'x', '/', '*', '\\\\', '+', 'o', '.']
-    markers = ['x', 'o', 'v', '^', '<', '>', 's', 'P', 'X', 'D']
+    hatchs = ['-', 'x', '/', '*', 
+            '\\\\', '+', 'o', '.', 
+            '////', '\\|', '+O', '*|',
+            '/o']
+    markers = ['x', 'o', 'v', '^', '<', '>', 's', 'P', 'X', 'D', ]
     return colors, hatchs, markers
 
 def add_df_with_min_max(df, add_columns_keys_2_need_max_map):
@@ -133,6 +139,11 @@ def get_result_avg_min_max_for_y_label_name(df_with_key, out_loop_groups, in_loo
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_accuracy_prefix} avg"]
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_accuracy_prefix} min"]
                 results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{train_accuracy_prefix} max"]
+            elif (y_label_name == "Time Consume per round (s)"):
+                time_prefix = "Decision_Duration"
+                results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{time_prefix} avg"]
+                results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{time_prefix} min"]
+                results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{time_prefix} max"]
 
     print("results: {}".format(results))
     print("results_min: {}".format(results_min))

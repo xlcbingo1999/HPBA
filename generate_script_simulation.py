@@ -11,10 +11,10 @@ nohup_target_dir_prefix = "/home/netlab/DL_lab/opacus_testbed/log_temp_store/"
 target_time_minute = 180
 
 current_ip_index = 5
-current_cmd_index = 0
+current_cmd_index = 1
 
 # testbed
-worker_indexes = [0, 1]
+worker_indexes = [current_cmd_index]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 # simulation
@@ -32,36 +32,40 @@ max_gpu_fuzai = 10000000 if simulation_flag else 5
 all_or_nothing_flag = False
 enable_waiting_flag = False
 inf_job_dispatch_flag = True
-need_stop_lower_bound_ratio = 0.1
+need_stop_lower_bound_ratio = 0.1 # 检测结束, 在base_capacity为5.0时默认设置为0.1
 seeds = [1234, 2345, 3456, 6789, 7890] if simulation_flag else [1234]
 seeds = [str(seed) for seed in seeds]
 seed_str = " ".join(seeds)
 waiting_time = 2 if simulation_flag else 10
 
 # 任务
-pipeline_sequence_all_num = 500
-all_history_num = 0
+pipeline_sequence_all_num = 100000
+all_history_num = 0 # 在INF场景中这个东西太多似乎不太好
 job_arrival_time_speed_up = 4.0 # 控制到达速率
 job_datablock_epsilon_max_ratio = 0.2 # 控制最大的比率(离群值控制)
-job_datablock_epsilon_min_ratio = 0.04 # 控制最小的比率(离群值控制, 同时用于检测什么时候可以结束)
-change_job_epsilon_max_times = 1.0 # 这个直接从平均增大倍数(平均值控制), 非轻易不要动这个值, 不能保证任务的请求量在(job_datablock_epsilon_min_ratio, job_datablock_epsilon_max_ratio)之间
+job_datablock_epsilon_min_ratio = 0.04 # 控制最小的比率(离群值控制)
+job_datablock_lambda = 0.2
+change_job_epsilon_max_times = 1.0 * (job_datablock_lambda / job_datablock_epsilon_max_ratio) # 这个直接从平均增大倍数(平均值控制),
+                                   # 逻辑1: 先保证任务的请求量在(job_datablock_epsilon_min_ratio, job_datablock_epsilon_max_ratio)之间
+                                   # 逻辑2: 然后再直接将任务的请求量做倍数放大或缩小
 job_require_select_block_min_num = 4
 job_require_select_block_max_num = 4
 config_max_operate_siton_run_num = 1
 
 # block
-all_datablock_num = 60
+all_datablock_num = 100
 offline_datablock_num = 20
 datablock_arrival_time_speed_up = 4.0 # 控制到达速率
 base_capacity = 5.0
 dataset_name = "EMNIST"
 dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
-assignment_policy = "IterativeHISwithOrderProVersionPolicy"
+assignment_policy = "HISwithOrderProVersionPolicy"
 his_betas = 0.0
-his_batch_size_for_one_epochs = 5
+his_batch_size_for_one_epochs = 0
 his_infinity_flag = True
-his_greedy_flag = True
+his_adaptive_n_flag = True
+his_greedy_flag = False
 his_greedy_threshold = 0.2
 pbg_comparison_cost_epsilons = 0.0
 pbg_comparison_z_thresholds = 0.9
@@ -186,6 +190,8 @@ if "HIS" in assignment_policy:
     dispatcher_cmds.append(f"--his_batch_size_for_one_epochs {his_batch_size_for_one_epochs}")
     if his_infinity_flag:
         dispatcher_cmds.append(f"--his_infinity_flag")
+    if his_adaptive_n_flag:
+        dispatcher_cmds.append(f"--his_adaptive_n_flag")
     if his_greedy_flag:
         dispatcher_cmds.append(f"--his_greedy_flag")
         dispatcher_cmds.append(f"--his_greedy_threshold {his_greedy_threshold}")
