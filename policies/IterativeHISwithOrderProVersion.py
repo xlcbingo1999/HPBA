@@ -19,6 +19,7 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
     def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all,
                 batch_size_for_one_epoch, infinity_flag, 
                 greedy_flag, greedy_threshold,
+                adaptive_cons_generate_flag,
                 seed, logger):
         super().__init__(beta, pipeline_sequence_all_num, job_request_all_num, 
                         infinity_flag, 
@@ -36,9 +37,10 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
         
         # self.job_sequence_all_num = job_sequence_all_num
         self.batch_size_for_one_epoch = batch_size_for_one_epoch
-        if not self.is_infinity_flag:
-            self.all_epoch_num = np.ceil(self.job_request_all_num / self.batch_size_for_one_epoch) # TODO(xlc): 需要all_job_seq_num
-            self.datablock_identifier_2_all_epoch_num = {}
+        self.adaptive_cons_generate_flag = adaptive_cons_generate_flag
+        # if not self.is_infinity_flag:
+        #     self.all_epoch_num = np.ceil(self.job_request_all_num / self.batch_size_for_one_epoch) # TODO(xlc): 需要all_job_seq_num
+        #     self.datablock_identifier_2_all_epoch_num = {}
 
         self.logger.info("check job_request_all_num: {}".format(self.job_request_all_num))
 
@@ -203,7 +205,7 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
             datablock_privacy_budget_capacity_list[temp_index] = sub_train_datasetidentifier_2_epsilon_capcity[datablock_identifier]
             datablock_arrival_time_list[temp_index] = sub_train_datasetidentifier_2_arrival_time[datablock_identifier]
                 
-        if self.is_infinity_flag:
+        if self.adaptive_cons_generate_flag:
             datablock_privacy_budget_right_hand_list = self.get_his_right_capacity_for_single_job(
                 current_all_job_budget_consumes,
                 target_epsilon_require,
@@ -214,10 +216,14 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
                 sign_matrix.shape[0]
             )
         else:
+            # 直接使用capacity
             for temp_index, datablock_identifier in temp_index_2_datablock_identifier.items():
-                datablock_privacy_budget_right_hand_list[temp_index] = self.datablock_identifier_2_remain_epsilon[datablock_identifier] + \
-                    sub_train_datasetidentifier_2_epsilon_capcity[datablock_identifier] / self.datablock_identifier_2_all_epoch_num[datablock_identifier]
-            self.logger.debug(f"non infinity: datablock_privacy_budget_right_hand_list: {datablock_privacy_budget_right_hand_list}")
+                datablock_privacy_budget_right_hand_list[temp_index] = datablock_privacy_budget_capacity_list[temp_index]
+        # else:
+        #     for temp_index, datablock_identifier in temp_index_2_datablock_identifier.items():
+        #         datablock_privacy_budget_right_hand_list[temp_index] = self.datablock_identifier_2_remain_epsilon[datablock_identifier] + \
+        #             sub_train_datasetidentifier_2_epsilon_capcity[datablock_identifier] / self.datablock_identifier_2_all_epoch_num[datablock_identifier]
+        #     self.logger.debug(f"non infinity: datablock_privacy_budget_right_hand_list: {datablock_privacy_budget_right_hand_list}")
 
         assign_result_matrix = self.get_LP_result(sign_matrix, 
                                                 datablock_privacy_budget_right_hand_list,
@@ -299,22 +305,22 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
         online_history_job_model_name = self.online_history_job_model_name
         
         # 处理一下新来的数据块
-        if not self.is_infinity_flag:
-            for sub_train_dataset_identifier in sub_train_datasetidentifier_2_epsilon_capcity:
-                if sub_train_dataset_identifier not in self.datablock_identifier_2_epsilon_G:
-                    self.datablock_identifier_2_epsilon_G[sub_train_dataset_identifier] = sub_train_datasetidentifier_2_epsilon_capcity[sub_train_dataset_identifier]
-                    self.datablock_identifier_2_all_epoch_num[sub_train_dataset_identifier] = (self.all_epoch_num - self.current_epoch_index)
-                    self.datablock_identifier_2_remain_epsilon[sub_train_dataset_identifier] = self.datablock_identifier_2_epsilon_G[sub_train_dataset_identifier] / self.datablock_identifier_2_all_epoch_num[sub_train_dataset_identifier]
+        # if not self.is_infinity_flag:
+        #     for sub_train_dataset_identifier in sub_train_datasetidentifier_2_epsilon_capcity:
+        #         if sub_train_dataset_identifier not in self.datablock_identifier_2_epsilon_G:
+        #             self.datablock_identifier_2_epsilon_G[sub_train_dataset_identifier] = sub_train_datasetidentifier_2_epsilon_capcity[sub_train_dataset_identifier]
+        #             self.datablock_identifier_2_all_epoch_num[sub_train_dataset_identifier] = (self.all_epoch_num - self.current_epoch_index)
+        #             self.datablock_identifier_2_remain_epsilon[sub_train_dataset_identifier] = self.datablock_identifier_2_epsilon_G[sub_train_dataset_identifier] / self.datablock_identifier_2_all_epoch_num[sub_train_dataset_identifier]
 
         if self.current_batch_size_for_one_epoch >= self.batch_size_for_one_epoch: # 每个epoch的最后一个batch进行best-effort和remain epsilon budget的计算
             need_failed_job_instantly_recoming = need_failed_job_instantly_recoming or True
             self.current_epoch_index += 1
             self.current_batch_size_for_one_epoch = 0
 
-            if not self.is_infinity_flag:
-                for sub_train_dataset_identifier in sub_train_datasetidentifier_2_epsilon_capcity:
-                    self.datablock_identifier_2_remain_epsilon[sub_train_dataset_identifier] += (self.datablock_identifier_2_epsilon_G[sub_train_dataset_identifier] / self.datablock_identifier_2_all_epoch_num[sub_train_dataset_identifier])
-                self.logger.info("update datablock_identifier_2_remain_epsilon: {}".format(self.datablock_identifier_2_remain_epsilon))
+            # if not self.is_infinity_flag:
+            #     for sub_train_dataset_identifier in sub_train_datasetidentifier_2_epsilon_capcity:
+            #         self.datablock_identifier_2_remain_epsilon[sub_train_dataset_identifier] += (self.datablock_identifier_2_epsilon_G[sub_train_dataset_identifier] / self.datablock_identifier_2_all_epoch_num[sub_train_dataset_identifier])
+            #     self.logger.info("update datablock_identifier_2_remain_epsilon: {}".format(self.datablock_identifier_2_remain_epsilon))
 
         if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < self.batch_size_for_one_epoch:
             offline_sample_indexes = range(len(offline_history_job_ids))

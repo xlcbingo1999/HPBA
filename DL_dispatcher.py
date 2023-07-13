@@ -69,6 +69,8 @@ def get_df_config():
     parser.add_argument('--his_adaptive_n_flag', action="store_true")
     parser.add_argument('--his_greedy_flag', action="store_true")
     parser.add_argument('--his_greedy_threshold', type=float, default=0.2)
+    parser.add_argument('--his_adaptive_cons_generate_flag', action="store_true")
+    
     parser.add_argument('--pbg_comparison_cost_epsilons', type=float, default=0.0)
     parser.add_argument('--pbg_comparison_z_thresholds', type=float, default=0.9)
     parser.add_argument('--pbg_Ls', type=float, default=0.01)
@@ -531,7 +533,8 @@ class Dispatcher(object):
                 infinity_flag = args.his_infinity_flag
                 greedy_flag = args.his_greedy_flag
                 greedy_threshold = args.his_greedy_threshold
-                assignment_args = (beta_list, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, batch_size_for_one_epoch_list, infinity_flag, greedy_flag, greedy_threshold)
+                adaptive_cons_generate_flag = args.his_adaptive_cons_generate_flag
+                assignment_args = (beta_list, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, batch_size_for_one_epoch_list, infinity_flag, greedy_flag, greedy_threshold, adaptive_cons_generate_flag)
             elif assignment_policy == "OfflinePolicy" or assignment_policy == "Offline" \
                 or assignment_policy == "OfflineBestEffortPolicy" or assignment_policy == "OfflineBestEffort" \
                 or assignment_policy == "SagewithRemainPolicy" or assignment_policy == "SagewithRemain" \

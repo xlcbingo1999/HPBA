@@ -67,6 +67,7 @@ his_infinity_flag = True
 his_adaptive_n_flag = True
 his_greedy_flag = False
 his_greedy_threshold = 0.2
+his_adaptive_cons_generate_flag = True
 pbg_comparison_cost_epsilons = 0.0
 pbg_comparison_z_thresholds = 0.9
 pbg_Ls = 0.01
