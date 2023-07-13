@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from matplotlib.backends.backend_pdf import PdfPages
 from textwrap import fill
-from utils.plot_operator import add_df_with_min_max, get_mark_color_hatch_marker, get_result_avg_min_max_for_y_label_name
+from utils.plot_operator import add_df_with_min_max, get_result_avg_min_max_for_y_label_name
 
 # plt.rcParams['font.sans-serif'] = ['Times New Roman']  # 如果要显示中文字体,则在此处设为：SimHei
 plt.rcParams['axes.unicode_minus'] = False  # 显示负号
@@ -26,14 +26,14 @@ def from_y_label_name_2_add_columns_keys_2_need_max_map(y_label_name_arr):
         elif y_label_name == "Ratio of Allocated Datablocks":
             add_columns_keys_2_need_max_map["Success Datablock Num"] = True
             add_columns_keys_2_need_max_map["Target Datablock Num"] = True
-        elif y_label_name == "Significance of all queries" or y_label_name == "Total values of all queries":
+        elif y_label_name == "Significance of all queries" or y_label_name == "Total Values":
             add_columns_keys_2_need_max_map["Mean Significance All"] = True
         elif y_label_name == "Significance of allocated queries":
             add_columns_keys_2_need_max_map["Mean Significance Success"] = True
             add_columns_keys_2_need_max_map["Success num"] = True
         elif y_label_name == "Sum of Delta Train Accuracy":
             add_columns_keys_2_need_max_map["Train Accuracy All"] = True
-        elif y_label_name == "Sum of Delta Test Accuracy"  or y_label_name == "Total accuracy improvement of all queries":
+        elif y_label_name == "Sum of Delta Test Accuracy"  or y_label_name == "Total Test Accuracy Improvement (%)":
             add_columns_keys_2_need_max_map["Test Accuracy All"] = True
         elif y_label_name == "Sum of Delta Train Loss":
             add_columns_keys_2_need_max_map["Train Loss All"] = False
@@ -41,7 +41,7 @@ def from_y_label_name_2_add_columns_keys_2_need_max_map(y_label_name_arr):
             add_columns_keys_2_need_max_map["Test Loss All"] = False
         elif y_label_name == "Epsilon_Real_All_Block":
             add_columns_keys_2_need_max_map[y_label_name] = False
-        elif (y_label_name == "Time Consume per round (s)"):
+        elif (y_label_name == "Average Decision Time Consumption (s)"):
             add_columns_keys_2_need_max_map["Decision_Duration"] = False
         elif (y_label_name == "Epsilon_Real_All_Block"
             or y_label_name == "Significance_Epsilon_Ratio" 
@@ -55,7 +55,8 @@ def draw_plot_worker(fill_between_flag, results, results_min, results_max,
                     env_policy_groups, env_x_groups, 
                     y_label_name, env_x_label, get_policy_map_func,
                     params,
-                    current_dir, target_pic_name):
+                    current_dir, target_pic_name,
+                    get_mark_color_hatch_marker_func):
     max_one_line_length = params["max_one_line_length"]
     font_size = params["font_size"]
     line_width = params["line_width"]
@@ -69,7 +70,7 @@ def draw_plot_worker(fill_between_flag, results, results_min, results_max,
     figsize = params["figsize"] if "figsize" in params else None
     max_x_label_show_list = params["max_x_label_show_list"] if "max_x_label_show_list" in params else None
     
-    colors, _, markers = get_mark_color_hatch_marker()
+    colors, _, markers = get_mark_color_hatch_marker_func()
 
     if figsize is not None:
         fig = plt.figure(figsize=figsize)
@@ -113,13 +114,15 @@ def draw_plot_worker(fill_between_flag, results, results_min, results_max,
         fontweight='bold'
     )
     plt.yticks(fontsize=font_size, fontweight='bold')
-    if len(env_x_label) > max_one_line_length:
-        plt.xlabel(fill(env_x_label, max_one_line_length), fontsize=font_size-2, fontweight='bold')
-    else:
-        plt.xlabel(env_x_label, fontsize=font_size, fontweight='bold')
+    # if len(env_x_label) > max_one_line_length:
+    #     plt.xlabel(fill(env_x_label, max_one_line_length), fontsize=font_size-2, fontweight='bold')
+    # else:
+    
     if len(y_label_name) > max_one_line_length:
+        plt.xlabel(env_x_label, fontsize=font_size-2, fontweight='bold')
         plt.ylabel(fill(y_label_name, max_one_line_length), fontsize=font_size-2, fontweight='bold')
     else:
+        plt.xlabel(env_x_label, fontsize=font_size, fontweight='bold')
         plt.ylabel(y_label_name, fontsize=font_size, fontweight='bold')
     if np.mean(results) < 1e-2 or np.mean(results) > 1e2:
         plt.ticklabel_format(style='sci',scilimits=(0,0),axis='y')
@@ -143,6 +146,11 @@ def draw_plot_worker(fill_between_flag, results, results_min, results_max,
 
     plt.tight_layout()
     result_path_prefix = os.path.join(current_dir, f"{target_pic_name}_{y_label_name}")
+    result_path_prefix = result_path_prefix.replace(" ", "_")
+    if "(%)" in result_path_prefix:
+        result_path_prefix = result_path_prefix.replace("(%)", "")
+    if "(s)" in result_path_prefix:
+        result_path_prefix = result_path_prefix.replace("(s)", "")
     plt.savefig(result_path_prefix + '.png', format='png')  # 建议保存为svg格式,再用inkscape转为矢量图emf后插入word中
     plt.show()
     pp = PdfPages(result_path_prefix + '.pdf')
@@ -152,7 +160,8 @@ def draw_plot_worker(fill_between_flag, results, results_min, results_max,
 def draw_bar_worker(results, env_policy_groups, env_x_groups, 
                     y_label_name, env_x_label, get_policy_map_func,
                     params,
-                    current_dir, target_pic_name):
+                    current_dir, target_pic_name,
+                    get_mark_color_hatch_marker_func):
     max_one_line_length = params["max_one_line_length"]
     font_size = params["font_size"]
     center_ratio = params["center_ratio"]
@@ -164,7 +173,7 @@ def draw_bar_worker(results, env_policy_groups, env_x_groups,
     ncol = params["ncol"]
     figsize = params["figsize"] if "figsize" in params else None
 
-    colors, hatchs, _ = get_mark_color_hatch_marker()
+    colors, hatchs, _ = get_mark_color_hatch_marker_func()
 
     if figsize is not None:
         fig = plt.figure(figsize=figsize)
@@ -198,13 +207,15 @@ def draw_bar_worker(results, env_policy_groups, env_x_groups,
         fontweight='bold'
     )
     plt.yticks(fontsize=font_size, fontweight='bold')
-    if len(env_x_label) > max_one_line_length:
-        plt.xlabel(fill(env_x_label, max_one_line_length), fontsize=font_size-2, fontweight='bold')
-    else:
-        plt.xlabel(env_x_label, fontsize=font_size, fontweight='bold')
+    # if len(env_x_label) > max_one_line_length:
+    #     plt.xlabel(fill(env_x_label, max_one_line_length), fontsize=font_size-2, fontweight='bold')
+    # else:
+    
     if len(y_label_name) > max_one_line_length:
+        plt.xlabel(env_x_label, fontsize=font_size-2, fontweight='bold')
         plt.ylabel(fill(y_label_name, max_one_line_length), fontsize=font_size-2, fontweight='bold')
     else:
+        plt.xlabel(env_x_label, fontsize=font_size, fontweight='bold')
         plt.ylabel(y_label_name, fontsize=font_size, fontweight='bold')
     if np.mean(results) < 1e-3 or np.mean(results) > 1e3:
         plt.ticklabel_format(style='sci',scilimits=(0,0),axis='y')
@@ -227,6 +238,11 @@ def draw_bar_worker(results, env_policy_groups, env_x_groups,
 
     plt.tight_layout()
     result_path_prefix = os.path.join(current_dir, f"{target_pic_name}_{y_label_name}")
+    result_path_prefix = result_path_prefix.replace(" ", "_")
+    if "(%)" in result_path_prefix:
+        result_path_prefix = result_path_prefix.replace("(%)", "")
+    if "(s)" in result_path_prefix:
+        result_path_prefix = result_path_prefix.replace("(s)", "")
     plt.savefig(result_path_prefix + '.png', format='png')  # 建议保存为svg格式,再用inkscape转为矢量图emf后插入word中
     plt.show()
     pp = PdfPages(result_path_prefix + '.pdf')
@@ -235,7 +251,7 @@ def draw_bar_worker(results, env_policy_groups, env_x_groups,
 
 
 def get_result_and_draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                y_label_name_arr, env_x_label, params, fill_between_flag, get_policy_map_func):
+                y_label_name_arr, env_x_label, params, fill_between_flag, get_policy_map_func, get_mark_color_hatch_marker_func):
     current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
     path = os.path.join(current_dir, f"{target_pic_name}.csv")
     df = pd.read_csv(path)
@@ -248,6 +264,9 @@ def get_result_and_draw_group_plot(target_pic_name, keys_str, env_policy_groups,
     df_with_key = add_df_with_min_max(df_with_key, add_columns_keys_2_need_max_map)
     print("---- df.info ----")
     df_with_key.info()
+    # 临时保存一下!
+    temp_pa = os.path.join(current_dir, f"{target_pic_name}_df_with_key.xlsx")
+    df_with_key.to_excel(temp_pa, index=False)
 
     
     for y_label_name in y_label_name_arr:
@@ -258,11 +277,12 @@ def get_result_and_draw_group_plot(target_pic_name, keys_str, env_policy_groups,
                         env_policy_groups, env_x_groups, 
                         y_label_name, env_x_label, get_policy_map_func, 
                         params,
-                        current_dir, target_pic_name)
+                        current_dir, target_pic_name,
+                        get_mark_color_hatch_marker_func)
         
 
 def get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups,
-                y_label_name_arr, env_x_label, params, get_policy_map_func):
+                y_label_name_arr, env_x_label, params, get_policy_map_func, get_mark_color_hatch_marker_func):
     current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
     path = os.path.join(current_dir, f"{target_pic_name}.csv")
     df = pd.read_csv(path)
@@ -275,6 +295,9 @@ def get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, 
     df_with_key = add_df_with_min_max(df_with_key, add_columns_keys_2_need_max_map)
     print("---- df.info ----")
     df_with_key.info()
+    # 临时保存一下!
+    temp_pa = os.path.join(current_dir, f"{target_pic_name}_df_with_key.xlsx")
+    df_with_key.to_excel(temp_pa, index=False)
 
     for y_label_name in y_label_name_arr:
         results, results_min, results_max = get_result_avg_min_max_for_y_label_name(
@@ -283,7 +306,8 @@ def get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, 
         draw_bar_worker(results, env_policy_groups, env_x_groups, 
                         y_label_name, env_x_label, get_policy_map_func, 
                         params,
-                        current_dir, target_pic_name)
+                        current_dir, target_pic_name,
+                        get_mark_color_hatch_marker_func)
     
 def draw_cr():
     def get_cr_v2(lamb, h_n_ratio):
@@ -336,7 +360,11 @@ def draw_cr():
                     current_dir, target_pic_name)
     
 def draw_Q1():
-    target_pic_name = "testbed_Q1"
+    best_flag = False
+    if best_flag:
+        target_pic_name = "testbed_Q1"
+    else:
+        target_pic_name = "testbed_Q1_history0"
     keys_str = ["policy", "Datablock num"]
     env_x_groups = [20, 40, 60, 80, 100] # Datablock num
     env_policy_groups = [
@@ -347,16 +375,24 @@ def draw_Q1():
         "BestFitwithRemainPolicy",
         "OfflinePolicy"
     ]
+    def get_mark_color_hatch_marker():
+        colors =["#ffd6a5", "#fdffb6",  "#caffbf", "#9bf6ff",  "#bdb2ff", 
+                "#ffadad", 
+                ]
+        hatchs = ['-', '*', '/', 'o', '\\\\',  
+                '']
+        markers = []
+        return colors, hatchs, markers
     def get_Q1_policy_map(origin_policy):
         result_policy = ""
         if origin_policy == "OfflinePolicy":
-            result_policy = "Offline"
+            result_policy = "Optimal"
         elif "IterativeHISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "SAHIS"
+            result_policy = "SAHIS" + (r"(w/ $\mathcal{H}$)" if best_flag else r"(w/o $\mathcal{H}$)")
         elif "HISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "HIS"        
+            result_policy = "HIS" + (r"(w/ $\mathcal{H}$)" if best_flag else r"(w/o $\mathcal{H}$)")
         elif origin_policy == "PBGPolicy":
-            result_policy = "PBG"
+            result_policy = "Sig"
         elif origin_policy == "PBGMixPolicy": 
             result_policy = "PBGMix"
         elif origin_policy == "SagewithRemainPolicy":
@@ -364,9 +400,9 @@ def draw_Q1():
         elif origin_policy == "BestFitwithRemainPolicy":
             result_policy = "BestFit"
         return result_policy
-    env_x_label = r"Number of Datablocks"
+    env_x_label = r"Number of Datablocks ($|\mathcal{D}|$)"
     params = {
-        "font_size": 14,
+        "font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
@@ -379,20 +415,11 @@ def draw_Q1():
         "bar_width_ratio": 2,
     }
     y_label_name_arr = [
-        "Total values of all queries", 
-        "Total accuracy improvement of all queries",
+        "Total Values", 
+        "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                    y_label_name_arr, env_x_label, params, get_Q1_policy_map)
-    env_policy_groups = [
-        "HISwithOrderProVersionPolicy(baoshou_inf)",
-        "IterativeHISwithOrderProVersionPolicy(baoshou_inf)", 
-    ]
-    time_draw_y_label_name_arr = [
-        "Time Consume per round (s)"
-    ]
-    get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                    time_draw_y_label_name_arr, env_x_label, params, get_Q1_policy_map)
+                    y_label_name_arr, env_x_label, params, get_Q1_policy_map, get_mark_color_hatch_marker)
 
 def draw_Q2():
     target_pic_name = "testbed_Q2"
@@ -413,6 +440,13 @@ def draw_Q2():
         # "HISwithOrderProVersionPolicy(2000)", # 2.0
         "OfflinePolicy",
     ]
+    def get_mark_color_hatch_marker():
+        colors =["#ffd6a5", "#fdffb6",  "#caffbf", "#9bf6ff",  "#bdb2ff", "#ffc6ff",
+                "#ffadad"]
+        hatchs = ['-', '*', '/', 'o', '\\\\',  '.',
+                '']
+        markers = []
+        return colors, hatchs, markers
     def get_Q2_policy_map(origin_policy):
         result_policy = ""
         if "HISwithOrderProVersionPolicy" in origin_policy:
@@ -421,11 +455,11 @@ def draw_Q2():
             if match:
                 result_policy = result_policy + r"($|\mathcal{H}|$=" + "{})".format(match.group("history_num"))
         elif "OfflinePolicy" in origin_policy:
-            result_policy = "Offline"
+            result_policy = "Optimal"
         return result_policy
-    env_x_label = r"Number of Datablocks"
+    env_x_label = r"Number of Datablocks ($|\mathcal{D}|$)"
     params = {
-        "font_size": 14,
+        "font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
@@ -438,18 +472,11 @@ def draw_Q2():
         "bar_width_ratio": 2,
     }
     y_label_name_arr = [
-        "Total values of all queries", 
-        "Total accuracy improvement of all queries",
+        "Total Values", 
+        "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                    y_label_name_arr, env_x_label, params, get_Q2_policy_map)
-
-    env_policy_groups.remove("OfflinePolicy")
-    time_draw_y_label_name_arr = [
-        "Time Consume per round (s)"
-    ]
-    get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                    time_draw_y_label_name_arr, env_x_label, params, get_Q2_policy_map)
+                    y_label_name_arr, env_x_label, params, get_Q2_policy_map, get_mark_color_hatch_marker)
 
 def draw_Q3():
     target_pic_name = "testbed_Q3"
@@ -465,7 +492,13 @@ def draw_Q3():
         "IterativeHISwithOrderProVersionPolicy(500)", 
         "OfflinePolicy",
     ]
-    
+    def get_mark_color_hatch_marker():
+        colors =["#ffd6a5", "#fdffb6",  "#caffbf", "#9bf6ff",  "#bdb2ff", "#ffc6ff",
+                "#ffadad"]
+        hatchs = ['-', '*', '/', 'o', '\\\\',  '.',
+                '']
+        markers = []
+        return colors, hatchs, markers
     def get_Q3_policy_map(origin_policy):
         result_policy = ""
         if "IterativeHISwithOrderProVersionPolicy" in origin_policy:
@@ -474,11 +507,11 @@ def draw_Q3():
             if match:
                 result_policy = result_policy + r"($n_{0}$=" + "{})".format(match.group("batch_size"))
         elif "OfflinePolicy" in origin_policy:
-            result_policy = "Offline"
+            result_policy = "Optimal"
         return result_policy
-    env_x_label = r"Number of Datablocks"
+    env_x_label = r"Number of Datablocks ($|\mathcal{D}|$)"
     params = {
-        "font_size": 14,
+        "font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
@@ -491,42 +524,63 @@ def draw_Q3():
         "bar_width_ratio": 2,
     }
     y_label_name_arr = [
-        "Total values of all queries", 
-        "Total accuracy improvement of all queries",
+        "Total Values", 
+        "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                    y_label_name_arr, env_x_label, params, get_Q3_policy_map)
+                    y_label_name_arr, env_x_label, params, get_Q3_policy_map, get_mark_color_hatch_marker)
 
     env_policy_groups.remove("OfflinePolicy")
     print(f"time_draw_env_policy_groups: {env_policy_groups}")
     time_draw_y_label_name_arr = [
-        "Time Consume per round (s)"
+        "Average Decision Time Consumption (s)"
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                    time_draw_y_label_name_arr, env_x_label, params, get_Q3_policy_map)
+                    time_draw_y_label_name_arr, env_x_label, params, get_Q3_policy_map, get_mark_color_hatch_marker)
 
 def draw_Q4():
-    target_pic_name = "testbed_Q4"
+    target_pic_name = "testbed_Q4_history0_historyinf"
     keys_str = ["policy", "lambda"]
     env_x_groups = [0.05, 0.1, 0.2, 0.4, 0.8] # Datablock num
     env_policy_groups = [
-        "HISwithOrderProVersionPolicy(baoshou_inf)",
-        "IterativeHISwithOrderProVersionPolicy(baoshou_inf)", 
+        "HISwithOrderProVersionPolicy(0)",
+        "IterativeHISwithOrderProVersionPolicy(0)",
+        "HISwithOrderProVersionPolicy(inf)",
+        "IterativeHISwithOrderProVersionPolicy(inf)",  
         "PBGPolicy", 
         "SagewithRemainPolicy",
         "BestFitwithRemainPolicy",
         "OfflinePolicy"
     ]
+    def get_mark_color_hatch_marker():
+        colors =["#ffd6a5", "#fdffb6",  "#caffbf", "#9bf6ff",  "#bdb2ff", "#ffc6ff", "#a0c4ff",
+                "#ffadad"]
+        hatchs = ['-', '*', '/', 'o', '\\\\',  '.', '////',
+                '']
+        markers = []
+        return colors, hatchs, markers
     def get_Q4_policy_map(origin_policy):
         result_policy = ""
         if origin_policy == "OfflinePolicy":
-            result_policy = "Offline"
+            result_policy = "Optimal"
         elif "IterativeHISwithOrderProVersionPolicy" in origin_policy:
             result_policy = "SAHIS"
+            if "(inf)" in origin_policy:
+                result_policy = result_policy + r"(w/ $\mathcal{H}$)"
+            else:
+                num_match = re.match(r"IterativeHISwithOrderProVersionPolicy\((?P<history_num>\d+)\)", origin_policy)
+                if num_match:
+                    result_policy = result_policy + r"(w/o $\mathcal{H}$)"
         elif "HISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "HIS"        
+            result_policy = "HIS"
+            if "(inf)" in origin_policy:
+                result_policy = result_policy + r"(w/ $\mathcal{H}$)"
+            else:
+                num_match = re.match(r"HISwithOrderProVersionPolicy\((?P<history_num>\d+)\)", origin_policy)
+                if num_match:
+                    result_policy = result_policy + r"(w/o $\mathcal{H}$)"
         elif origin_policy == "PBGPolicy":
-            result_policy = "PBG"
+            result_policy = "Sig"
         elif origin_policy == "PBGMixPolicy": 
             result_policy = "PBGMix"
         elif origin_policy == "SagewithRemainPolicy":
@@ -536,9 +590,9 @@ def draw_Q4():
         return result_policy
     env_x_label = r"Ratio $\lambda$" # $\frac{r_{i}}{\epsilon_{d}^{G}}$
     params = {
-        "font_size": 14,
+        "font_size": 15,
         "line_width": 1.5,
-        "bar_width": 0.23,
+        "bar_width": 0.2,
         "fill_between_alpha": 0.5,
         "max_one_line_length": 28,
         "bbox_to_anchor": (0.45,1.25),
@@ -549,20 +603,22 @@ def draw_Q4():
         "bar_width_ratio": 2,
     }
     y_label_name_arr = [
-        "Total values of all queries", 
-        "Total accuracy improvement of all queries",
+        "Total Values", 
+        "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                    y_label_name_arr, env_x_label, params, get_Q4_policy_map)
-    env_policy_groups = [
-        "HISwithOrderProVersionPolicy(baoshou_inf)",
-        "IterativeHISwithOrderProVersionPolicy(baoshou_inf)", 
-    ]
-    time_draw_y_label_name_arr = [
-        "Time Consume per round (s)"
-    ]
-    get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                    time_draw_y_label_name_arr, env_x_label, params, get_Q4_policy_map)
+                    y_label_name_arr, env_x_label, params, get_Q4_policy_map, get_mark_color_hatch_marker)
+    # env_policy_groups = [
+    #     "HISwithOrderProVersionPolicy(0)",
+    #     "IterativeHISwithOrderProVersionPolicy(0)",
+    #     "HISwithOrderProVersionPolicy(inf)",
+    #     "IterativeHISwithOrderProVersionPolicy(inf)",  
+    # ]
+    # time_draw_y_label_name_arr = [
+    #     "Average Decision Time Consumption (s)"
+    # ]
+    # get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
+    #                 time_draw_y_label_name_arr, env_x_label, params, get_Q4_policy_map)
 
 def draw_Q5():
     target_pic_name = "testbed_Q5"
@@ -578,6 +634,13 @@ def draw_Q5():
 
         "OfflinePolicy",
     ]
+    def get_mark_color_hatch_marker():
+        colors =["#ffd6a5", "#fdffb6",  "#caffbf", "#9bf6ff",  "#bdb2ff", "#ffc6ff",
+                "#ffadad"]
+        hatchs = ['-', '*', '/', 'o', '\\\\',  '.', 
+                '']
+        markers = []
+        return colors, hatchs, markers
     def get_Q5_policy_map(origin_policy):
         result_policy = ""
         if "IterativeHISwithOrderProVersionPolicy" in origin_policy:
@@ -586,11 +649,11 @@ def draw_Q5():
             if match:
                 result_policy = result_policy + r"($|\mathcal{H}|$=" + "{})".format(match.group("history_num"))
         elif "OfflinePolicy" in origin_policy:
-            result_policy = "Offline"
+            result_policy = "Optimal"
         return result_policy
-    env_x_label = r"Number of Datablocks"
+    env_x_label = r"Number of Datablocks ($|\mathcal{D}|$)"
     params = {
-        "font_size": 14,
+        "font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
@@ -603,28 +666,23 @@ def draw_Q5():
         "bar_width_ratio": 2,
     }
     y_label_name_arr = [
-        "Total values of all queries", 
-        "Total accuracy improvement of all queries",
+        "Total Values", 
+        "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                    y_label_name_arr, env_x_label, params, get_Q5_policy_map)
+                    y_label_name_arr, env_x_label, params, get_Q5_policy_map, get_mark_color_hatch_marker)
 
-    env_policy_groups.remove("OfflinePolicy")
-    time_draw_y_label_name_arr = [
-        "Time Consume per round (s)"
-    ]
-    get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
-                    time_draw_y_label_name_arr, env_x_label, params, get_Q5_policy_map)
+    # env_policy_groups.remove("OfflinePolicy")
+    # time_draw_y_label_name_arr = [
+    #     "Average Decision Time Consumption (s)"
+    # ]
+    # get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
+    #                 time_draw_y_label_name_arr, env_x_label, params, get_Q5_policy_map)
 
 if __name__ == "__main__":
-    # draw_fig_1()
-    # draw_fig_2()
-    # draw_fig_6()
-    # draw_fig_5()
-    # draw_testbed_fig_2()
     # draw_cr()
-    # draw_Q1()
-    # draw_Q2()
+    draw_Q1()
+    draw_Q2()
     draw_Q3()
-    # draw_Q4()
-    # draw_Q5()
+    draw_Q4()
+    draw_Q5()
