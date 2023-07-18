@@ -20,7 +20,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         self.beta = beta
 
         self.adaptive_n_flag = adaptive_n_flag
-        self.adaptive_offline_h_num = 0
+        self.adaptive_offline_h_num = sys.maxsize
         self.datablocks_privacy_budget_all = datablocks_privacy_budget_all
 
         self.logger = logger

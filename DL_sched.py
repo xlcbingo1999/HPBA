@@ -659,7 +659,7 @@ class Scheduler_server(object):
                     offline_history_job_arrival_time,
                     offline_history_job_model_name
                 )
-            if self.assignment_policy.name == "HISwithOrderProVersionPolicy":
+            if self.assignment_policy.name == "HISwithOrderProVersionPolicy" or self.assignment_policy.name == "IterativeHISwithOrderProVersionPolicy":
                 self.assignment_policy.adaptive_calculate_adaptive_h()
             self.finished_update_init_history_jobs = True
         except Exception as e:
@@ -1685,8 +1685,8 @@ class Scheduler_server(object):
             beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold = assignment_args
             policy_item = HISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISwithOrderProVersionPolicy" or assignment_policy == "IterativeHISwithOrderProVersion":
-            beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, batch_size_for_one_epoch, infinity_flag, greedy_flag, greedy_threshold, adaptive_cons_generate_flag = assignment_args
-            policy_item = IterativeHISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, batch_size_for_one_epoch, infinity_flag, greedy_flag, greedy_threshold, adaptive_cons_generate_flag, self.seed, self.sched_logger)
+            beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, batch_size_for_one_epoch, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold, adaptive_cons_generate_flag = assignment_args
+            policy_item = IterativeHISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, batch_size_for_one_epoch, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold, adaptive_cons_generate_flag, self.seed, self.sched_logger)
         elif assignment_policy == "SagewithRemainPolicy" or assignment_policy == "SagewithRemain":
             pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all = assignment_args
             policy_item = SagewithRemainPolicy(pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, self.seed, self.sched_logger)

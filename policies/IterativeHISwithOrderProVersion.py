@@ -8,6 +8,7 @@ import cvxpy as cp
 import json
 from queue import PriorityQueue
 import time
+import sys
 
 class QueueItem(object):
     def __init__(self, job_id, datablock_identifier, significance):
@@ -17,7 +18,7 @@ class QueueItem(object):
 
 class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
     def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all,
-                batch_size_for_one_epoch, infinity_flag, 
+                batch_size_for_one_epoch, infinity_flag, adaptive_n_flag,
                 greedy_flag, greedy_threshold,
                 adaptive_cons_generate_flag,
                 seed, logger):
@@ -29,6 +30,10 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
         self.beta = beta
         self.logger = logger
         self.waiting_queue_capacity = 1
+
+        self.adaptive_n_flag = adaptive_n_flag
+        self.adaptive_offline_h_num = sys.maxsize
+        self.datablocks_privacy_budget_all = datablocks_privacy_budget_all
         
         self.only_one = True
         self.need_history = True
@@ -55,6 +60,7 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
         self.logger.info("policy args: beta: {}".format(self.beta))
+        self.logger.info("policy args: adaptive_n_flag: {}".format(self.adaptive_n_flag))
         self.logger.info("policy args: batch_size_for_one_epoch: {}".format(self.batch_size_for_one_epoch))
         # self.logger.info("policy args: delta: {}".format(self.delta))
         # self.logger.info("policy args: only_small: {}".format(self.only_small))
@@ -321,16 +327,20 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
             #     for sub_train_dataset_identifier in sub_train_datasetidentifier_2_epsilon_capcity:
             #         self.datablock_identifier_2_remain_epsilon[sub_train_dataset_identifier] += (self.datablock_identifier_2_epsilon_G[sub_train_dataset_identifier] / self.datablock_identifier_2_all_epoch_num[sub_train_dataset_identifier])
             #     self.logger.info("update datablock_identifier_2_remain_epsilon: {}".format(self.datablock_identifier_2_remain_epsilon))
-
-        if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < self.batch_size_for_one_epoch:
+        
+        if self.adaptive_n_flag:
+            real_batch_size = min(self.batch_size_for_one_epoch, self.adaptive_offline_h_num)
+        else:
+            real_batch_size = self.batch_size_for_one_epoch
+        if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < real_batch_size:
             offline_sample_indexes = range(len(offline_history_job_ids))
             online_sample_indexes = range(len(online_history_job_ids))
         else:
-            select_num_from_offline_history = max(self.batch_size_for_one_epoch - len(online_history_job_priority_weights) - 1, 0)
+            select_num_from_offline_history = max(real_batch_size - len(online_history_job_priority_weights) - 1, 0)
             offline_sample_indexes = np.random.choice(range(len(offline_history_job_priority_weights)), select_num_from_offline_history, replace=False)
             
-            if len(online_history_job_priority_weights) > self.batch_size_for_one_epoch - 1:
-                online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.batch_size_for_one_epoch - 1, replace=False)
+            if len(online_history_job_priority_weights) > real_batch_size - 1:
+                online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), real_batch_size - 1, replace=False)
             else:
                 online_sample_indexes = range(len(online_history_job_priority_weights))
         
@@ -420,3 +430,20 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
                 self.logger.warning("datablock_identifier_2_remain_epsilon[{}] == {}".format(
                     datablock_identifier, self.datablock_identifier_2_remain_epsilon[datablock_identifier]
                 ))
+
+    def adaptive_calculate_adaptive_h(self):
+        all_history_job_budget_consumes = self.offline_history_job_budget_consumes
+        all_history_job_target_datablock_selected_nums = self.offline_history_job_target_selected_num
+        adaptive_offline_h_num = len(all_history_job_budget_consumes)
+        if self.adaptive_n_flag:
+            _, all_blocks_require_mean = self.get_mean_require(all_history_job_budget_consumes, all_history_job_target_datablock_selected_nums)
+            if all_blocks_require_mean > 0.0:
+                max_need_operator_job_num = int(self.datablocks_privacy_budget_all / all_blocks_require_mean) - 1 if int(self.datablocks_privacy_budget_all / all_blocks_require_mean) > 1 else 0
+            else:
+                max_need_operator_job_num = len(all_history_job_budget_consumes)
+            if max_need_operator_job_num < len(all_history_job_budget_consumes):
+                adaptive_offline_h_num = max_need_operator_job_num
+        
+        self.logger.info(f"update datablocks_privacy_budget_all: {self.datablocks_privacy_budget_all}")
+        self.logger.info(f"update adaptive_offline_h_num: {adaptive_offline_h_num}")
+        self.adaptive_offline_h_num = adaptive_offline_h_num
