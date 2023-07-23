@@ -107,7 +107,7 @@ def get_result_avg_min_max_for_y_label_name(df_with_key, out_loop_groups, in_loo
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} avg"] / df_with_key.loc[(out_key, in_key), f"{target_key_prefix} avg"]
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} min"] / df_with_key.loc[(out_key, in_key), f"{target_key_prefix} avg"]
                 results_max[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{success_key_prefix} max"] / df_with_key.loc[(out_key, in_key), f"{target_key_prefix} avg"]
-            elif y_label_name == "Significance of all queries" or y_label_name == "Total Values":
+            elif y_label_name == "Significance of all queries" or y_label_name == "Total Significances":
                 avg_sig_all_job_key_prefix = "Mean Significance All"
                 results[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} avg"]
                 results_min[out_index][in_index] = df_with_key.loc[(out_key, in_key), f"{avg_sig_all_job_key_prefix} min"]

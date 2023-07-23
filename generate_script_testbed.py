@@ -10,7 +10,7 @@ debug_flag = False
 nohup_target_dir_prefix = "/home/netlab/DL_lab/opacus_testbed/log_temp_store/"
 target_time_minute = 180
 
-current_ip_index = 4
+current_ip_index = 5
 current_cmd_index = 3
 
 # testbed
@@ -53,7 +53,7 @@ job_require_select_block_max_num = 4
 config_max_operate_siton_run_num = 1
 
 # block
-all_datablock_num = 80
+all_datablock_num = 40
 offline_datablock_num = 20
 datablock_arrival_time_speed_up = 4.0 # 控制到达速率
 base_capacity = 5.0
@@ -62,7 +62,7 @@ dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
 assignment_policy = "IterativeHISwithOrderProVersionPolicy"
 his_betas = 0.0
-his_batch_size_for_one_epochs = 500
+his_batch_size_for_one_epochs = 100
 his_infinity_flag = True
 his_adaptive_n_flag = True
 his_greedy_flag = False
@@ -189,6 +189,8 @@ if "PBG" in assignment_policy:
 if "HIS" in assignment_policy:
     dispatcher_cmds.append(f"--his_betas {his_betas}")
     dispatcher_cmds.append(f"--his_batch_size_for_one_epochs {his_batch_size_for_one_epochs}")
+    if his_adaptive_cons_generate_flag:
+        dispatcher_cmds.append(f"--his_adaptive_cons_generate_flag")
     if his_infinity_flag:
         dispatcher_cmds.append(f"--his_infinity_flag")
     if his_adaptive_n_flag:

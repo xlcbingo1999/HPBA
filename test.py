@@ -556,7 +556,7 @@ if __name__ == '__main__':
         print(res)#打印异步结果
 '''
 
-
+'''
 import os
 import zerorpc
 import threading
@@ -601,6 +601,94 @@ if __name__ == "__main__":
     # tensor = torch.ones(tensor_size, device=device_0)
     # num_copies = 18  # 复制的次数（根据需要修改）
     # tensors = [tensor.clone() for _ in range(num_copies)]
-    
-    
+'''
+
+'''
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+# 30 points between [0, 0.2) originally made using np.random.rand(30)*.2
+pts = np.array([
+    0.015, 0.166, 0.133, 0.159, 0.041, 0.024, 0.195, 0.039, 0.161, 0.018,
+    0.143, 0.056, 0.125, 0.096, 0.094, 0.051, 0.043, 0.021, 0.138, 0.075,
+    0.109, 0.195, 0.050, 0.074, 0.079, 0.155, 0.020, 0.010, 0.061, 0.008])
+
+# Now let's make two outlier points which are far away from everything.
+pts[[3, 14]] += .8
+x = list(range(pts.shape[0]))
+
+
+# If we were to simply plot pts, we'd lose most of the interesting
+# details due to the outliers. So let's 'break' or 'cut-out' the y-axis
+# into two portions - use the top (ax) for the outliers, and the bottom
+# (ax2) for the details of the majority of our data
+f, (ax, ax2) = plt.subplots(2, 1, sharex=True)
+
+# plot the same data on both axes
+ax.bar(x, pts)
+ax2.bar(x, pts)
+
+# zoom-in / limit the view to different portions of the data
+ax.set_ylim(.78, 1.)  # outliers only
+ax2.set_ylim(0, .22)  # most of the data
+
+# hide the spines between ax and ax2
+ax.spines['bottom'].set_visible(False)
+ax2.spines['top'].set_visible(False)
+ax.xaxis.tick_top()
+ax.tick_params(labeltop='off')  # don't put tick labels at the top
+ax2.xaxis.tick_bottom()
+
+# This looks pretty good, and was fairly painless, but you can get that
+# cut-out diagonal lines look with just a bit more work. The important
+# thing to know here is that in axes coordinates, which are always
+# between 0-1, spine endpoints are at these locations (0,0), (0,1),
+# (1,0), and (1,1).  Thus, we just need to put the diagonals in the
+# appropriate corners of each of our axes, and so long as we use the
+# right transform and disable clipping.
+
+d = .015  # how big to make the diagonal lines in axes coordinates
+# arguments to pass to plot, just so we don't keep repeating them
+kwargs = dict(transform=ax.transAxes, color='k', clip_on=False)
+ax.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
+ax.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
+
+kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
+ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
+ax2.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
+
+# What's cool about this is that now if we vary the distance between
+# ax and ax2 via f.subplots_adjust(hspace=...) or plt.subplot_tool(),
+# the diagonal lines will move accordingly, and stay right at the tips
+# of the spines they are 'breaking'
+
+# plt.show()
+plt.savefig('test.png', format='png')
+'''
+
+'''
+import matplotlib.pyplot as plt
+
+# 生成示例数据
+x = [1, 2, 3, 4, 5]
+y = [30, 40, 50, 60, 70]
+
+# 绘制柱状图
+plt.bar(x, y)
+
+# 设置横线的y坐标位置和标签
+y_line = 55
+label = 'Threshold'
+
+# 在柱状图上绘制横线
+plt.axhline(y=y_line, color='red', linestyle='dashed')
+
+# 在柱状图上添加标签
+plt.annotate(label, xy=(1, y_line), xytext=(2, y_line + 5),
+             arrowprops=dict(arrowstyle='->'))
+
+# 显示图形
+plt.savefig('test.png', format='png')
+'''
 
