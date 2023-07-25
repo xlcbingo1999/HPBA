@@ -3,7 +3,7 @@ import numpy as np
 import csv
 import os
 
-file_name = 'testbed_Q6' # temp_get_result, 20230510_privacy_new, testbed_fig_1
+file_name = 'testbed_fig_3' # temp_get_result, 20230510_privacy_new, testbed_fig_1
 
 sheet_name_2_result_file_name = {
     # "Sheet1": "testbed_Q1_history0_historyinf",
@@ -13,8 +13,8 @@ sheet_name_2_result_file_name = {
     # "Sheet1": "testbed_Q4",
     # "Sheet1": "testbed_Q5",
     # "Sheet1": "testbed_Q4_history0_historyinf",
-    "Sheet1": "testbed_Q6",
-    # "Sheet1": "testbed_fig_3",
+    # "Sheet1": "testbed_Q6",
+    "Sheet1": "testbed_fig_3",
     # "fig2_max_min_ratio": "fig_2",
     # "fig1_online_job_num": "fig_1",
     # "fig6_HIS_history_change": "fig_6",

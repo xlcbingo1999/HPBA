@@ -9,7 +9,7 @@ import sys
 
 class HISwithOrderProVersionPolicy(HISBasePolicy):
     def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all,
-                infinity_flag, adaptive_n_flag,
+                infinity_flag, stop_n_growing_flag,
                 greedy_flag, greedy_threshold,
                 seed, logger):
         super().__init__(beta, pipeline_sequence_all_num, job_request_all_num, 
@@ -19,7 +19,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         self._name = 'HISwithOrderProVersionPolicy'
         self.beta = beta
 
-        self.adaptive_n_flag = adaptive_n_flag
+        self.stop_n_growing_flag = stop_n_growing_flag
         self.adaptive_offline_h_num = sys.maxsize
         self.datablocks_privacy_budget_all = datablocks_privacy_budget_all
 
@@ -32,7 +32,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
         self.logger.info("policy args: beta: {}".format(self.beta))
-        self.logger.info("policy args: adaptive_n_flag: {}".format(self.adaptive_n_flag))
+        self.logger.info("policy args: stop_n_growing_flag: {}".format(self.stop_n_growing_flag))
         self.logger.info("policy args: job_request_all_num: {}".format(self.job_request_all_num))
         # self.logger.info("policy args: delta: {}".format(self.delta))
         # self.logger.info("policy args: only_small: {}".format(self.only_small))
@@ -289,7 +289,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
 
         # assert target_datablock_select_num == 1
         
-        if self.adaptive_n_flag:
+        if self.stop_n_growing_flag:
             # offline sample per round
             if self.adaptive_offline_h_num < len(offline_history_job_ids):
                 offline_sample_indexes = np.random.choice(range(len(offline_history_job_ids)), self.adaptive_offline_h_num, replace=False)
@@ -380,7 +380,7 @@ class HISwithOrderProVersionPolicy(HISBasePolicy):
         all_history_job_budget_consumes = self.offline_history_job_budget_consumes
         all_history_job_target_datablock_selected_nums = self.offline_history_job_target_selected_num
         adaptive_offline_h_num = len(all_history_job_budget_consumes)
-        if self.adaptive_n_flag:
+        if self.stop_n_growing_flag:
             _, all_blocks_require_mean = self.get_mean_require(all_history_job_budget_consumes, all_history_job_target_datablock_selected_nums)
             if all_blocks_require_mean > 0.0:
                 max_need_operator_job_num = int(self.datablocks_privacy_budget_all / all_blocks_require_mean) - 1 if int(self.datablocks_privacy_budget_all / all_blocks_require_mean) > 1 else 0

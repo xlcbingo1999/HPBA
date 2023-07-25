@@ -692,3 +692,231 @@ plt.annotate(label, xy=(1, y_line), xytext=(2, y_line + 5),
 plt.savefig('test.png', format='png')
 '''
 
+import numpy as np
+import cvxpy as cp
+import copy
+
+def get_benchmark():
+    offline_history_jobs = [
+        {
+            "time": -1,
+            "require": 6,
+            "max_num": 1,
+            "significances": [3, 3],
+        },
+    ]
+    online_jobs = [
+        {
+            "time": 0,
+            "require": 6,
+            "max_num": 1,
+            "significances": [1, 2],
+        },
+        {
+            "time": 1,
+            "require": 2,
+            "max_num": 1,
+            "significances": [3, 2],
+        },
+        {
+            "time": 2,
+            "require": 4,
+            "max_num": 2,
+            "significances": [5, 1],
+        }
+        # {
+        #     "time": 3,
+        #     "require": 2,
+        #     "max_num": 1,
+        #     "significances": [7, 10],
+        # }
+    ]
+
+    datablocks = [
+        {
+            "time": -1,
+            "epsilon_G": 6,
+            "epsilon_R": 6,
+        },
+        {
+            "time": 1.5,
+            "epsilon_G": 6,
+            "epsilon_R": 6,
+        }
+    ]
+    return offline_history_jobs, online_jobs, datablocks
+
+def greedy_example():
+    print("=== greedy_example ===")
+    offline_history_jobs, online_jobs, datablocks = get_benchmark()
+
+    time = 0
+    current_history_jobs = copy.deepcopy(offline_history_jobs) 
+    current_datablocks = [db for db in datablocks if db["time"] <= time]
+    all_significance_sum = 0
+    for time in range(len(online_jobs)):
+        print(f"time: {time}")
+        
+        current_datablocks = [db for db in datablocks if db["time"] <= time]
+        current_datablocks_num = len(current_datablocks)
+
+        current_operator_jobs = []
+        current_operator_job_indexes = []
+        for job_index, j in enumerate(online_jobs):
+            if j["time"] == time:
+                current_operator_jobs.append(j)
+                current_operator_job_indexes.append(job_index)
+
+        assert len(current_operator_jobs) == 1 and len(current_operator_job_indexes) == 1
+        current_operate_job = current_operator_jobs[0]
+        current_operate_job_index = current_operator_job_indexes[0]
+
+        to_cvxpy_jobs = [current_operate_job]
+
+        current_sign_matrix =  np.array([[job["significances"][db_index] for db_index in range(current_datablocks_num)] for job in to_cvxpy_jobs])
+        current_job_privacy_budget_consume_list = np.array([job["require"] for job in to_cvxpy_jobs])[np.newaxis, :]
+        current_job_target_datablock_selected_num_list = np.array([job["max_num"] for job in to_cvxpy_jobs])[np.newaxis, :]
+        current_datablock_privacy_budget_remain_list = np.array([db["epsilon_R"]  for db in current_datablocks])[np.newaxis, :]
+
+        print(f"current_history_jobs: {current_history_jobs}")
+        print(f"current_datablocks: {current_datablocks}")
+        print(f"current_operate_job: {current_operate_job}")
+        print(f"to_cvxpy_jobs: {to_cvxpy_jobs}")
+
+        print(f"current_sign_matrix: {current_sign_matrix}")
+        print(f"current_job_privacy_budget_consume_list: {current_job_privacy_budget_consume_list}")
+        print(f"current_job_target_datablock_selected_num_list: {current_job_target_datablock_selected_num_list}")
+        print(f"current_datablock_privacy_budget_remain_list: {current_datablock_privacy_budget_remain_list}")
+        
+        # greedy算法
+        
+        matrix_X = cp.Variable((len(to_cvxpy_jobs), current_datablocks_num), boolean=True)
+        objective = cp.Maximize(
+            cp.sum(cp.multiply(current_sign_matrix, matrix_X))
+        )
+
+        constraints = [
+            matrix_X >= 0,
+            matrix_X <= 1,
+            (current_job_privacy_budget_consume_list @ matrix_X) <= current_datablock_privacy_budget_remain_list,
+            cp.sum(matrix_X, axis=1) <= current_job_target_datablock_selected_num_list
+        ]
+        
+        solver=cp.ECOS_BB
+        cvxprob = cp.Problem(objective, constraints)
+        result = cvxprob.solve(solver)
+        # self.logger.debug(matrix_X.value)
+        if cvxprob.status != "optimal":
+            print('WARNING: Allocation returned by policy not optimal!')
+        print(f"value: {matrix_X.value}")
+
+        # 直接更新datablocks的内容! 
+        need_opeator_datablocks_result_vec = list(matrix_X.value[-1])
+        for db_index, db_result in enumerate(need_opeator_datablocks_result_vec):
+            print(f"db_index: {db_index} => db_result: {db_result}")
+            if db_result > 0.9 and datablocks[db_index]["epsilon_R"] >= current_operate_job["require"]:
+                print(f"sche job: {current_operate_job} to db_index: {db_index} with require: {current_operate_job['require']}")
+                all_significance_sum += online_jobs[current_operate_job_index]["significances"][db_index]
+                datablocks[db_index]["epsilon_R"] -= current_operate_job["require"]
+                print(f"info datablocks: {datablocks}")
+
+        # finished operator
+        current_history_jobs.append(current_operate_job)
+        print("\n\n")
+    print(f"all_significance_sum: {all_significance_sum}")
+    print("=== greedy_example end ===")
+    print("\n\n")
+
+def HPBA_example():
+    print("=== HPBA_example ===")
+    offline_history_jobs, online_jobs, datablocks = get_benchmark()
+
+    time = 0
+    current_history_jobs = copy.deepcopy(offline_history_jobs) 
+    current_datablocks = [db for db in datablocks if db["time"] <= time]
+    all_significance_sum = 0
+    for time in range(len(online_jobs)):
+        print(f"time: {time}")
+        
+        current_datablocks = [db for db in datablocks if db["time"] <= time]
+        current_datablocks_num = len(current_datablocks)
+
+        current_operator_jobs = []
+        current_operator_job_indexes = []
+        for job_index, j in enumerate(online_jobs):
+            if j["time"] == time:
+                current_operator_jobs.append(j)
+                current_operator_job_indexes.append(job_index)
+
+        assert len(current_operator_jobs) == 1 and len(current_operator_job_indexes) == 1
+        current_operate_job = current_operator_jobs[0]
+        current_operate_job_index = current_operator_job_indexes[0]
+
+        to_cvxpy_jobs = copy.deepcopy(current_history_jobs)
+        to_cvxpy_jobs.append(current_operate_job)
+
+        current_sign_matrix =  np.array([[job["significances"][db_index] for db_index in range(current_datablocks_num)] for job in to_cvxpy_jobs])
+        current_job_privacy_budget_consume_list = np.array([job["require"] for job in to_cvxpy_jobs])[np.newaxis, :]
+        current_job_target_datablock_selected_num_list = np.array([job["max_num"] for job in to_cvxpy_jobs])
+        current_datablock_privacy_budget_remain_list = np.array([db["epsilon_G"]  for db in current_datablocks])[np.newaxis, :]
+
+        print(f"current_history_jobs: {current_history_jobs}")
+        print(f"current_datablocks: {current_datablocks}")
+        print(f"current_operate_job: {current_operate_job}")
+        print(f"to_cvxpy_jobs: {to_cvxpy_jobs}")
+
+        print(f"current_sign_matrix: {current_sign_matrix}")
+        print(f"current_job_privacy_budget_consume_list: {current_job_privacy_budget_consume_list}")
+        print(f"current_job_target_datablock_selected_num_list: {current_job_target_datablock_selected_num_list}")
+        print(f"current_datablock_privacy_budget_capacity_list: {current_datablock_privacy_budget_remain_list}")
+        
+        # greedy算法
+        
+        matrix_X = cp.Variable((len(to_cvxpy_jobs), current_datablocks_num), nonneg=True)
+        print(f"matrix_X.shape: {matrix_X.shape}")
+        objective = cp.Maximize(
+            cp.sum(cp.multiply(current_sign_matrix, matrix_X))
+        )
+
+        constraints = [
+            matrix_X >= 0,
+            matrix_X <= 1,
+            (current_job_privacy_budget_consume_list @ matrix_X) <= current_datablock_privacy_budget_remain_list,
+            cp.sum(matrix_X, axis=1) <= current_job_target_datablock_selected_num_list
+        ]
+        
+        solver=cp.ECOS
+        cvxprob = cp.Problem(objective, constraints)
+        result = cvxprob.solve(solver)
+        # self.logger.debug(matrix_X.value)
+        if cvxprob.status != "optimal":
+            print('WARNING: Allocation returned by policy not optimal!')
+        print(f"value: {matrix_X.value}")
+
+        # 直接更新datablocks的内容! 
+        need_opeator_datablocks_result_vec = list(matrix_X.value[-1])
+        sorted_need_opeator_datablocks_result_vec = sorted(enumerate(need_opeator_datablocks_result_vec), key=lambda x: x[1], reverse=True)
+
+        for db_index, db_pro in sorted_need_opeator_datablocks_result_vec:
+            print(f"db_index: {db_index} => db_pro: {db_pro}")
+            db_pro = max(0.0, min(1.0, db_pro))
+            db_pro_vec = [1.0 - db_pro, db_pro]
+            choice_result = np.random.choice(a=range(2), size=1, replace=False, p=db_pro_vec)
+            
+            if choice_result == 1 and datablocks[db_index]["epsilon_R"] >= current_operate_job["require"]:
+                print(f"sche job: {current_operate_job} to db_index: {db_index} with require: {current_operate_job['require']}")
+                all_significance_sum += online_jobs[current_operate_job_index]["significances"][db_index]
+                datablocks[db_index]["epsilon_R"] -= current_operate_job["require"]
+                print(f"info datablocks: {datablocks}")
+
+        # finished operator
+        current_history_jobs.append(current_operate_job)
+        print("\n\n")
+    print(f"all_significance_sum: {all_significance_sum}")
+    print("=== HPBA_example end ===")
+    print("\n\n")
+
+    
+
+greedy_example()
+HPBA_example()

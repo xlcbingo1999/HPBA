@@ -18,7 +18,7 @@ class QueueItem(object):
 
 class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
     def __init__(self, beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all,
-                batch_size_for_one_epoch, infinity_flag, adaptive_n_flag,
+                batch_size_for_one_epoch, infinity_flag, stop_n_growing_flag,
                 greedy_flag, greedy_threshold,
                 adaptive_cons_generate_flag,
                 seed, logger):
@@ -31,7 +31,7 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
         self.logger = logger
         self.waiting_queue_capacity = 1
 
-        self.adaptive_n_flag = adaptive_n_flag
+        self.stop_n_growing_flag = stop_n_growing_flag
         self.adaptive_offline_h_num = sys.maxsize
         self.datablocks_privacy_budget_all = datablocks_privacy_budget_all
         
@@ -60,7 +60,7 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
     def report_state(self):
         self.logger.info("policy name: {}".format(self._name))
         self.logger.info("policy args: beta: {}".format(self.beta))
-        self.logger.info("policy args: adaptive_n_flag: {}".format(self.adaptive_n_flag))
+        self.logger.info("policy args: stop_n_growing_flag: {}".format(self.stop_n_growing_flag))
         self.logger.info("policy args: batch_size_for_one_epoch: {}".format(self.batch_size_for_one_epoch))
         # self.logger.info("policy args: delta: {}".format(self.delta))
         # self.logger.info("policy args: only_small: {}".format(self.only_small))
@@ -328,7 +328,7 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
             #         self.datablock_identifier_2_remain_epsilon[sub_train_dataset_identifier] += (self.datablock_identifier_2_epsilon_G[sub_train_dataset_identifier] / self.datablock_identifier_2_all_epoch_num[sub_train_dataset_identifier])
             #     self.logger.info("update datablock_identifier_2_remain_epsilon: {}".format(self.datablock_identifier_2_remain_epsilon))
         
-        if self.adaptive_n_flag:
+        if self.stop_n_growing_flag:
             real_batch_size = min(self.batch_size_for_one_epoch, self.adaptive_offline_h_num)
         else:
             real_batch_size = self.batch_size_for_one_epoch
@@ -435,7 +435,7 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
         all_history_job_budget_consumes = self.offline_history_job_budget_consumes
         all_history_job_target_datablock_selected_nums = self.offline_history_job_target_selected_num
         adaptive_offline_h_num = len(all_history_job_budget_consumes)
-        if self.adaptive_n_flag:
+        if self.stop_n_growing_flag:
             _, all_blocks_require_mean = self.get_mean_require(all_history_job_budget_consumes, all_history_job_target_datablock_selected_nums)
             if all_blocks_require_mean > 0.0:
                 max_need_operator_job_num = int(self.datablocks_privacy_budget_all / all_blocks_require_mean) - 1 if int(self.datablocks_privacy_budget_all / all_blocks_require_mean) > 1 else 0

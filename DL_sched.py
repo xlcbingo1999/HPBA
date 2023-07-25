@@ -1682,11 +1682,11 @@ class Scheduler_server(object):
             pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta = assignment_args
             policy_item = PBGMixPolicy(pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, comparison_cost_epsilon, comparison_z_threshold, L, U, gitta, self.seed, self.sched_logger)
         elif assignment_policy == "HISwithOrderProVersionPolicy" or assignment_policy == "HISwithOrderProVersion":
-            beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold = assignment_args
-            policy_item = HISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold, self.seed, self.sched_logger)
+            beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, infinity_flag, stop_n_growing_flag, greedy_flag, greedy_threshold = assignment_args
+            policy_item = HISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, infinity_flag, stop_n_growing_flag, greedy_flag, greedy_threshold, self.seed, self.sched_logger)
         elif assignment_policy == "IterativeHISwithOrderProVersionPolicy" or assignment_policy == "IterativeHISwithOrderProVersion":
-            beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, batch_size_for_one_epoch, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold, adaptive_cons_generate_flag = assignment_args
-            policy_item = IterativeHISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, batch_size_for_one_epoch, infinity_flag, adaptive_n_flag, greedy_flag, greedy_threshold, adaptive_cons_generate_flag, self.seed, self.sched_logger)
+            beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, batch_size_for_one_epoch, infinity_flag, stop_n_growing_flag, greedy_flag, greedy_threshold, adaptive_cons_generate_flag = assignment_args
+            policy_item = IterativeHISwithOrderProVersionPolicy(beta, pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, batch_size_for_one_epoch, infinity_flag, stop_n_growing_flag, greedy_flag, greedy_threshold, adaptive_cons_generate_flag, self.seed, self.sched_logger)
         elif assignment_policy == "SagewithRemainPolicy" or assignment_policy == "SagewithRemain":
             pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all = assignment_args
             policy_item = SagewithRemainPolicy(pipeline_sequence_all_num, job_request_all_num, datablocks_privacy_budget_all, self.seed, self.sched_logger)

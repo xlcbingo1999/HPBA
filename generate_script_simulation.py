@@ -64,7 +64,7 @@ assignment_policy = "HISwithOrderProVersionPolicy"
 his_betas = 0.0
 his_batch_size_for_one_epochs = 0
 his_infinity_flag = True
-his_adaptive_n_flag = True
+his_stop_n_growing_flag = True
 his_greedy_flag = False
 his_greedy_threshold = 0.2
 his_adaptive_cons_generate_flag = True
@@ -191,8 +191,8 @@ if "HIS" in assignment_policy:
     dispatcher_cmds.append(f"--his_batch_size_for_one_epochs {his_batch_size_for_one_epochs}")
     if his_infinity_flag:
         dispatcher_cmds.append(f"--his_infinity_flag")
-    if his_adaptive_n_flag:
-        dispatcher_cmds.append(f"--his_adaptive_n_flag")
+    if his_stop_n_growing_flag:
+        dispatcher_cmds.append(f"--his_stop_n_growing_flag")
     if his_greedy_flag:
         dispatcher_cmds.append(f"--his_greedy_flag")
         dispatcher_cmds.append(f"--his_greedy_threshold {his_greedy_threshold}")
