@@ -10,7 +10,7 @@ debug_flag = False
 nohup_target_dir_prefix = "/home/netlab/DL_lab/opacus_testbed/log_temp_store/"
 target_time_minute = 180
 
-current_ip_index = 5
+current_ip_index = 6
 current_cmd_index = 3
 
 # testbed
@@ -18,8 +18,8 @@ worker_indexes = [current_cmd_index]
 worker_indexes = [str(index) for index in worker_indexes]
 worker_indexes_str = " ".join(worker_indexes)
 # simulation
-simulation_flag = True
-simulation_time = 1
+simulation_flag = False
+simulation_time = 5
 
 # 数据集
 test_jobtrace_reconstruct_path = "schedule-review-testbed-06-18-12-28-24"
@@ -40,7 +40,7 @@ waiting_time = 2 if simulation_flag else 10
 
 # 任务
 pipeline_sequence_all_num = 1000
-all_history_num = 800 # 在INF场景中这个东西太多似乎不太好
+all_history_num = 0 # 在INF场景中这个东西太多似乎不太好
 job_arrival_time_speed_up = 4.0 # 控制到达速率
 job_datablock_epsilon_max_ratio = 0.2 # 控制最大的比率(离群值控制)
 job_datablock_epsilon_min_ratio = 0.04 # 控制最小的比率(离群值控制)
@@ -53,7 +53,7 @@ job_require_select_block_max_num = 4
 config_max_operate_siton_run_num = 1
 
 # block
-all_datablock_num = 60
+all_datablock_num = 80
 offline_datablock_num = 20
 datablock_arrival_time_speed_up = 4.0 # 控制到达速率
 base_capacity = 5.0
@@ -62,7 +62,7 @@ dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
 assignment_policy = "IterativeHISwithOrderProVersionPolicy"
 his_betas = 0.0
-his_batch_size_for_one_epochs = 50
+his_batch_size_for_one_epochs = 1
 his_infinity_flag = True
 his_stop_n_growing_flag = False
 his_greedy_flag = False
