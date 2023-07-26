@@ -400,8 +400,8 @@ def draw_cr():
                     params,
                     current_dir, target_pic_name)
     
-def draw_Q1():
-    target_pic_name = "testbed_Q1_history0_historyinf"
+def draw_F1():
+    target_pic_name = "testbed_F1_history0_historyinf"
     xlsx_2_csv(target_pic_name)
     keys_str = ["policy", "Datablock num"]
     env_x_groups = [20, 40, 60, 80, 100] # Datablock num
@@ -423,7 +423,7 @@ def draw_Q1():
                 '']
         markers = ['x', 'o', 'v', '^', '<', '>', 'P', 's']
         return colors, hatchs, markers
-    def get_Q1_policy_map(origin_policy, is_default):
+    def get_F1_policy_map(origin_policy, is_default):
         result_policy = ""
         if origin_policy == "OfflinePolicy":
             result_policy = "Optimal"
@@ -474,7 +474,7 @@ def draw_Q1():
         "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
-                    y_label_name_arr, env_x_label, params, get_Q1_policy_map, get_mark_color_hatch_marker)
+                    y_label_name_arr, env_x_label, params, get_F1_policy_map, get_mark_color_hatch_marker)
 
 def draw_Q2():
     target_pic_name = "testbed_Q2"
@@ -582,8 +582,8 @@ def draw_Q5_plot():
                     y_label_name_arr, env_x_label, params, False, get_Q2_plot_policy_map, get_mark_color_hatch_marker)
 
 
-def draw_Q3():
-    target_pic_name = "testbed_Q3"
+def draw_F5():
+    target_pic_name = "testbed_F5"
     xlsx_2_csv(target_pic_name)
     keys_str = ["policy", "Datablock num"]
     env_x_groups = [20, 40, 60, 80, 100] # Datablock num 1, 10, 50, 100, 150, 200
@@ -607,7 +607,7 @@ def draw_Q3():
                 '']
         markers = ['x', 'o', 'v', '^', '<', '>', 'P', 's']
         return colors, hatchs, markers
-    def get_Q3_policy_map(origin_policy, is_default):
+    def get_F5_policy_map(origin_policy, is_default):
         result_policy = ""
         if "IterativeHISwithOrderProVersionPolicy" in origin_policy:
             result_policy = "SA-HPBA"
@@ -641,7 +641,7 @@ def draw_Q3():
         "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
-                    y_label_name_arr, env_x_label, params, get_Q3_policy_map, get_mark_color_hatch_marker)
+                    y_label_name_arr, env_x_label, params, get_F5_policy_map, get_mark_color_hatch_marker)
 
     env_policy_groups.remove("OfflinePolicy")
     print(f"time_draw_env_policy_groups: {env_policy_groups}")
@@ -649,16 +649,16 @@ def draw_Q3():
         "Average Decision Time Consumption (s)"
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
-                    time_draw_y_label_name_arr, env_x_label, params, get_Q3_policy_map, get_mark_color_hatch_marker)
+                    time_draw_y_label_name_arr, env_x_label, params, get_F5_policy_map, get_mark_color_hatch_marker)
 
-def draw_Q4():
-    target_pic_name = "testbed_Q4_history0_historyinf"
+def draw_F4():
+    target_pic_name = "testbed_F4_history0_historyinf"
     xlsx_2_csv(target_pic_name)
     keys_str = ["policy", "lambda"]
     env_x_groups = [0.1, 0.2, 0.4, 0.8] # 0.05, Datablock num
     env_policy_groups = [
-        "HISwithOrderProVersionPolicy(0,800)",
-        "IterativeHISwithOrderProVersionPolicy(100,800)",
+        "HISwithOrderProVersionPolicy",
+        "IterativeHISwithOrderProVersionPolicy",
         "PBGPolicy", 
         "SagewithRemainPolicy",
         "BestFitwithRemainPolicy",
@@ -676,24 +676,24 @@ def draw_Q4():
                 '']
         markers = ['x', 'o', 'v', '^', '<', '>', 'P', 's']
         return colors, hatchs, markers
-    def get_Q4_policy_map(origin_policy, is_default):
+    def get_F4_policy_map(origin_policy, is_default):
         result_policy = ""
         if origin_policy == "OfflinePolicy":
             result_policy = "Optimal"
         elif "IterativeHISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "SA-HPBA"
-            match = re.match(r"IterativeHISwithOrderProVersionPolicy\((?P<batch_size>\d+),(?P<history_num>\d+)\)", origin_policy)
-            if is_default:
-                result_policy = result_policy + r"(default)"
-            elif match:
-                result_policy = result_policy + r"($\psi=$" + "{},".format(int(match.group("batch_size"))) + r"$H$=" + "{})".format(int(match.group("history_num")))
+            result_policy = "SA-HPBA"  + r"(default)"
+            # match = re.match(r"IterativeHISwithOrderProVersionPolicy\((?P<batch_size>\d+),(?P<history_num>\d+)\)", origin_policy)
+            # if is_default:
+            #     result_policy = result_policy + r"(default)"
+            # elif match:
+            #     result_policy = result_policy + r"($\psi=$" + "{},".format(int(match.group("batch_size"))) + r"$H$=" + "{})".format(int(match.group("history_num")))
         elif "HISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "HPBA"
-            match = re.match(r"HISwithOrderProVersionPolicy\((?P<batch_size>\d+),(?P<history_num>\d+)\)", origin_policy)
-            if is_default:
-                result_policy = result_policy + r"(default)"
-            else:
-                result_policy = result_policy + r"($H$=" + "{})".format(int(match.group("history_num")))
+            result_policy = "HPBA"  + r"(default)"
+            # match = re.match(r"HISwithOrderProVersionPolicy\((?P<batch_size>\d+),(?P<history_num>\d+)\)", origin_policy)
+            # if is_default:
+            #     result_policy = result_policy + r"(default)"
+            # else:
+            #     result_policy = result_policy + r"($H$=" + "{})".format(int(match.group("history_num")))
         elif origin_policy == "PBGPolicy":
             result_policy = "Sig"
         elif origin_policy == "PBGMixPolicy": 
@@ -725,7 +725,7 @@ def draw_Q4():
         "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
-                                y_label_name_arr, env_x_label, params, False, get_Q4_policy_map, get_mark_color_hatch_marker)
+                                y_label_name_arr, env_x_label, params, False, get_F4_policy_map, get_mark_color_hatch_marker)
 
     # bar
     # params = {
@@ -747,7 +747,7 @@ def draw_Q4():
     #     "Total Test Accuracy Improvement (%)",
     # ]
     # get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
-    #                 y_label_name_arr, env_x_label, params, get_Q4_policy_map, get_mark_color_hatch_marker)
+    #                 y_label_name_arr, env_x_label, params, get_F4_policy_map, get_mark_color_hatch_marker)
     
 
 
@@ -808,8 +808,8 @@ def draw_Q5():
                     y_label_name_arr, env_x_label, params, get_Q5_policy_map, get_mark_color_hatch_marker)
 
 
-def draw_Q6():
-    target_pic_name = "testbed_Q6"
+def draw_F3():
+    target_pic_name = "testbed_F3"
     xlsx_2_csv(target_pic_name)
     keys_str = ["policy", "Offline history job num"]
     env_x_groups = [1, 50, 100, 200, 400, 800, 1200] # Datablock num 0, 50, 100, 150, 250, 300
@@ -830,7 +830,7 @@ def draw_Q6():
                 '']
         markers = ['x', 'o', 'v', '^', '<', '>', 'P', 's']
         return colors, hatchs, markers
-    def get_Q6_policy_map(origin_policy, is_default):
+    def get_F3_policy_map(origin_policy, is_default):
         result_policy = ""
         if "IterativeHISwithOrderProVersionPolicy" in origin_policy:
             result_policy = "SA-HPBA" + "(default)"
@@ -883,7 +883,7 @@ def draw_Q6():
     #         plt.annotate(label, xy=(1, y_line), xytext=(2, y_line + 5),
     #                     arrowprops=dict(arrowstyle='->'))
     # get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
-    #                 y_label_name_arr, env_x_label, params, get_Q6_policy_map, get_mark_color_hatch_marker, add_threshold)
+    #                 y_label_name_arr, env_x_label, params, get_F3_policy_map, get_mark_color_hatch_marker, add_threshold)
 
     # plot
     params = {
@@ -904,7 +904,7 @@ def draw_Q6():
     }
     params["ylim"] = [80, 125]
     get_result_and_draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
-                    y_label_name_arr, env_x_label, params, False, get_Q6_policy_map, get_mark_color_hatch_marker)
+                    y_label_name_arr, env_x_label, params, False, get_F3_policy_map, get_mark_color_hatch_marker)
 
 
 '''
@@ -945,12 +945,9 @@ params = {
 
 if __name__ == "__main__":
     # draw_cr()
-    draw_Q1()
     # draw_Q2()
-    # draw_Q2_plot()
-    # draw_Q3()
-    # draw_Q3_plot()
-    # draw_Q4()
     # draw_Q5()
-    draw_Q6()
-    # draw_Q7()
+    draw_F1()
+    draw_F3()
+    draw_F4()
+    draw_F5()

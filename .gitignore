@@ -7,6 +7,7 @@ tensorboard_*/
 log_*/
 plots/*.pdf
 plots/*.png
+old_plots/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
