@@ -273,9 +273,9 @@ class HISBasePolicy(Policy):
         psi = len(current_all_job_budget_consumes)
         
         self.logger.debug(f"psi: {psi}; all_blocks_require_mean: {all_blocks_require_mean}; => np.ceil(psi * all_blocks_require_mean / datablock_supply_mean): {np.ceil(psi * all_blocks_require_mean / datablock_supply_mean)} => len(datablock_privacy_budget_capacity_list): {len(datablock_privacy_budget_capacity_list)}")
-        to_open_datablock_num = min(np.ceil(psi * all_blocks_require_mean / datablock_supply_mean), len(datablock_privacy_budget_capacity_list))
+        to_open_datablock_num = min(int(np.ceil(psi * all_blocks_require_mean / datablock_supply_mean)), len(datablock_privacy_budget_capacity_list))
 
-        right_capacity_for_single_job = [0] * len(datablock_privacy_budget_capacity_list)
+        right_capacity_for_single_job = [0.0] * len(datablock_privacy_budget_capacity_list)
         sorted_remain_budget_with_index = sorted(enumerate(datablock_privacy_budget_remain_list), key=lambda x: x[1], reverse=True)
         for origin_index, remain_budget in sorted_remain_budget_with_index[0:to_open_datablock_num]:
             # self.logger.debug(f"open origin_index: {origin_index} => remain_budget: {remain_budget}")
