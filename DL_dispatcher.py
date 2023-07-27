@@ -16,6 +16,7 @@ from queue import PriorityQueue
 from utils.logging_tools import get_logger
 from utils.generate_tools import generate_alibaba_jobs, generate_alibaba_dataset
 from utils.data_operator import final_log_result, log_args_var
+import yagmail
 
 def get_df_config():
     parser = argparse.ArgumentParser(
@@ -1065,5 +1066,11 @@ if __name__ == '__main__':
             job_require_select_block_max_num=args.job_require_select_block_max_num,
             change_job_epsilon_max_times=args.change_job_epsilon_max_times
         )    
+
+    yag = yagmail.SMTP( user="xlc1220368815@163.com", password="PQVQLCNEICNYPFBM", host='smtp.163.com')
+    contents = [
+        f"[finished!] sched_ip: {sched_ip}; sched_port: {sched_port}; dispatcher_ip: {dispatcher_ip}; dispatcher_port: {dispatcher_port}; worker_ips: {worker_ips}; worker_ports: {worker_ports}; worker_indexes: {worker_indexes}"
+    ]
+    yag.send('1220368815@qq.com', 'subject', contents)
     
         
