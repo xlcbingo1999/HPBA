@@ -182,7 +182,7 @@ class HISBasePolicy(Policy):
         self.logger.debug(f"need_siton_block_num_mean: {need_siton_block_num_mean}")
         return one_block_require_mean, all_blocks_require_mean, need_siton_block_num_mean
 
-    def get_his_right_capacity_for_single_job(self, current_all_job_budget_consumes,
+    def get_his_right_capacity_for_single_job_Fair(self, current_all_job_budget_consumes,
                                                 target_epsilon_require,
                                                 current_all_job_target_datablock_selected_nums,
                                                 target_datablock_select_num,
@@ -257,4 +257,28 @@ class HISBasePolicy(Policy):
         self.logger.debug(f"second right_capacity_for_single_job: {right_capacity_for_single_job}")
         self.logger.debug(f"sum(right_capacity_for_single_job): {np.sum(right_capacity_for_single_job)}")
         self.logger.debug(f"this batch jobs consume: {np.sum(np.multiply(current_all_job_budget_consumes, current_all_job_target_datablock_selected_nums))}")
+        return right_capacity_for_single_job
+
+    def get_his_right_capacity_MinBlock(self, current_all_job_budget_consumes,
+                                                target_epsilon_require,
+                                                current_all_job_target_datablock_selected_nums,
+                                                target_datablock_select_num,
+                                                datablock_privacy_budget_remain_list, 
+                                                datablock_privacy_budget_capacity_list,
+                                                batch_size_for_one_epoch):
+        _, all_blocks_require_mean, _ = self.get_his_single_job_require_epsilon(
+            current_all_job_budget_consumes, current_all_job_target_datablock_selected_nums, batch_size_for_one_epoch
+        )
+        datablock_supply_mean = np.mean(datablock_privacy_budget_capacity_list)
+        psi = len(current_all_job_budget_consumes)
+        
+        self.logger.debug(f"psi: {psi}; all_blocks_require_mean: {all_blocks_require_mean}; => np.ceil(psi * all_blocks_require_mean / datablock_supply_mean): {np.ceil(psi * all_blocks_require_mean / datablock_supply_mean)} => len(datablock_privacy_budget_capacity_list): {len(datablock_privacy_budget_capacity_list)}")
+        to_open_datablock_num = min(np.ceil(psi * all_blocks_require_mean / datablock_supply_mean), len(datablock_privacy_budget_capacity_list))
+
+        right_capacity_for_single_job = [0] * len(datablock_privacy_budget_capacity_list)
+        sorted_remain_budget_with_index = sorted(enumerate(datablock_privacy_budget_remain_list), key=lambda x: x[1], reverse=True)
+        for origin_index, remain_budget in sorted_remain_budget_with_index[0:to_open_datablock_num]:
+            # self.logger.debug(f"open origin_index: {origin_index} => remain_budget: {remain_budget}")
+            right_capacity_for_single_job[origin_index] = datablock_privacy_budget_capacity_list[origin_index]
+        # self.logger.debug(f"to_open_datablock_num: {to_open_datablock_num}")
         return right_capacity_for_single_job

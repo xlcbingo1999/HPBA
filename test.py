@@ -716,14 +716,14 @@ def get_benchmark():
             "time": 1,
             "require": 2,
             "max_num": 1,
-            "significances": [3, 2],
+            "significances": [6, 2],
         },
-        {
-            "time": 2,
-            "require": 4,
-            "max_num": 2,
-            "significances": [5, 1],
-        }
+        # {
+        #     "time": 2,
+        #     "require": 4,
+        #     "max_num": 2,
+        #     "significances": [5, 1],
+        # }
         # {
         #     "time": 3,
         #     "require": 2,
@@ -739,7 +739,7 @@ def get_benchmark():
             "epsilon_R": 6,
         },
         {
-            "time": 1.5,
+            "time": 0.5,
             "epsilon_G": 6,
             "epsilon_R": 6,
         }

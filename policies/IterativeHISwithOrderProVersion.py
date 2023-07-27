@@ -211,8 +211,8 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
             datablock_privacy_budget_capacity_list[temp_index] = sub_train_datasetidentifier_2_epsilon_capcity[datablock_identifier]
             datablock_arrival_time_list[temp_index] = sub_train_datasetidentifier_2_arrival_time[datablock_identifier]
                 
-        if self.adaptive_cons_generate_flag:
-            datablock_privacy_budget_right_hand_list = self.get_his_right_capacity_for_single_job(
+        if self.adaptive_cons_generate_flag == "Fair":
+            datablock_privacy_budget_right_hand_list = self.get_his_right_capacity_for_single_job_Fair(
                 current_all_job_budget_consumes,
                 target_epsilon_require,
                 current_all_job_target_datablock_selected_nums,
@@ -221,7 +221,17 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
                 datablock_privacy_budget_capacity_list,
                 sign_matrix.shape[0]
             )
-        else:
+        elif self.adaptive_cons_generate_flag == "MinBlock":
+            datablock_privacy_budget_right_hand_list = self.get_his_right_capacity_MinBlock(
+                current_all_job_budget_consumes,
+                target_epsilon_require,
+                current_all_job_target_datablock_selected_nums,
+                target_datablock_select_num,
+                datablock_privacy_budget_remain_list,
+                datablock_privacy_budget_capacity_list,
+                sign_matrix.shape[0]
+            )
+        elif self.adaptive_cons_generate_flag == "None":
             # 直接使用capacity
             for temp_index, datablock_identifier in temp_index_2_datablock_identifier.items():
                 datablock_privacy_budget_right_hand_list[temp_index] = datablock_privacy_budget_capacity_list[temp_index]

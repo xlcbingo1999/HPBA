@@ -69,7 +69,7 @@ def get_df_config():
     parser.add_argument('--his_stop_n_growing_flag', action="store_true")
     parser.add_argument('--his_greedy_flag', action="store_true")
     parser.add_argument('--his_greedy_threshold', type=float, default=0.2)
-    parser.add_argument('--his_adaptive_cons_generate_flag', action="store_true")
+    parser.add_argument('--his_adaptive_cons_generate_flag', type=str, default="None")
     
     parser.add_argument('--pbg_comparison_cost_epsilons', type=float, default=0.0)
     parser.add_argument('--pbg_comparison_z_thresholds', type=float, default=0.9)
