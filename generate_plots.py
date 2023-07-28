@@ -599,7 +599,7 @@ def draw_F5():
         "HISwithOrderProVersionPolicy(0,800)",
         "OfflinePolicy",
     ]
-    env_policy_default_indexes = [2]
+    env_policy_default_indexes = []
     def get_mark_color_hatch_marker():
         colors =["#ffd6a5", "#fdffb6",  "#caffbf", "#9bf6ff",  "#bdb2ff", "#ffc6ff",
                 "#ffadad"]
@@ -617,7 +617,7 @@ def draw_F5():
             elif match:
                 result_policy = result_policy + r"($\psi$=" + "{})".format(int(match.group("batch_size")))
         elif "HISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "HPBA(default)"
+            result_policy = "HPBA"
         elif "OfflinePolicy" in origin_policy:
             result_policy = "Optimal"
         return result_policy
@@ -664,7 +664,7 @@ def draw_F4():
         "BestFitwithRemainPolicy",
         "OfflinePolicy"
     ]
-    env_policy_default_indexes = [0, 1]
+    env_policy_default_indexes = []
     def get_mark_color_hatch_marker():
         # plot
         colors =["#0a9396", "#9b2226", "#005f73", "#936639", "#ca6702", "#94d2bd", "#0a9396", "#9b2226", "#005f73",
@@ -681,14 +681,14 @@ def draw_F4():
         if origin_policy == "OfflinePolicy":
             result_policy = "Optimal"
         elif "IterativeHISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "SA-HPBA"  + r"(default)"
+            result_policy = "SA-HPBA"
             # match = re.match(r"IterativeHISwithOrderProVersionPolicy\((?P<batch_size>\d+),(?P<history_num>\d+)\)", origin_policy)
             # if is_default:
             #     result_policy = result_policy + r"(default)"
             # elif match:
             #     result_policy = result_policy + r"($\psi=$" + "{},".format(int(match.group("batch_size"))) + r"$H$=" + "{})".format(int(match.group("history_num")))
         elif "HISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "HPBA"  + r"(default)"
+            result_policy = "HPBA"
             # match = re.match(r"HISwithOrderProVersionPolicy\((?P<batch_size>\d+),(?P<history_num>\d+)\)", origin_policy)
             # if is_default:
             #     result_policy = result_policy + r"(default)"
@@ -821,7 +821,7 @@ def draw_F3():
         "BestFitwithRemainPolicy",
         "OfflinePolicy",
     ]
-    env_policy_default_indexes = [0, 1]
+    env_policy_default_indexes = []
     def get_mark_color_hatch_marker():
         # "#0a9396", "#9b2226", "#005f73",
         colors =["#0a9396", "#9b2226", "#005f73", "#936639", "#ca6702", "#94d2bd", "#0a9396", "#9b2226", "#005f73",
@@ -833,9 +833,9 @@ def draw_F3():
     def get_F3_policy_map(origin_policy, is_default):
         result_policy = ""
         if "IterativeHISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "SA-HPBA" + "(default)"
+            result_policy = "SA-HPBA"
         elif "HISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "HPBA" + "(default)"
+            result_policy = "HPBA"
         elif origin_policy == "PBGPolicy":
             result_policy = "Sig"
         elif origin_policy == "PBGMixPolicy": 

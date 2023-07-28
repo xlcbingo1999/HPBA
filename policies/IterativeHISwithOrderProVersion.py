@@ -338,19 +338,23 @@ class IterativeHISwithOrderProVersionPolicy(HISBasePolicy):
             #         self.datablock_identifier_2_remain_epsilon[sub_train_dataset_identifier] += (self.datablock_identifier_2_epsilon_G[sub_train_dataset_identifier] / self.datablock_identifier_2_all_epoch_num[sub_train_dataset_identifier])
             #     self.logger.info("update datablock_identifier_2_remain_epsilon: {}".format(self.datablock_identifier_2_remain_epsilon))
         
-        if self.stop_n_growing_flag:
-            real_batch_size = min(self.batch_size_for_one_epoch, self.adaptive_offline_h_num)
+        # if self.stop_n_growing_flag:
+        #     real_batch_size = min(self.batch_size_for_one_epoch, self.adaptive_offline_h_num)
+        # else:
+        #     real_batch_size = self.batch_size_for_one_epoch
+        if self.stop_n_growing_flag and len(offline_history_job_priority_weights) > self.adaptive_offline_h_num:
+            presample_offline_indexes = list(np.random.choice(range(len(offline_history_job_priority_weights)), self.adaptive_offline_h_num, replace=False))
         else:
-            real_batch_size = self.batch_size_for_one_epoch
-        if len(offline_history_job_priority_weights) + len(online_history_job_priority_weights) < real_batch_size:
-            offline_sample_indexes = range(len(offline_history_job_ids))
+            presample_offline_indexes = range(len(offline_history_job_priority_weights))
+        if len(presample_offline_indexes) + len(online_history_job_priority_weights) < self.batch_size_for_one_epoch:
+            offline_sample_indexes = presample_offline_indexes
             online_sample_indexes = range(len(online_history_job_ids))
         else:
-            select_num_from_offline_history = max(real_batch_size - len(online_history_job_priority_weights) - 1, 0)
-            offline_sample_indexes = np.random.choice(range(len(offline_history_job_priority_weights)), select_num_from_offline_history, replace=False)
+            select_num_from_offline_history = max(self.batch_size_for_one_epoch - len(online_history_job_priority_weights) - 1, 0)
+            offline_sample_indexes = np.random.choice(presample_offline_indexes, select_num_from_offline_history, replace=False)
             
-            if len(online_history_job_priority_weights) > real_batch_size - 1:
-                online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), real_batch_size - 1, replace=False)
+            if len(online_history_job_priority_weights) > self.batch_size_for_one_epoch - 1:
+                online_sample_indexes = np.random.choice(range(len(online_history_job_priority_weights)), self.batch_size_for_one_epoch - 1, replace=False)
             else:
                 online_sample_indexes = range(len(online_history_job_priority_weights))
         
