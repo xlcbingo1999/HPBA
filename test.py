@@ -702,7 +702,7 @@ def get_benchmark():
             "time": -1,
             "require": 6,
             "max_num": 1,
-            "significances": [3, 3],
+            "significances": [4, 1],
         },
     ]
     online_jobs = [
@@ -710,13 +710,13 @@ def get_benchmark():
             "time": 0,
             "require": 6,
             "max_num": 1,
-            "significances": [1, 2],
+            "significances": [2, 1],
         },
         {
             "time": 1,
             "require": 2,
             "max_num": 1,
-            "significances": [6, 2],
+            "significances": [3, 0],
         },
         # {
         #     "time": 2,
@@ -739,7 +739,7 @@ def get_benchmark():
             "epsilon_R": 6,
         },
         {
-            "time": 0.5,
+            "time": -1,
             "epsilon_G": 6,
             "epsilon_R": 6,
         }
