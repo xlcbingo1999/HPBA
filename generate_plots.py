@@ -10,9 +10,11 @@ from matplotlib.backends.backend_pdf import PdfPages
 from textwrap import fill
 from utils.plot_operator import add_df_with_min_max, get_result_avg_min_max_for_y_label_name
 
-# plt.rcParams['font.sans-serif'] = ['Times New Roman']  # 如果要显示中文字体,则在此处设为：SimHei
+plt.rcParams['font.family'] = ['Times New Roman']  # 如果要显示中文字体,则在此处设为：SimHei
+plt.rcParams['mathtext.default'] = 'regular'
 plt.rcParams['axes.unicode_minus'] = False  # 显示负号
 plt.rcParams['text.latex.preamble'] = [r'\boldmath']
+plt.rcParams['pdf.fonttype'] = 42
 
 def xlsx_2_csv(file_name):
     sheet_name_2_result_file_name = {
@@ -57,7 +59,7 @@ def from_y_label_name_2_add_columns_keys_2_need_max_map(y_label_name_arr):
         elif y_label_name == "Ratio of Allocated Datablocks":
             add_columns_keys_2_need_max_map["Success Datablock Num"] = True
             add_columns_keys_2_need_max_map["Target Datablock Num"] = True
-        elif y_label_name == "Significance of all queries" or y_label_name == "Total Significances":
+        elif y_label_name == "Significance of all queries" or y_label_name == "Total Significance Score":
             add_columns_keys_2_need_max_map["Mean Significance All"] = True
         elif y_label_name == "Significance of allocated queries":
             add_columns_keys_2_need_max_map["Mean Significance Success"] = True
@@ -102,6 +104,7 @@ def draw_plot_worker(fill_between_flag, results, results_min, results_max,
     figsize = params["figsize"] if "figsize" in params else None
     max_x_label_show_list = params["max_x_label_show_list"] if "max_x_label_show_list" in params else None
     ylim = params["ylim"] if "ylim" in params else None
+    order = params["order"] if "order" in params else None
 
     colors, _, markers = get_mark_color_hatch_marker_func()
 
@@ -176,8 +179,12 @@ def draw_plot_worker(fill_between_flag, results, results_min, results_max,
         'weight':'bold',
         'size': legend_font_size
     }
-    plt.legend(bbox_to_anchor=bbox_to_anchor, labelspacing=labels_pacing, columnspacing=column_spacing, loc='upper center', ncol=ncol, prop=legend_properties, frameon=False)
-
+    if order is not None:
+        handles, labels = plt.gca().get_legend_handles_labels()
+        plt.legend(handles=[handles[idx] for idx in order], labels=[labels[idx] for idx in order], bbox_to_anchor=bbox_to_anchor, labelspacing=labels_pacing, columnspacing=column_spacing, loc='upper center', ncol=ncol, prop=legend_properties, frameon=False)
+    else:
+        plt.legend(bbox_to_anchor=bbox_to_anchor, labelspacing=labels_pacing, columnspacing=column_spacing, loc='upper center', ncol=ncol, prop=legend_properties, frameon=False)
+    
     # plt.subplots_adjust(left=0.1, right=0.88)
 
     plt.tight_layout()
@@ -210,6 +217,7 @@ def draw_bar_worker(results, env_policy_groups, env_policy_default_indexes, env_
     ncol = params["ncol"]
     figsize = params["figsize"] if "figsize" in params else None
     ylim = params["ylim"] if "ylim" in params else None
+    order = params["order"] if "order" in params else None
 
     colors, hatchs, _ = get_mark_color_hatch_marker_func()
 
@@ -272,7 +280,11 @@ def draw_bar_worker(results, env_policy_groups, env_policy_default_indexes, env_
         'weight':'bold',
         'size': legend_font_size
     }
-    plt.legend(bbox_to_anchor=bbox_to_anchor, labelspacing=labels_pacing, columnspacing=column_spacing, loc='upper center', ncol=ncol, prop=legend_properties, frameon=False)
+    if order is not None:
+        handles, labels = plt.gca().get_legend_handles_labels()
+        plt.legend(handles=[handles[idx] for idx in order], labels=[labels[idx] for idx in order], bbox_to_anchor=bbox_to_anchor, labelspacing=labels_pacing, columnspacing=column_spacing, loc='upper center', ncol=ncol, prop=legend_properties, frameon=False)
+    else:
+        plt.legend(bbox_to_anchor=bbox_to_anchor, labelspacing=labels_pacing, columnspacing=column_spacing, loc='upper center', ncol=ncol, prop=legend_properties, frameon=False)
 
     # plt.subplots_adjust(left=0.1, right=0.88)
 
@@ -371,8 +383,8 @@ def draw_cr():
 
     
     params = {
-        "font_size": 15,
-        "legend_font_size": 13,
+        "font_size": 20,
+        "legend_font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
@@ -380,7 +392,7 @@ def draw_cr():
         "bbox_to_anchor": (0.5,1.35),
         "label_spacing": 0.05,
         "column_spacing": 0.2,
-        "ncol": 2,
+        "ncol": 3,
         "center_ratio": 2.5,
         "bar_width_ratio": 2,
         "marker_size": 10,
@@ -404,22 +416,22 @@ def draw_F1():
     target_pic_name = "testbed_F1_history0_historyinf"
     xlsx_2_csv(target_pic_name)
     keys_str = ["policy", "Datablock num"]
-    env_x_groups = [20, 40, 60, 80, 100] # Datablock num
+    env_x_groups = [40, 60, 80, 100] # Datablock num
     env_policy_groups = [
         "HISwithOrderProVersionPolicy(0,800)",
         "IterativeHISwithOrderProVersionPolicy(100,800)",
         "HISwithOrderProVersionPolicy(0,1)",
         "IterativeHISwithOrderProVersionPolicy(1,1)",
-        "PBGPolicy", 
-        "SagewithRemainPolicy",
         "BestFitwithRemainPolicy",
+        "SagewithRemainPolicy",
+        "PBGPolicy", 
         "OfflinePolicy"
     ]
     env_policy_default_indexes = [0, 1]
     def get_mark_color_hatch_marker():
         colors =["#ffd6a5", "#fdffb6",  "#caffbf", "#9bf6ff",  "#bdb2ff", "#ffc6ff", "#a0c4ff",
                 "#ffadad"]
-        hatchs = ['-', '*', '/', 'o', '\\\\',  '.', '////',
+        hatchs = ['-', '*', '/', 'o', '\\\\',  '...', '////',
                 '']
         markers = ['x', 'o', 'v', '^', '<', '>', 'P', 's']
         return colors, hatchs, markers
@@ -428,7 +440,7 @@ def draw_F1():
         if origin_policy == "OfflinePolicy":
             result_policy = "Optimal"
         elif "IterativeHISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "SA-HPBA"
+            result_policy = "S-HPBA"
             if is_default:
                 result_policy = result_policy + "(default)"
                 # result_policy = result_policy + r"(w/ $\mathcal{H}$)"
@@ -454,23 +466,24 @@ def draw_F1():
         elif origin_policy == "BestFitwithRemainPolicy":
             result_policy = "BestFit"
         return result_policy
-    env_x_label = r"Number of Datablocks ($|\mathcal{D}|$)"
+    env_x_label = r"Number of private datablocks ($|\mathcal{D}|$)"
     params = {
-        "font_size": 15,
-        "legend_font_size": 13,
+        "font_size": 20,
+        "legend_font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.2,
         "fill_between_alpha": 0.5,
         "max_one_line_length": 28,
-        "bbox_to_anchor": (0.45,1.25),
+        "bbox_to_anchor": (0.45,1.32),
         "label_spacing": 0.05,
         "column_spacing": 0.1,
-        "ncol": 2,
+        "ncol": 3,
         "center_ratio": 3.5,
         "bar_width_ratio": 2,
+        "order": [0, 3, 6, 1, 4, 7, 2, 5],
     }
     y_label_name_arr = [
-        "Total Significances", 
+        "Total Significance Score", 
         "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
@@ -500,7 +513,7 @@ def draw_Q2():
     def get_mark_color_hatch_marker():
         colors =["#ffd6a5", "#fdffb6",  "#caffbf", "#9bf6ff",  "#bdb2ff", "#ffc6ff", "#936639",
                 "#ffadad"]
-        hatchs = ['-', '*', '/', 'o', '\\\\',  '.', 'x',
+        hatchs = ['-', '*', '/', 'o', '\\\\',  '...', 'x',
                 '']
         markers = ['x', 'o', 'v', '^', '<', '>', 'P', 's']
         return colors, hatchs, markers
@@ -516,10 +529,10 @@ def draw_Q2():
         elif "OfflinePolicy" in origin_policy:
             result_policy = "Optimal"
         return result_policy
-    env_x_label = r"Number of Datablocks ($|\mathcal{D}|$)"
+    env_x_label = r"Number of private datablocks ($|\mathcal{D}|$)"
     params = {
-        "font_size": 15,
-        "legend_font_size": 13,
+        "font_size": 20,
+        "legend_font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.25,
         "fill_between_alpha": 0.5,
@@ -527,12 +540,12 @@ def draw_Q2():
         "bbox_to_anchor": (0.45,1.25),
         "label_spacing": 0.05,
         "column_spacing": 0.1,
-        "ncol": 2,
+        "ncol": 3,
         "center_ratio": 2.5,
         "bar_width_ratio": 2,
     }
     y_label_name_arr = [
-        "Total Significances", 
+        "Total Significance Score", 
         "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
@@ -550,17 +563,17 @@ def draw_Q5_plot():
     def get_mark_color_hatch_marker():
         colors =["#ffd6a5", "#fdffb6",  "#caffbf", "#9bf6ff",  "#bdb2ff", "#ffc6ff", "#936639",
                 "#ffadad"]
-        hatchs = ['-', '*', '/', 'o', '\\\\',  '.', 'x',
+        hatchs = ['-', '*', '/', 'o', '\\\\',  '...', 'x',
                 '']
         markers = ['x', 'o', 'v', '^', '<', '>', 'P', 's']
         return colors, hatchs, markers
     def get_Q2_plot_policy_map(origin_policy):
         result_policy = r"$|\mathcal{D}|$=" + f"{origin_policy}"
         return result_policy
-    env_x_label = r"Size of Offline history ($|\mathcal{H}|$)"
+    env_x_label = r"Number of offline history records ($|\mathcal{H}|$)"
     params = {
-        "font_size": 15,
-        "legend_font_size": 13,
+        "font_size": 20,
+        "legend_font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
@@ -568,14 +581,14 @@ def draw_Q5_plot():
         "bbox_to_anchor": (0.5,1.35),
         "label_spacing": 0.05,
         "column_spacing": 0.2,
-        "ncol": 2,
+        "ncol": 3,
         "center_ratio": 2.5,
         "bar_width_ratio": 2,
         "marker_size": 10,
         "same_distance": True,
     }
     y_label_name_arr = [
-        "Total Significances", 
+        "Total Significance Score", 
         "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_x_groups, 
@@ -586,7 +599,7 @@ def draw_F5():
     target_pic_name = "testbed_F5"
     xlsx_2_csv(target_pic_name)
     keys_str = ["policy", "Datablock num"]
-    env_x_groups = [20, 40, 60, 80, 100] # Datablock num 1, 10, 50, 100, 150, 200
+    env_x_groups = [40, 60, 80, 100] # Datablock num 1, 10, 50, 100, 150, 200
     env_policy_groups = [
         "IterativeHISwithOrderProVersionPolicy(1,800)", 
         # "IterativeHISwithOrderProVersionPolicy(10)", 
@@ -594,7 +607,7 @@ def draw_F5():
         "IterativeHISwithOrderProVersionPolicy(100,800)", 
         # "IterativeHISwithOrderProVersionPolicy(150)", 
         "IterativeHISwithOrderProVersionPolicy(200,800)", 
-        "IterativeHISwithOrderProVersionPolicy(500,800)", 
+        "IterativeHISwithOrderProVersionPolicy(400,800)", 
         # "IterativeHISwithOrderProVersionPolicy(1000)", 
         "HISwithOrderProVersionPolicy(0,800)",
         "OfflinePolicy",
@@ -603,14 +616,14 @@ def draw_F5():
     def get_mark_color_hatch_marker():
         colors =["#ffd6a5", "#fdffb6",  "#caffbf", "#9bf6ff",  "#bdb2ff", "#ffc6ff",
                 "#ffadad"]
-        hatchs = ['-', '*', '/', 'o', '\\\\',  '.',
+        hatchs = ['-', '*', '/', 'o', '\\\\',  '...',
                 '']
         markers = ['x', 'o', 'v', '^', '<', '>', 'P', 's']
         return colors, hatchs, markers
     def get_F5_policy_map(origin_policy, is_default):
         result_policy = ""
         if "IterativeHISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "SA-HPBA"
+            result_policy = "S-HPBA"
             match = re.match(r"IterativeHISwithOrderProVersionPolicy\((?P<batch_size>\d+),(?P<history_num>\d+)\)", origin_policy)
             if is_default:
                 result_policy = result_policy + "(default)"
@@ -621,23 +634,24 @@ def draw_F5():
         elif "OfflinePolicy" in origin_policy:
             result_policy = "Optimal"
         return result_policy
-    env_x_label = r"Number of Datablocks ($|\mathcal{D}|$)"
+    env_x_label = r"Number of private datablocks ($|\mathcal{D}|$)"
     params = {
-        "font_size": 15,
-        "legend_font_size": 13,
+        "font_size": 20,
+        "legend_font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
         "max_one_line_length": 28,
-        "bbox_to_anchor": (0.45,1.25),
+        "bbox_to_anchor": (0.45,1.32),
         "label_spacing": 0.05,
         "column_spacing": 0.1,
-        "ncol": 2,
+        "ncol": 3,
         "center_ratio": 3.0,
         "bar_width_ratio": 2,
+        "order": [0, 3, 6, 1, 4, 2, 5]
     }
     y_label_name_arr = [
-        "Total Significances", 
+        "Total Significance Score", 
         "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
@@ -648,6 +662,7 @@ def draw_F5():
     time_draw_y_label_name_arr = [
         "Average Decision Time Consumption (s)"
     ]
+    params["order"] = [0, 3, 1, 4, 2, 5]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
                     time_draw_y_label_name_arr, env_x_label, params, get_F5_policy_map, get_mark_color_hatch_marker)
 
@@ -659,9 +674,9 @@ def draw_F4():
     env_policy_groups = [
         "HISwithOrderProVersionPolicy",
         "IterativeHISwithOrderProVersionPolicy",
-        "PBGPolicy", 
-        "SagewithRemainPolicy",
         "BestFitwithRemainPolicy",
+        "SagewithRemainPolicy",
+        "PBGPolicy", 
         "OfflinePolicy"
     ]
     env_policy_default_indexes = []
@@ -672,7 +687,7 @@ def draw_F4():
         # bar
         # colors =["#ffd6a5", "#fdffb6",  "#caffbf", "#9bf6ff",  "#bdb2ff", "#ffc6ff", "#a0c4ff",
         #         "#ffadad"]
-        hatchs = ['-', '*', '/', 'o', '\\\\',  '.', '////',
+        hatchs = ['-', '*', '/', 'o', '\\\\',  '...', '////',
                 '']
         markers = ['x', 'o', 'v', '^', '<', '>', 'P', 's']
         return colors, hatchs, markers
@@ -681,7 +696,7 @@ def draw_F4():
         if origin_policy == "OfflinePolicy":
             result_policy = "Optimal"
         elif "IterativeHISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "SA-HPBA"
+            result_policy = "S-HPBA"
             # match = re.match(r"IterativeHISwithOrderProVersionPolicy\((?P<batch_size>\d+),(?P<history_num>\d+)\)", origin_policy)
             # if is_default:
             #     result_policy = result_policy + r"(default)"
@@ -703,10 +718,10 @@ def draw_F4():
         elif origin_policy == "BestFitwithRemainPolicy":
             result_policy = "BestFit"
         return result_policy
-    env_x_label = r"Ratio $\lambda$" # $\frac{r_{i}}{\epsilon_{d}^{G}}$
+    env_x_label = r"$\lambda$" # $\frac{r_{i}}{\epsilon_{d}^{G}}$
     params = {
-        "font_size": 15,
-        "legend_font_size": 13,
+        "font_size": 20,
+        "legend_font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
@@ -714,14 +729,15 @@ def draw_F4():
         "bbox_to_anchor": (0.5,1.35),
         "label_spacing": 0.05,
         "column_spacing": 0.2,
-        "ncol": 2,
+        "ncol": 3,
         "center_ratio": 2.5,
         "bar_width_ratio": 2,
         "marker_size": 10,
         "same_distance": True,
+        "order": [0, 3, 1, 4, 2, 5]
     }
     y_label_name_arr = [
-        "Total Significances", 
+        "Total Significance Score", 
         "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
@@ -729,8 +745,8 @@ def draw_F4():
 
     # bar
     # params = {
-    #     "font_size": 15,
-    #     "legend_font_size": 13,
+    #     "font_size": 20,
+    #     "legend_font_size": 15,
     #     "line_width": 1.5,
     #     "bar_width": 0.25,
     #     "fill_between_alpha": 0.5,
@@ -743,7 +759,7 @@ def draw_F4():
     #     "bar_width_ratio": 2,
     # }
     # y_label_name_arr = [
-    #     "Total Significances", 
+    #     "Total Significance Score", 
     #     "Total Test Accuracy Improvement (%)",
     # ]
     # get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
@@ -769,14 +785,14 @@ def draw_Q5():
     def get_mark_color_hatch_marker():
         colors =["#ffd6a5", "#fdffb6",  "#caffbf", "#9bf6ff",  "#bdb2ff", "#ffc6ff", "#936639",
                 "#ffadad"]
-        hatchs = ['-', '*', '/', 'o', '\\\\',  '.', 'x',
+        hatchs = ['-', '*', '/', 'o', '\\\\',  '...', 'x',
                 '']
         markers = ['x', 'o', 'v', '^', '<', '>', 'P', 's']
         return colors, hatchs, markers
     def get_Q5_policy_map(origin_policy, is_default):
         result_policy = ""
         if "IterativeHISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "SA-HPBA"
+            result_policy = "S-HPBA"
             match = re.match(r"IterativeHISwithOrderProVersionPolicy\((?P<batch_size>\d+),(?P<history_num>\d+)\)", origin_policy)
             if is_default:
                 result_policy = result_policy + "(default)"
@@ -785,10 +801,10 @@ def draw_Q5():
         elif "OfflinePolicy" in origin_policy:
             result_policy = "Optimal"
         return result_policy
-    env_x_label = r"Number of Datablocks ($|\mathcal{D}|$)"
+    env_x_label = r"Number of private datablocks ($|\mathcal{D}|$)"
     params = {
-        "font_size": 15,
-        "legend_font_size": 12,
+        "font_size": 20,
+        "legend_font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.25,
         "fill_between_alpha": 0.5,
@@ -796,12 +812,12 @@ def draw_Q5():
         "bbox_to_anchor": (0.45,1.25),
         "label_spacing": 0.05,
         "column_spacing": 0.1,
-        "ncol": 2,
+        "ncol": 3,
         "center_ratio": 2.5,
         "bar_width_ratio": 2,
     }
     y_label_name_arr = [
-        "Total Significances", 
+        "Total Significance Score", 
         "Total Test Accuracy Improvement (%)",
     ]
     get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
@@ -812,28 +828,28 @@ def draw_F3():
     target_pic_name = "testbed_F3"
     xlsx_2_csv(target_pic_name)
     keys_str = ["policy", "Offline history job num"]
-    env_x_groups = [1, 50, 100, 200, 400, 800, 1200] # Datablock num 0, 50, 100, 150, 250, 300
+    env_x_groups = [1, 50, 100, 200, 400, 800, 1200, 1600] # Datablock num 0, 50, 100, 150, 250, 300
     env_policy_groups = [
         "HISwithOrderProVersionPolicy",  # 0.0
         "IterativeHISwithOrderProVersionPolicy",  # 0.0
-        "PBGPolicy",
-        "SagewithRemainPolicy",
         "BestFitwithRemainPolicy",
-        "OfflinePolicy",
+        "SagewithRemainPolicy",
+        "PBGPolicy", 
+        "OfflinePolicy"
     ]
     env_policy_default_indexes = []
     def get_mark_color_hatch_marker():
         # "#0a9396", "#9b2226", "#005f73",
         colors =["#0a9396", "#9b2226", "#005f73", "#936639", "#ca6702", "#94d2bd", "#0a9396", "#9b2226", "#005f73",
                 "#ffadad"]
-        hatchs = ['-', '*', '/', 'o', '\\\\',  '.', 'x', '////', '-', '*', '/', 'o',
+        hatchs = ['-', '*', '/', 'o', '\\\\',  '...', 'x', '////', '-', '*', '/', 'o',
                 '']
         markers = ['x', 'o', 'v', '^', '<', '>', 'P', 's']
         return colors, hatchs, markers
     def get_F3_policy_map(origin_policy, is_default):
         result_policy = ""
         if "IterativeHISwithOrderProVersionPolicy" in origin_policy:
-            result_policy = "SA-HPBA"
+            result_policy = "S-HPBA"
         elif "HISwithOrderProVersionPolicy" in origin_policy:
             result_policy = "HPBA"
         elif origin_policy == "PBGPolicy":
@@ -847,17 +863,17 @@ def draw_F3():
         elif "OfflinePolicy" in origin_policy:
             result_policy = "Optimal"
         return result_policy
-    env_x_label = r"Number of Offline History Queries ($H$)"
+    env_x_label = r"Number of offline historical records ($H$)"
     
     y_label_name_arr = [
-        "Total Significances", 
+        "Total Significance Score", 
         "Total Test Accuracy Improvement (%)",
     ]
     
     # bar
     # params = {
-    #     "font_size": 15,
-    #     "legend_font_size": 13,
+    #     "font_size": 20,
+    #     "legend_font_size": 15,
     #     "line_width": 1.5,
     #     "bar_width": 0.5,
     #     "fill_between_alpha": 0.5,
@@ -887,8 +903,8 @@ def draw_F3():
 
     # plot
     params = {
-        "font_size": 15,
-        "legend_font_size": 13,
+        "font_size": 20,
+        "legend_font_size": 15,
         "line_width": 1.5,
         "bar_width": 0.23,
         "fill_between_alpha": 0.5,
@@ -896,11 +912,12 @@ def draw_F3():
         "bbox_to_anchor": (0.5,1.35),
         "label_spacing": 0.05,
         "column_spacing": 0.2,
-        "ncol": 2,
+        "ncol": 3,
         "center_ratio": 2.5,
         "bar_width_ratio": 2,
         "marker_size": 10,
         "same_distance": True,
+        "order": [0, 3, 1, 4, 2, 5]
     }
     params["ylim"] = [80, 125]
     get_result_and_draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
@@ -910,8 +927,8 @@ def draw_F3():
 '''
 # 折线图
 params = {
-    "font_size": 15,
-    "legend_font_size": 13,
+    "font_size": 20,
+    "legend_font_size": 15,
     "line_width": 1.5,
     "bar_width": 0.23,
     "fill_between_alpha": 0.5,
@@ -919,7 +936,7 @@ params = {
     "bbox_to_anchor": (0.5,1.35),
     "label_spacing": 0.05,
     "column_spacing": 0.2,
-    "ncol": 2,
+    "ncol": 3,
     "center_ratio": 2.5,
     "bar_width_ratio": 2,
     "marker_size": 10,
@@ -928,8 +945,8 @@ params = {
 
 # bar
 params = {
-    "font_size": 15,
-    "legend_font_size": 13,
+    "font_size": 20,
+    "legend_font_size": 15,
     "line_width": 1.5,
     "bar_width": 0.25,
     "fill_between_alpha": 0.5,
