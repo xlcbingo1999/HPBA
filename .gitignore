@@ -1,5 +1,5 @@
 # 独立的变量
-.vscode/
+# .vscode/
 *.xlsx
 *.csv
 DL_shell.txt
