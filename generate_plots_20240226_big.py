@@ -21,7 +21,7 @@ def xlsx_2_csv(file_name):
         "Sheet1": file_name,
     }
     # 定义输入的 Excel 文件路径
-    plots_path = "/home/netlab/DL_lab/opacus_testbed/plots"
+    plots_path = "/home/netlab/DL_lab/opacus_testbed/plots20240226_big"
     input_excel_file = os.path.join(plots_path, '{}.xlsx'.format(file_name)) 
 
     # 定义输出的 CSV 文件路径
@@ -119,8 +119,8 @@ def draw_plot_worker(fill_between_flag, results, results_min, results_max,
 
     for policy_index, policy in enumerate(env_policy_groups):
         is_default = policy_index in env_policy_default_indexes
-        # print(f"policy_index: {policy_index}: policy: {policy}, label: {get_policy_map_func(policy, is_default)}")
-        # print(f"results[group_index]: {results[policy_index]}")
+        print(f"policy_index: {policy_index}: policy: {policy}, label: {get_policy_map_func(policy, is_default)}")
+        print(f"results[group_index]: {results[policy_index]}")
         if same_distance:
             env_x_groups_str = range(len(env_x_groups))
         else:
@@ -234,7 +234,7 @@ def draw_bar_worker(results, env_policy_groups, env_policy_default_indexes, env_
 
     for policy_index, policy in enumerate(env_policy_groups):
         is_default = policy_index in env_policy_default_indexes
-        print(f"policy_index: {policy_index}: policy: {policy}")
+        print(f"policy_index: {policy_index}: policy: {policy}, label: {get_policy_map_func(policy, is_default)}")
         print(f"results[group_index]: {results[policy_index]}")
         plt.bar(
             henzuobiao_indexes + policy_index * bar_width, 
@@ -304,7 +304,7 @@ def draw_bar_worker(results, env_policy_groups, env_policy_default_indexes, env_
 
 def get_result_and_draw_group_plot(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups, 
                 y_label_name_arr, env_x_label, params, fill_between_flag, get_policy_map_func, get_mark_color_hatch_marker_func):
-    current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
+    current_dir = "/home/netlab/DL_lab/opacus_testbed/plots20240226_big"
     path = os.path.join(current_dir, f"{target_pic_name}.csv")
     df = pd.read_csv(path)
 
@@ -322,6 +322,7 @@ def get_result_and_draw_group_plot(target_pic_name, keys_str, env_policy_groups,
 
     
     for y_label_name in y_label_name_arr:
+        print(f"drawing y_label_name: {y_label_name}")
         results, results_min, results_max = get_result_avg_min_max_for_y_label_name(
             df_with_key, env_policy_groups, env_x_groups, y_label_name
         )
@@ -331,11 +332,12 @@ def get_result_and_draw_group_plot(target_pic_name, keys_str, env_policy_groups,
                         params,
                         current_dir, target_pic_name,
                         get_mark_color_hatch_marker_func)
+        print("\n\n\n")
         
 
 def get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, env_policy_default_indexes, env_x_groups,
                 y_label_name_arr, env_x_label, params, get_policy_map_func, get_mark_color_hatch_marker_func):
-    current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
+    current_dir = "/home/netlab/DL_lab/opacus_testbed/plots20240226_big"
     path = os.path.join(current_dir, f"{target_pic_name}.csv")
     df = pd.read_csv(path)
 
@@ -352,6 +354,7 @@ def get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, 
     df_with_key.to_excel(temp_pa, index=False)
 
     for y_label_name in y_label_name_arr:
+        print(f"drawing y_label_name: {y_label_name}")
         results, results_min, results_max = get_result_avg_min_max_for_y_label_name(
             df_with_key, env_policy_groups, env_x_groups, y_label_name
         )
@@ -360,6 +363,7 @@ def get_result_and_draw_group_bar(target_pic_name, keys_str, env_policy_groups, 
                         params,
                         current_dir, target_pic_name,
                         get_mark_color_hatch_marker_func)
+        print("\n\n\n")
     
 def draw_cr():
     def get_cr_v2(lamb, h_n_ratio):
@@ -404,7 +408,7 @@ def draw_cr():
     env_x_label = r"$\frac{h}{n}$"
     def get_policy_map_func(origin_policy):
         return r"$\lambda = {}$".format(origin_policy)
-    current_dir = "/home/netlab/DL_lab/opacus_testbed/plots"
+    current_dir = "/home/netlab/DL_lab/opacus_testbed/plots20240226_big"
     target_pic_name = "cr"
     draw_plot_worker(False, results, None, None,
                     env_policy_groups, env_x_groups, 
@@ -420,8 +424,8 @@ def draw_F1():
     env_policy_groups = [
         "HISwithOrderProVersionPolicy(0,800)",
         "IterativeHISwithOrderProVersionPolicy(100,800)",
-        "HISwithOrderProVersionPolicy(0,1)",
-        "IterativeHISwithOrderProVersionPolicy(1,1)",
+        "HISwithOrderProVersionPolicy(0,0)",
+        "IterativeHISwithOrderProVersionPolicy(1,0)",
         "BestFitwithRemainPolicy",
         "SagewithRemainPolicy",
         "PBGPolicy", 
@@ -468,6 +472,7 @@ def draw_F1():
         return result_policy
     env_x_label = r"Number of private datablocks ($|\mathcal{D}|$)"
     params = {
+        "figsize": (8, 4.7),
         "font_size": 20,
         "legend_font_size": 15,
         "line_width": 1.5,
@@ -636,6 +641,7 @@ def draw_F5():
         return result_policy
     env_x_label = r"Number of private datablocks ($|\mathcal{D}|$)"
     params = {
+        "figsize": (8, 4.7),
         "font_size": 20,
         "legend_font_size": 15,
         "line_width": 1.5,
@@ -682,7 +688,7 @@ def draw_F4():
     env_policy_default_indexes = []
     def get_mark_color_hatch_marker():
         # plot
-        colors =["#0a9396", "#9b2226", "#005f73", "#936639", "#ca6702", "#94d2bd", "#0a9396", "#9b2226", "#005f73",
+        colors =["#0a9396", "#9b2226", "#005f73", "#936639", "#ca6702", "#ff00ad", "#0a9396", "#9b2226", "#005f73",
                 "#ffadad"]
         # bar
         # colors =["#ffd6a5", "#fdffb6",  "#caffbf", "#9bf6ff",  "#bdb2ff", "#ffc6ff", "#a0c4ff",
@@ -720,6 +726,7 @@ def draw_F4():
         return result_policy
     env_x_label = r"$\lambda$" # $\frac{r_{i}}{\epsilon_{d}^{G}}$
     params = {
+        "figsize": (8, 4.7),
         "font_size": 20,
         "legend_font_size": 15,
         "line_width": 1.5,
@@ -828,7 +835,7 @@ def draw_F3():
     target_pic_name = "testbed_F3"
     xlsx_2_csv(target_pic_name)
     keys_str = ["policy", "Offline history job num"]
-    env_x_groups = [1, 50, 100, 200, 400, 800, 1200, 1600] # Datablock num 0, 50, 100, 150, 250, 300
+    env_x_groups = [0, 50, 100, 200, 400, 800, 1200, 1600] # Datablock num 0, 50, 100, 150, 250, 300
     env_policy_groups = [
         "HISwithOrderProVersionPolicy",  # 0.0
         "IterativeHISwithOrderProVersionPolicy",  # 0.0
@@ -840,7 +847,7 @@ def draw_F3():
     env_policy_default_indexes = []
     def get_mark_color_hatch_marker():
         # "#0a9396", "#9b2226", "#005f73",
-        colors =["#0a9396", "#9b2226", "#005f73", "#936639", "#ca6702", "#94d2bd", "#0a9396", "#9b2226", "#005f73",
+        colors =["#0a9396", "#9b2226", "#005f73", "#936639", "#ca6702", "#ff00ad", "#0a9396", "#9b2226", "#005f73",
                 "#ffadad"]
         hatchs = ['-', '*', '/', 'o', '\\\\',  '...', 'x', '////', '-', '*', '/', 'o',
                 '']
@@ -903,6 +910,7 @@ def draw_F3():
 
     # plot
     params = {
+        "figsize": (8, 4.7),
         "font_size": 20,
         "legend_font_size": 15,
         "line_width": 1.5,
@@ -965,6 +973,6 @@ if __name__ == "__main__":
     # draw_Q2()
     # draw_Q5()
     draw_F1()
-    draw_F3()
-    draw_F4()
-    draw_F5()
+    # draw_F3()
+    # draw_F4()
+    # draw_F5()
