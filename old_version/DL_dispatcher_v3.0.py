@@ -72,7 +72,7 @@ class Dispatcher(object):
         self.all_start_time = time.time()
         self.current_time = 0
 
-        logging_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
+        logging_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
         self.current_test_all_dir = 'schedule-review-%s' % (logging_time)
         all_logger_path = '{}/{}'.format(RESULT_PATH, self.current_test_all_dir)
         dispatcher_logger_path = '{}/DL_dispatcher.log'.format(all_logger_path)

@@ -50,7 +50,7 @@ if __name__ == "__main__":
         simulation = False
         policy_name = cal_config["policy_name"]
         
-        current_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
+        current_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
 
         if "OTDD" in policy_name:
             dispatcher_logger_path = f"/home/netlab/DL_lab/opacus_testbed/log_temp_store/{policy_name}_{current_time}.log"

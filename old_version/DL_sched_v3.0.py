@@ -126,7 +126,7 @@ class Scheduler_server(object):
         self.initialize_seeds(1234)
 
     def initialize_logging_path(self, current_test_all_dir):
-        # current_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
+        # current_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
         # self.current_test_all_dir = 'schedule-review-%s' % (current_time)
         self.model_save_path = '{}/{}'.format(RESULT_PATH, current_test_all_dir)
         self.all_logger_path = '{}/{}'.format(RESULT_PATH, current_test_all_dir)

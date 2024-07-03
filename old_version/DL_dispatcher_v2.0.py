@@ -41,7 +41,7 @@ class Dispatcher(object):
         self.all_start_time = time.time()
         self.current_time = 0
 
-        current_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
+        current_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
         file_log_name = 'schedule-review-%s' % (current_time)
         self.summary_writer_path = TENSORBOARD_PATH + "/{}".format(file_log_name)
         

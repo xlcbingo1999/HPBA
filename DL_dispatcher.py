@@ -983,7 +983,7 @@ if __name__ == '__main__':
         current_test_all_dir = args.save_to_origin_trace_path
         restart_trace = True
     else:
-        logging_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
+        logging_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
         schedule_type = 'simulation' if args.simulation_flag else 'testbed'
         current_test_all_dir = 'schedule-review-%s-%s' % (schedule_type, logging_time)
         restart_trace = False

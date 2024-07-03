@@ -55,7 +55,7 @@ test_id = args.test_id
 sub_train_keys = ['train_sub_{}'.format(train_id) for train_id in train_ids]
 sub_test_key = 'test_sub_{}'.format(test_id)
 
-current_time =  time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
+current_time =  time.strftime('%Y-%Y-%m-%d-%H-%M-%S', time.localtime())
 summary_writer_path = '/mnt/linuxidc_client/tensorboard_20230311_resnet_0.1_1.0/EMNIST_{}_{}_{}_{}_{}'.format(MODEL_NAME, EPSILON, train_ids, test_id, current_time)
 
 with open(sub_train_config_path, 'r+') as f:

@@ -16,7 +16,7 @@ class Worker_server(object):
         self.max_success_time = max_success_time
 
         self.sub_train_num = sub_train_num
-        self.current_time = time.strftime('%m-%d-%H-%M-%S', time.localtime())
+        self.current_time = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
         self.all_finished = False
 
         self.device_index = device_index

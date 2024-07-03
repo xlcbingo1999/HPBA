@@ -65,7 +65,7 @@ if __name__ == "__main__":
     summary_writer = SummaryWriter(summary_writer_path)
     model_name = "MLP"
     dataset_name = "nyc"
-    summary_writer_date = time.strftime('%m-%d-%H-%M-%S', time.localtime())
+    summary_writer_date = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
     summary_writer_keyword = "{}-{}-{}".format(model_name, dataset_name, summary_writer_date)
     df = pd.read_csv(dataset_path)
     if 0.0 < sample_frac < 1.0:
