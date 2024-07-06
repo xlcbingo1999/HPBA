@@ -548,7 +548,7 @@ class Dispatcher(object):
             if significance_policy == "Temp" or significance_policy == "TempPolicy":
                 significance_args = args.temp_sig_metric
             else:
-                significance_args = None
+                significance_args = ""
             
             with get_zerorpc_client(ip, port) as client:
                 client.restart_sched()

@@ -13,7 +13,7 @@ debug_flag = False
 nohup_target_dir_prefix = "/home/netlab/DL_lab/opacus_testbed/log_temp_store/"
 target_time_minute = 0
 
-current_ip_index = 5
+current_ip_index = 4
 current_cmd_index = 3
 
 # testbed
@@ -43,7 +43,7 @@ waiting_time = 2 if simulation_flag else 10
 
 # 任务
 pipeline_sequence_all_num = 1000
-all_history_num = 0 # 在INF场景中这个东西太多似乎不太好
+all_history_num = 800 # 在INF场景中这个东西太多似乎不太好
 job_arrival_time_speed_up = 4.0 # 控制到达速率
 job_datablock_epsilon_max_ratio = 0.2 # 控制最大的比率(离群值控制)
 job_datablock_epsilon_min_ratio = 0.04 # 控制最小的比率(离群值控制)
@@ -63,9 +63,9 @@ base_capacity = 5.0
 dataset_name = "EMNIST"
 dataset_config_name = "subtrain_144_split_1.0_dirichlet"
 
-assignment_policy = "IterativeHISwithOrderProVersionPolicy"
+assignment_policy = "HISwithOrderProVersionPolicy"
 his_betas = 0.0
-his_batch_size_for_one_epochs = 100 # IterativeHISPolicy需要设置
+his_batch_size_for_one_epochs = 0 # IterativeHISPolicy需要设置
 his_infinity_flag = True
 his_stop_n_growing_flag = True
 his_greedy_flag = False
@@ -77,10 +77,8 @@ pbg_Ls = 0.01
 pbg_Us = 0.5
 pbg_gittas = 0.1
 
-# significance_policy = "OTDDPolicy"
-# temp_sig_metric = "" # TempPolicy的场景下需要设置这个字段， OTDD不需要
-significance_policy = "TempPolicy"
-temp_sig_metric = "Accuracy"
+significance_policy = "OTDDPolicy" # TempPolicy
+temp_sig_metric = "Accuracy" # TempPolicy的场景下需要设置这个字段， OTDD不需要
 
 
 
